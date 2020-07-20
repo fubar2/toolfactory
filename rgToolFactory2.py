@@ -7,7 +7,24 @@
 # Licensed under the LGPL
 # suggestions for improvement and bug fixes welcome at https://bitbucket.org/fubar/galaxytoolfactory/wiki/Home
 #
+# January 2015
+# unified all setups by passing the script on the cl rather than via a PIPE - no need for treat_bash_special so removed
+#
+# in the process of building a complex tool
+# added ability to choose one of the current toolshed package_r or package_perl or package_python dependencies and source that package
+# add that package to tool_dependencies
+# Note that once the generated tool is loaded, it will have that package's env.sh loaded automagically so there is no
+# --envshpath in the parameters for the generated tool and it uses the system one which will be first on the adjusted path.
+#
+# sept 2014 added additional params from
+# https://bitbucket.org/mvdbeek/dockertoolfactory/src/d4863bcf7b521532c7e8c61b6333840ba5393f73/DockerToolFactory.py?at=default
+# passing them is complex
+# and they are restricted to NOT contain commas or double quotes to ensure that they can be safely passed together on 
+# the toolfactory command line as a comma delimited double quoted string for parsing and passing to the script
+# see examples on this tool form
+
 # august 2014
+
 # Allows arbitrary number of input files
 # NOTE positional parameters are now passed to script
 # and output (may be "None") is *before* arbitrary number of inputs
@@ -99,29 +116,21 @@ toolFactoryURL = 'https://bitbucket.org/fubar/galaxytoolfactory'
 
 # if we do html we need these dependencies specified in a tool_dependencies.xml file and referred to in the generated
 # tool xml
-toolhtmldepskel = """<?xml version="1.0"?>
-<tool_dependency>
-    <package name="ghostscript" version="9.10">
-        <repository name="package_ghostscript_9_10" owner="devteam" prior_installation_required="True" />
-    </package>
-    <package name="graphicsmagick" version="1.3.18">
-        <repository name="package_graphicsmagick_1_3" owner="iuc" prior_installation_required="True" />
-    </package>
-        <readme>
-           %s
-       </readme>
-</tool_dependency>
-"""
-
-protorequirements = """<requirements>
-      <requirement type="package" version="9.10">ghostscript</requirement>
-      <requirement type="package" version="1.3.18">graphicsmagick</requirement>
-  </requirements>"""
 
 def timenow():
     """return current time as a string
     """
     return time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(time.time()))
+
+def quote_non_numeric(s):
+    """return a prequoted string for non-numerics
+    useful for perl and Rscript parameter passing?
+    """
+    try:
+        res = float(s)
+        return s
+    except ValueError:
+        return '"%s"' % s
 
 html_escape_table = {
      "&": "&amp;",
@@ -134,25 +143,185 @@ def html_escape(text):
      """Produce entities within text."""
      return "".join(html_escape_table.get(c,c) for c in text)
 
+
+def html_unescape(text):
+     """Revert entities within text."""
+     t = text.replace('&amp;','&').replace('&gt;','>').replace('&lt;','<').replace('\$','$')
+     return t
+     
 def cmd_exists(cmd):
      return subprocess.call("type " + cmd, shell=True, 
            stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
 
+def parse_citations(citations_text):
+    """
+    """
+    citations = [c for c in citations_text.split("**ENTRY**") if c.strip()]
+    citation_tuples = []
+    for citation in citations:
+        if citation.startswith("doi"):
+            citation_tuples.append( ("doi", citation[len("doi"):].strip() ) )
+        else:
+            citation_tuples.append( ("bibtex", citation[len("bibtex"):].strip() ) )
+    return citation_tuples
 
+def shell_source(script):
+    """need a way to source a Galaxy tool interpreter env.sh to point at the right dependency package 
+    This based on the idea in http://pythonwise.blogspot.fr/2010/04/sourcing-shell-script.html
+    Note that we have to finesse any wierdly quoted newlines in automagic exports using nulls (env -0) as newlines"""
+    pipe = subprocess.Popen("env -i ; . %s ; env -0" % script, stdout=subprocess.PIPE, shell=True)
+    output = pipe.communicate()[0]
+    outl = output.split('\0')
+    outl = [x for x in outl if len(x.split("=")) == 2]
+    newenv = dict((line.split("=", 1) for line in outl))
+    os.environ.update(newenv)
+    
 class ScriptRunner:
     """class is a wrapper for an arbitrary script
+    note funky templating. this should all be done proper.
+    Problem is, this kludge developed quite naturally and seems to work ok with
+    little overhead...
+    
     """
 
-    def __init__(self,opts=None,treatbashSpecial=True):
+
+    def __init__(self,opts=None):
         """
         cleanup inputs, setup some outputs
         
         """
+        
+        self.toolhtmldepinterpskel = """<?xml version="1.0"?>
+        <tool_dependency>
+            <package name="ghostscript" version="9.10">
+                <repository name="package_ghostscript_9_10" owner="devteam" prior_installation_required="True" />
+            </package>
+            <package name="graphicsmagick" version="1.3.18">
+                <repository name="package_graphicsmagick_1_3" owner="iuc" prior_installation_required="True" />
+            </package>
+             <package name="%(interpreter_name)s" version="%(interpreter_version)s">
+                <repository name="%(interpreter_pack)s" owner="%(interpreter_owner)s" prior_installation_required="True" />
+            </package>
+           
+                <readme>
+                   %(readme)s
+                   This file was autogenerated by the Galaxy Tool Factory 2
+               </readme>
+        </tool_dependency>
+        """
+        
+        self.toolhtmldepskel = """<?xml version="1.0"?>
+        <tool_dependency>
+            <package name="ghostscript" version="9.10">
+                <repository name="package_ghostscript_9_10" owner="devteam" prior_installation_required="True" />
+            </package>
+            <package name="graphicsmagick" version="1.3.18">
+                <repository name="package_graphicsmagick_1_3" owner="iuc" prior_installation_required="True" />
+            </package>
+                <readme>
+                   %(readme)s
+                   This file was autogenerated by the Galaxy Tool Factory 2
+               </readme>
+        </tool_dependency>
+        """
+
+        self.emptytoolhtmldepskel = """<?xml version="1.0"?>
+        <tool_dependency>
+                <readme>
+                   %(readme)s
+                This file was autogenerated by the Galaxy Tool Factory 2
+               </readme>
+        </tool_dependency>
+        """
+
+        self.protorequirements = """<requirements>
+              <requirement type="package" version="9.10">ghostscript</requirement>
+              <requirement type="package" version="1.3.18">graphicsmagick</requirement>
+          </requirements>"""
+          
+        self.protorequirements_interpreter = """<requirements>
+              <requirement type="package" version="9.10">ghostscript</requirement>
+              <requirement type="package" version="1.3.18">graphicsmagick</requirement>
+              <requirement type="package" version="%(interpreter_version)s">%(interpreter_name)s</requirement>
+          </requirements>"""
+          
+
+        self.newCommand="""
+            %(toolname)s.py --script_path "$runMe" --interpreter "%(interpreter)s" 
+                --tool_name "%(toolname)s"
+                %(command_inputs)s
+                %(command_outputs)s
+            """
+    
+        self.tooltestsTabOnly = """
+            <test>
+            %(test1Inputs)s
+            <param name="job_name" value="test1"/>
+            <param name="runMe" value="$runMe"/>
+            <output name="output1="%(test1Output)s" ftype="tabular"/>
+            %(additionalParams)s
+            </test>
+            """
+            
+        self.tooltestsHTMLOnly = """
+            <test>
+            %(test1Inputs)s
+            <param name="job_name" value="test1"/>
+            <param name="runMe" value="$runMe"/>
+            %(additionalParams)s
+            <output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="5"/>
+            </test>
+            """
+            
+        self.tooltestsBoth = """
+            <test>
+            %(test1Inputs)s
+            <param name="job_name" value="test1"/>
+            <param name="runMe" value="$runMe"/>
+            %(additionalParams)s
+            <output name="output1" file="%(test1Output)s" ftype="tabular" />
+            <output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="10"/>
+            </test>
+            """
+
+        self.newXML="""<tool id="%(toolid)s" name="%(toolname)s" version="%(tool_version)s">
+%(tooldesc)s
+%(requirements)s
+<command interpreter="python">
+%(command)s
+</command>
+<inputs>
+%(inputs)s
+%(additionalInputs)s
+</inputs>
+<outputs>
+%(outputs)s
+</outputs>
+<configfiles>
+<configfile name="runMe">
+%(script)s
+</configfile>
+</configfiles>
+<tests>
+%(tooltests)s
+</tests>
+<help>
+
+%(help)s
+
+This tool was autogenerated from a user provided script using the Galaxy Tool Factory 2
+https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
+</help>
+<citations>
+    %(citations)s
+    <citation type="doi">10.1093/bioinformatics/bts573</citation>
+</citations>
+</tool>"""
+            
         self.useGM = cmd_exists('gm')
         self.useIM = cmd_exists('convert')
         self.useGS = cmd_exists('gs')
         self.temp_warned = False # we want only one warning if $TMP not set
-        self.treatbashSpecial = treatbashSpecial
         if opts.output_dir: # simplify for the tool tarball
             os.chdir(opts.output_dir)
         self.thumbformat = 'png'
@@ -162,15 +331,15 @@ class ScriptRunner:
         self.myname = sys.argv[0] # get our name because we write ourselves out as a tool later
         self.pyfile = self.myname # crude but efficient - the cruft won't hurt much
         self.xmlfile = '%s.xml' % self.toolname
-        s = open(self.opts.script_path,'r').readlines()
-        s = [x.rstrip() for x in s] # remove pesky dos line endings if needed
-        self.script = '\n'.join(s)
+        rx = open(self.opts.script_path,'r').readlines()
+        rx = [x.rstrip() for x in rx] # remove pesky dos line endings if needed
+        self.script = '\n'.join(rx)
         fhandle,self.sfile = tempfile.mkstemp(prefix=self.toolname,suffix=".%s" % (opts.interpreter))
         tscript = open(self.sfile,'w') # use self.sfile as script source for Popen
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = '\n'.join([' %s' % html_escape(x) for x in s]) # for restructured text in help
-        self.escapedScript = '\n'.join([html_escape(x) for x in s])
+        self.indentedScript = "  %s" % '\n'.join([' %s' % html_escape(x) for x in rx]) # for restructured text in help
+        self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
         self.elog = os.path.join(self.opts.output_dir,"%s_error.log" % self.toolname)
         if opts.output_dir: # may not want these complexities 
             self.tlog = os.path.join(self.opts.output_dir,"%s_runner.log" % self.toolname)
@@ -184,13 +353,8 @@ class ScriptRunner:
         self.test1Inputs = [] # now a list
         a = self.cl.append
         a(opts.interpreter)
-        if self.treatbashSpecial and opts.interpreter in ['bash','sh']:
-            a(self.sfile)
-        else:
-            a('-') # stdin
+        a(self.sfile)
         # if multiple inputs - positional or need to distinguish them with cl params
-        if opts.output_tab:
-            a('%s' % opts.output_tab) 
         if opts.input_tab:
             tests = []
             for i,intab in enumerate(opts.input_tab): # if multiple, make tests
@@ -198,11 +362,91 @@ class ScriptRunner:
                     (gpath,uname) = intab.split(',')
                 else:
                     gpath = uname = intab
-                a('"%s"' % (intab))
                 tests.append(os.path.basename(gpath))
             self.test1Inputs =  '<param name="input_tab" value="%s" />' % (','.join(tests))
         else:
             self.test1Inputs = ''
+        # we always pass path,name pairs in using python optparse append
+        # but the command line has to be different
+        self.infile_paths = ''
+        self.infile_names = ''
+        if self.opts.input_tab:
+            self.infile_paths = ','.join([x.split(',')[0].strip() for x in self.opts.input_tab])
+            self.infile_names = ','.join([x.split(',')[1].strip() for x in self.opts.input_tab])
+        if self.opts.interpreter == 'python':
+            # yes, this is how additional parameters are always passed in python - to the TF itself and to
+            # scripts to avoid having unknown parameter names (yes, they can be parsed but...) on the command line
+            if self.opts.input_tab:
+                a('--inpaths=%s' % (self.infile_paths)) 
+                a('--innames=%s' % (self.infile_names)) 
+            if self.opts.output_tab:
+                a('--outpath=%s' % self.opts.output_tab) 
+            for p in opts.additional_parameters:
+                p = p.replace('"','')
+                psplit = p.split(',')
+                param = html_unescape(psplit[0])
+                value = html_unescape(psplit[1])
+                a('%s="%s"' % (param,value))
+        if (self.opts.interpreter == 'Rscript'):
+            # pass params on command line as expressions which the script evaluates - see sample
+            if self.opts.input_tab:
+                a('INPATHS="%s"' % self.infile_paths)
+                a('INNAMES="%s"' % self.infile_names)
+            if self.opts.output_tab:
+                a('OUTPATH="%s"' % self.opts.output_tab) 
+            for p in opts.additional_parameters:
+                p = p.replace('"','')
+                psplit = p.split(',')
+                param = html_unescape(psplit[0])
+                value = html_unescape(psplit[1])
+                a('%s=%s' % (param,quote_non_numeric(value)))
+        if (self.opts.interpreter == 'perl'):
+            # pass positional params on command line - perl script needs to discombobulate the path/name lists
+            if self.opts.input_tab:
+                a('%s' % self.infile_paths)
+                a('%s' % self.infile_names)
+            if self.opts.output_tab:
+                a('%s' % self.opts.output_tab)
+            for p in opts.additional_parameters:
+                # followed by any additional name=value parameter pairs
+                p = p.replace('"','')
+                psplit = p.split(',')
+                param = html_unescape(psplit[0])
+                value = html_unescape(psplit[1])
+                a('%s=%s' % (param,quote_non_numeric(value)))
+        if self.opts.interpreter == 'sh' or self.opts.interpreter == 'bash':
+              # more is better - now move all params into environment AND drop on to command line.
+              self.cl.insert(0,'env')
+              if self.opts.input_tab:
+                  self.cl.insert(1,'INPATHS=%s' % (self.infile_paths))
+                  self.cl.insert(2,'INNAMES=%s' % (self.infile_names))
+              if self.opts.output_tab:
+                  self.cl.insert(3,'OUTPATH=%s' % (self.opts.output_tab))
+                  a('OUTPATH=%s' % (self.opts.output_tab))
+              # sets those environment variables for the script
+              # additional params appear in CL - yes, it's confusing
+              for i,p in enumerate(opts.additional_parameters):
+                  psplit = p.split(',')
+                  param = html_unescape(psplit[0])
+                  value = html_unescape(psplit[1])
+                  a('%s=%s' % (param,quote_non_numeric(value)))
+                  self.cl.insert(4+i,'%s=%s' % (param,quote_non_numeric(value)))
+        self.interpreter_owner = 'SYSTEM'
+        self.interpreter_pack = 'SYSTEM'
+        self.interpreter_name = 'SYSTEM'
+        self.interpreter_version = 'SYSTEM'
+        self.interpreter_revision = 'SYSTEM'
+        if opts.envshpath <> 'system': # need to parse out details for our tool_dependency
+            try: # fragile - depends on common naming convention as at jan 2015 = package_[interp]_v0_v1_v2... = version v0.v1.v2.. is in play
+                # this ONLY happens at tool generation by an admin - the generated tool always uses the default of system so path is from local env.sh
+                packdetails = opts.envshpath.split(os.path.sep)[-4:-1]  # eg ['fubar', 'package_r_3_1_1', '63cdb9b2234c']
+                self.interpreter_owner = packdetails[0]
+                self.interpreter_pack = packdetails[1]
+                self.interpreter_name = packdetails[1].split('_')[1].upper()
+                self.interpreter_revision = packdetails[2]
+                self.interpreter_version =  '.'.join(packdetails[1].split('_')[2:])
+            except:
+                pass
         self.outFormats = opts.output_format
         self.inputFormats = opts.input_formats
         self.test1Output = '%s_test1_output.xls' % self.toolname
@@ -217,14 +461,14 @@ class ScriptRunner:
             <description>a tabular file</description>
             <command interpreter="python">
             reverse.py --script_path "$runMe" --interpreter "python" 
-            --tool_name "reverse" --input_tab "$input1" --output_tab "$tab_file" 
+            --tool_name "reverse" --input_tab "$input1" --output_tab "$output1" 
             </command>
             <inputs>
-            <param name="input1"  type="data" format="tabular" label="Select a suitable input file from your history"/><param name="job_name" type="text" label="Supply a name for the outputs to remind you what they contain" value="reverse"/>
-
+            <param name="input1"  type="data" format="tabular" label="Select one or more input files from your history"/>
+            <param name="job_name" type="text" label="Supply a name for the outputs to remind you what they contain" value="reverse"/>
             </inputs>
             <outputs>
-            <data format="tabular" name="tab_file" label="${job_name}"/>
+            <data format="tabular" name="output1q" label="${job_name}"/>
 
             </outputs>
             <help>
@@ -257,83 +501,37 @@ o.close()
             </tool>
         
         """ 
-        newXML="""<tool id="%(toolid)s" name="%(toolname)s" version="%(tool_version)s">
-%(tooldesc)s
-%(requirements)s
-<command interpreter="python">
-%(command)s
-</command>
-<inputs>
-%(inputs)s
-</inputs>
-<outputs>
-%(outputs)s
-</outputs>
-<configfiles>
-<configfile name="runMe">
-%(script)s
-</configfile>
-</configfiles>
-<tests>
-%(tooltests)s
-</tests>
-<help>
 
-%(help)s
+        # these templates need a dict with the right keys to match the parameters - outputs, help, code...
 
-</help>
-</tool>""" # needs a dict with toolname, toolid, interpreter, scriptname, command, inputs as a multi line string ready to write, outputs ditto, help ditto
-
-        newCommand="""
-        %(toolname)s.py --script_path "$runMe" --interpreter "%(interpreter)s" 
-            --tool_name "%(toolname)s"
-            %(command_inputs)s
-            %(command_outputs)s
-        """
-        # may NOT be an input or htmlout - appended later
-        tooltestsTabOnly = """
-        <test>
-        %(test1Inputs)s
-        <param name="job_name" value="test1"/>
-        <param name="runMe" value="$runMe"/>
-        <output name="tab_file" file="%(test1Output)s" ftype="tabular"/>
-        </test>
-        </tests>
-        """
-        tooltestsHTMLOnly = """
-        <test>
-        %(test1Inputs)s
-        <param name="job_name" value="test1"/>
-        <param name="runMe" value="$runMe"/>
-        <output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="5"/>
-        </test>
-        </tests>
-        """
-        tooltestsBoth = """
-        <test>
-        %(test1Inputs)s
-        <param name="job_name" value="test1"/>
-        <param name="runMe" value="$runMe"/>
-        <output name="tab_file" file="%(test1Output)s" ftype="tabular" />
-        <output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="10"/>
-        </test>
-        </tests>
-        """
         xdict = {}
+        xdict['additionalParams'] = ''
+        xdict['additionalInputs'] = ''
+        if self.opts.additional_parameters:
+            if self.opts.edit_additional_parameters: # add to new tool form with default value set to original value
+                xdict['additionalInputs'] = '\n'.join(['<param name="%s" value="%s" label="%s" help="%s" type="%s"/>' % \
+                (x.split(',')[0],html_escape(x.split(',')[1]),html_escape(x.split(',')[2]),html_escape(x.split(',')[3]), x.split(',')[4]) for x in self.opts.additional_parameters])
+        xdict['additionalParams'] = '\n'.join(['<param name="%s" value="%s" />' % (x.split(',')[0],html_escape(x.split(',')[1])) for x in self.opts.additional_parameters])
+        xdict['interpreter_owner'] = self.interpreter_owner
+        xdict['interpreter_version'] = self.interpreter_version
+        xdict['interpreter_pack'] = self.interpreter_pack
+        xdict['interpreter_name'] = self.interpreter_name
         xdict['requirements'] = ''
-        if self.opts.make_HTML:
-            if self.opts.include_dependencies == "yes":
-                xdict['requirements'] = protorequirements
+        if self.opts.include_dependencies == "yes":
+            if self.opts.envshpath <> 'system':
+                xdict['requirements'] = self.protorequirements_interpreter % xdict       
+            else:    
+                xdict['requirements'] = self.protorequirements
         xdict['tool_version'] = self.opts.tool_version
         xdict['test1HTML'] = self.test1HTML
         xdict['test1Output'] = self.test1Output
         xdict['test1Inputs'] = self.test1Inputs
-        if self.opts.make_HTML and self.opts.output_tab <> 'None':
-            xdict['tooltests'] = tooltestsBoth % xdict
+        if self.opts.make_HTML and self.opts.output_tab:
+            xdict['tooltests'] = self.tooltestsBoth % xdict
         elif self.opts.make_HTML:
-            xdict['tooltests'] = tooltestsHTMLOnly % xdict
+            xdict['tooltests'] = self.tooltestsHTMLOnly % xdict
         else:
-            xdict['tooltests'] = tooltestsTabOnly % xdict
+            xdict['tooltests'] = self.tooltestsTabOnly % xdict
         xdict['script'] = self.escapedScript 
         # configfile is least painful way to embed script to avoid external dependencies
         # but requires escaping of <, > and $ to avoid Mako parsing
@@ -357,18 +555,30 @@ o.close()
             xdict['tooldesc'] = ''
         xdict['command_outputs'] = '' 
         xdict['outputs'] = '' 
-        if self.opts.input_tab <> 'None':
+        if self.opts.input_tab:
             cins = ['\n',]
+            cins.append('--input_formats %s' % self.opts.input_formats)
             cins.append('#for intab in $input1:')
-            cins.append('--input_tab "$intab"')
+            cins.append('--input_tab "${intab},${intab.name}"')
             cins.append('#end for\n')
             xdict['command_inputs'] = '\n'.join(cins)
-            xdict['inputs'] = '''<param name="input1" multiple="true"  type="data" format="%s" label="Select a suitable input file from your history"
-                    help="Multiple inputs may be selected if the script can deal with them..."/> \n''' % self.inputFormats
+            xdict['inputs'] = '''<param name="input_tab" multiple="true"  type="data" format="%s" label="Select one or more %s input files from your history"
+                    help="Multiple inputs may be selected assuming the script can deal with them..."/> \n''' % (self.inputFormats,self.inputFormats)
         else:
             xdict['command_inputs'] = '' # assume no input - eg a random data generator       
             xdict['inputs'] = ''
-        xdict['inputs'] += '<param name="job_name" type="text" label="Supply a name for the outputs to remind you what they contain" value="%s"/> \n' % self.toolname
+        if (len(self.opts.additional_parameters) > 0):
+            cins = ['\n',]
+            for params in self.opts.additional_parameters:
+                    psplit = params.split(',') # name,value...
+                    psplit[3] = html_escape(psplit[3])
+                    if self.opts.edit_additional_parameters:
+                        psplit[1] = '$%s' % psplit[0] # replace with form value
+                    else:
+                        psplit[1] = html_escape(psplit[1]) # leave prespecified value
+                    cins.append('--additional_parameters """%s"""' % ','.join(psplit)) 
+            xdict['command_inputs'] = '%s\n%s' % (xdict['command_inputs'],'\n'.join(cins))
+        xdict['inputs'] += '<param name="job_name" type="text" size="60" label="Supply a name for the outputs to remind you what they contain" value="%s"/> \n' % self.toolname
         xdict['toolname'] = self.toolname
         xdict['toolid'] = self.toolid
         xdict['interpreter'] = self.opts.interpreter
@@ -378,11 +588,21 @@ o.close()
             xdict['outputs'] +=  ' <data format="html" name="html_file" label="${job_name}.html"/>\n'
         else:
             xdict['command_outputs'] += ' --output_dir "./"' 
-        if self.opts.output_tab <> 'None':
-            xdict['command_outputs'] += ' --output_tab "$tab_file"'
-            xdict['outputs'] += ' <data format="%s" name="tab_file" label="${job_name}"/>\n' % self.outFormats
-        xdict['command'] = newCommand % xdict
-        xmls = newXML % xdict
+        if self.opts.output_tab:
+            xdict['command_outputs'] += ' --output_tab "$output1"'
+            xdict['outputs'] += ' <data format="%s" name="output1" label="${job_name}"/>\n' % self.outFormats
+        xdict['command'] = self.newCommand % xdict
+        if self.opts.citations:
+            citationstext = open(self.opts.citations,'r').read()
+            citation_tuples = parse_citations(citationstext)
+            citations_xml = ""
+            for citation_type, citation_content in citation_tuples:
+                citation_xml = """<citation type="%s">%s</citation>""" % (citation_type, html_escape(citation_content))
+                citations_xml += citation_xml
+            xdict['citations'] = citations_xml
+        else:
+            xdict['citations'] = ""
+        xmls = self.newXML % xdict
         xf = open(self.xmlfile,'w')
         xf.write(xmls)
         xf.write('\n')
@@ -402,34 +622,39 @@ o.close()
         tdir = self.toolname
         os.mkdir(tdir)
         self.makeXML()
-        if self.opts.make_HTML:
-            if self.opts.help_text:
-                hlp = open(self.opts.help_text,'r').read()
+        if self.opts.help_text:
+            hlp = open(self.opts.help_text,'r').read()
+        else:
+            hlp = 'Please ask the tool author for help as none was supplied at tool generation\n'
+        readme_dict = {'readme':hlp,'interpreter':self.opts.interpreter,'interpreter_version':self.interpreter_version,'interpreter_name':self.interpreter_name,
+        'interpreter_owner':self.interpreter_owner,'interpreter_pack':self.interpreter_pack}
+        if self.opts.include_dependencies == "yes":
+            if self.opts.envshpath == 'system':
+                tooldepcontent = self.toolhtmldepskel % readme_dict
             else:
-                hlp = 'Please ask the tool author for help as none was supplied at tool generation\n'
-            if self.opts.include_dependencies == "yes":
-                tooldepcontent = toolhtmldepskel  % hlp
-                depf = open(os.path.join(tdir,'tool_dependencies.xml'),'w')
-                depf.write(tooldepcontent)
-                depf.write('\n')
-                depf.close()
-        if self.opts.input_tab <> 'None': # no reproducible test otherwise? TODO: maybe..
-            testdir = os.path.join(tdir,'test-data')
-            os.mkdir(testdir) # make tests directory
-            for i,intab in enumerate(self.opts.input_tab):
-                si = self.opts.input_tab[i]
-                if si.find(',') <> -1:
-                    s = si.split(',')[0]
-                    si = s
-                dest = os.path.join(testdir,os.path.basename(si))
-                if si <> dest:
-                    shutil.copyfile(si,dest)
-            if self.opts.output_tab <> 'None':
-                shutil.copyfile(self.opts.output_tab,os.path.join(testdir,self.test1Output))
-            if self.opts.make_HTML:
-                shutil.copyfile(self.opts.output_html,os.path.join(testdir,self.test1HTML))
-            if self.opts.output_dir:
-                shutil.copyfile(self.tlog,os.path.join(testdir,'test1_out.log'))
+                tooldepcontent = self.toolhtmldepinterpskel % readme_dict
+        else:
+            tooldepcontent = self.emptytoolhtmldepskel  % readme_dict
+        depf = open(os.path.join(tdir,'tool_dependencies.xml'),'w')
+        depf.write(tooldepcontent)
+        depf.write('\n')
+        depf.close()
+        testdir = os.path.join(tdir,'test-data')
+        os.mkdir(testdir) # make tests directory
+        for i,intab in enumerate(self.opts.input_tab):
+            si = self.opts.input_tab[i]
+            if si.find(',') <> -1:
+                s = si.split(',')[0]
+                si = s
+            dest = os.path.join(testdir,os.path.basename(si))
+            if si <> dest:
+                shutil.copyfile(si,dest)
+        if self.opts.output_tab:
+            shutil.copyfile(self.opts.output_tab,os.path.join(testdir,self.test1Output))
+        if self.opts.make_HTML:
+            shutil.copyfile(self.opts.output_html,os.path.join(testdir,self.test1HTML))
+        if self.opts.output_dir:
+            shutil.copyfile(self.tlog,os.path.join(testdir,'test1_out.log'))
         outpif = '%s.py' % self.toolname # new name
         outpiname = os.path.join(tdir,outpif) # path for the tool tarball
         pyin = os.path.basename(self.pyfile) # our name - we rewrite ourselves (TM)
@@ -448,9 +673,9 @@ o.close()
         xtname = os.path.join(tdir,self.xmlfile)
         if not os.path.exists(xtname):
             shutil.copyfile(self.xmlfile,xtname)
-        tarpath = "%s.gz" % self.toolname
+        tarpath = "%s.tar.gz" % self.toolname
         tar = tarfile.open(tarpath, "w:gz")
-        tar.add(tdir,arcname=self.toolname)
+        tar.add(tdir,arcname='%s' % self.toolname)
         tar.close()
         shutil.copyfile(tarpath,self.opts.new_tool)
         shutil.rmtree(tdir)
@@ -635,52 +860,47 @@ o.close()
         self.html = html
 
 
+
     def run(self):
         """
-        scripts must be small enough not to fill the pipe!
+        Some devteam tools have this defensive stderr read so I'm keeping with the faith
+        Feel free to update. 
         """
-        if self.treatbashSpecial and self.opts.interpreter in ['bash','sh']:
-          retval = self.runBash()
-        else:
-            if self.opts.output_dir:
-                ste = open(self.elog,'w')
-                sto = open(self.tlog,'w')
-                sto.write('## Toolfactory generated command line = %s\n' % ' '.join(self.cl))
-                sto.flush()
-                p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,stdin=subprocess.PIPE,cwd=self.opts.output_dir)
-            else:
-                p = subprocess.Popen(self.cl,shell=False,stdin=subprocess.PIPE)
-            p.stdin.write(self.script)
-            p.stdin.close()
-            retval = p.wait()
-            if self.opts.output_dir:
-                sto.close()
-                ste.close()
-                err = open(self.elog,'r').readlines()
-                if retval <> 0 and err: # problem
-                    print >> sys.stderr,err
-            if self.opts.make_HTML:
-                self.makeHtml()
-        return retval
-
-    def runBash(self):
-        """
-        cannot use - for bash so use self.sfile
-        """
+        if self.opts.envshpath <> 'system':
+            shell_source(self.opts.envshpath)
+            # this only happens at tool generation - the generated tool relies on the dependencies all being set up
+            # at toolshed installation by sourcing local env.sh 
         if self.opts.output_dir:
-            s = '## Toolfactory generated command line = %s\n' % ' '.join(self.cl)
-            sto = open(self.tlog,'w')
-            sto.write(s)
+            ste = open(self.elog,'wb')
+            sto = open(self.tlog,'wb')
+            s = ' '.join(self.cl)
+            sto.write('## Executing Toolfactory generated command line = %s\n' % s)
             sto.flush()
-            p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=sto,cwd=self.opts.output_dir)
-        else:
-            p = subprocess.Popen(self.cl,shell=False)            
-        retval = p.wait()
-        if self.opts.output_dir:
+            p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,cwd=self.opts.output_dir)
+            retval = p.wait()
             sto.close()
+            ste.close()
+            tmp_stderr = open( self.elog, 'rb' )
+            err = ''
+            buffsize = 1048576
+            try:
+                while True:
+                    err += tmp_stderr.read( buffsize )
+                    if not err or len( err ) % buffsize != 0:
+                        break
+            except OverflowError:
+                pass
+            tmp_stderr.close()
+        else:
+            p = subprocess.Popen(self.cl,shell=False)
+            retval = p.wait()
+        if self.opts.output_dir:
+            if retval <> 0 and err: # problem
+                print >> sys.stderr,err
         if self.opts.make_HTML:
             self.makeHtml()
         return retval
+
   
 
 def main():
@@ -696,9 +916,9 @@ def main():
     a('--interpreter',default=None)
     a('--output_dir',default='./')
     a('--output_html',default=None)
-    a('--input_tab',default=[], action="append")    
+    a('--input_tab',default=[], action="append") # these are "galaxypath,metadataname" pairs
     a("--input_formats",default="tabular")
-    a('--output_tab',default="None")
+    a('--output_tab',default=None)
     a('--output_format',default='tabular')
     a('--user_email',default='Unknown')
     a('--bad_user',default=None)
@@ -709,6 +929,10 @@ def main():
     a('--new_tool',default=None)
     a('--tool_version',default=None)
     a('--include_dependencies',default=None)   
+    a('--citations',default=None)
+    a('--additional_parameters', dest='additional_parameters', action='append', default=[])
+    a('--edit_additional_parameters', action="store_true", default=False)
+    a('--envshpath',default="system")   
     opts, args = op.parse_args()
     assert not opts.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to admin_users in universe_wsgi.ini' % (opts.bad_user,opts.bad_user)
     assert opts.tool_name,'## Tool Factory expects a tool name - eg --tool_name=DESeq'
@@ -720,6 +944,8 @@ def main():
         except:
             pass
     opts.input_tab = [x.replace('"','').replace("'",'') for x in opts.input_tab]
+    for i,x in enumerate(opts.additional_parameters): # remove quotes we need to deal with spaces in CL params
+        opts.additional_parameters[i] = opts.additional_parameters[i].replace('"','')
     r = ScriptRunner(opts)
     if opts.make_Tool:
         retcode = r.makeTooltar()
