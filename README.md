@@ -34,6 +34,7 @@ artifacts (eg foo_MDS_plot.pdf) file names. All artifacts are linked for downloa
 A copy of the actual script is provided for provenance - be warned, it exposes
 real file paths.
 
+![example run](/images/dynamicScriptTool.png)
 
 tldr;
 
