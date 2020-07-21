@@ -34,17 +34,12 @@ artifacts (eg foo_MDS_plot.pdf) file names. All artifacts are linked for downloa
 A copy of the actual script is provided for provenance - be warned, it exposes
 real file paths.
 
-
-
-﻿# WARNING before you start
-# Install this tool on a private Galaxy ONLY
-# Please NEVER on a public or production instance
-# updated august 2014 by John Chilton adding citation support
-#
-# updated august 8 2014 to fix bugs reported by Marius van den Beek
-# please cite the resource at
+**WARNING before you start**
+Install this tool on a private Galaxy ONLY
+Please NEVER on a public or production instance
+Please cite the resource at
 http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&keytype=ref
-# if you use this tool in your published work.
+if you use this tool in your published work.
 
 *Short Story*
 
