@@ -34,11 +34,7 @@ artifacts (eg foo_MDS_plot.pdf) file names. All artifacts are linked for downloa
 A copy of the actual script is provided for provenance - be warned, it exposes
 real file paths.
 
-![example run](/images/dynamicScriptTool.png)
 
-tldr;
-
-```
 
 ﻿# WARNING before you start
 # Install this tool on a private Galaxy ONLY
@@ -416,9 +412,9 @@ All rights reserved.
 
 Licensed under the LGPL
 
-**Obligatory screenshot**
+**screenshot**
 
-http://bitbucket.org/fubar/galaxytoolmaker/src/fda8032fe989/images/dynamicScriptTool.png
+![example run](/images/dynamicScriptTool.png)
 
 
 ```
