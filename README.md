@@ -35,11 +35,13 @@ A copy of the actual script is provided for provenance - be warned, it exposes
 real file paths.
 
 **WARNING before you start**
+
 Install this tool on a private Galaxy ONLY
 Please NEVER on a public or production instance
 Please cite the resource at
 http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&keytype=ref
 if you use this tool in your published work.
+
 
 *Short Story*
 
@@ -70,16 +72,14 @@ If your script writes to the current directory path, arbitrary mix of (eg)
 pdfs, tabular analysis results and run logs,the tool factory can optionally
 auto-generate a linked Html page with separate sections showing a thumbnail
 grid for all pdfs and the log text, grouping all artifacts sharing a file
-name and log name prefix::
-
- eg: if "foo.log" is emitted then *all* other outputs matching foo_* will
- all be grouped together - eg
- foo_baz.pdf
- foo_bar.pdf and
- foo_zot.xls
- would all be displayed and linked in the same section with foo.log's contents
- - to form the "Foo" section of the Html page.  Sections appear in alphabetic
- order and there are no limits on the number of files or sections.
+name and log name prefix.if "foo.log" is emitted then *all* other outputs matching foo_* will
+all be grouped together - eg
+- foo_baz.pdf
+- foo_bar.pdf and
+- foo_zot.xls
+ 
+would all be displayed and linked in the same section with foo.log's contents to form the "Foo" section of the Html page.  
+Sections appear in alphabetic order and there are no limits on the number of files or sections.
 
 *Automated generation of new Galaxy tools for installation into any Galaxy*
 
@@ -90,15 +90,14 @@ the user. Generated tools are installed via a tool shed by an administrator
 and work exactly like all other Galaxy tools for your users.
 
 If you use the Html output option, please ensure that sanitize_all_html is
-set to False and uncommented in universe_wsgi.ini - it should show::
+set to False and uncommented in universe_wsgi.ini - it should show
 
- # By default, all tool output served as 'text/html' will be sanitized
- sanitize_all_html = False
+By default, all tool output served as 'text/html' will be sanitized
+Change ```sanitize_all_html = False```
 
 This opens potential security risks and may not be acceptable for public
 sites where the lack of stylesheets may make Html pages damage onlookers'
 eyeballs but should still be correct.
-
 
 *More Detail*
 
@@ -144,23 +143,24 @@ administrative "Search and browse tool sheds" link. Find the Galaxy Main
 toolshed at https://toolshed.g2.bx.psu.edu/ and search for the toolfactory
 repository. Open it and review the code and select the option to install it.
 
-(
-If you can't get the tool that way, the xml and py files here need to be
-copied into a new tools
-subdirectory such as tools/toolfactory Your tool_conf.xml needs a new entry
-pointing to the xml
-file - something like::
 
+If you can't get the tool that way, the xml and py files here need to be
+copied into a new tools subdirectory such as tools/toolfactory 
+Your tool_conf.xml needs a new entry pointing to the xml \file - something like
+```
   <section name="Tool building tools" id="toolbuilders">
     <tool file="toolfactory/rgToolFactory.xml"/>
   </section>
-
+```
 If not already there (I just added it to datatypes_conf.xml.sample),
 please add:
+
+```
 <datatype extension="toolshed.gz" type="galaxy.datatypes.binary:Binary"
 mimetype="multipart/x-gzip" subclass="True" />
+```
 to your local data_types_conf.xml.
-)
+
 
 Of course, R, python, perl etc are needed on your path if you want to test
 scripts using those interpreters. Adding new ones to this tool code should
@@ -267,7 +267,7 @@ appear as themselves - eg foo="bar" will mean that foo is defined as "bar" for t
 
 Bash and sh will see any additional parameters on their command lines and the 3 named parameters
 in their environment magically - well, using env on the CL
-
+```
 ***python***::
 
  # argparse for 3 possible comma separated lists
@@ -337,7 +337,7 @@ in their environment magically - well, using env on the CL
  print $fh "INPATHS=$INPATHS\n INNAMES=$INNAMES\n OUTPATH=$OUTPATH\n";
  close $fh;
  
-
+```
 
 Galaxy as an IDE for developing API scripts
 If you need to develop Galaxy API scripts and you like to live dangerously,
@@ -375,6 +375,7 @@ Give the below a whirl on a private clone (install the tool factory from
 the main toolshed) and try adding complexity with few rerun/edit/rerun cycles.
 
 Eg tool factory api script
+```
 import sys
 from blend.galaxy import GalaxyInstance
 ourGal = 'http://x.x.x.x:xxxx'
@@ -391,6 +392,7 @@ for lib in libs:
 outf=open(sys.argv[2],'w')
 outf.write('\n'.join(res))
 outf.close()
+```
 
 **Attribution**
 Creating re-usable tools from scripts: The Galaxy Tool Factory
