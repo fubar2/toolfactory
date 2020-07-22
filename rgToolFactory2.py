@@ -358,7 +358,7 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
         if opts.input_tab:
             tests = []
             for i,intab in enumerate(opts.input_tab): # if multiple, make tests
-                if intab.find(',') <> -1:
+                if intab.find(',') != -1:
                     (gpath,uname) = intab.split(',')
                 else:
                     gpath = uname = intab
@@ -436,7 +436,7 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
         self.interpreter_name = 'SYSTEM'
         self.interpreter_version = 'SYSTEM'
         self.interpreter_revision = 'SYSTEM'
-        if opts.envshpath <> 'system': # need to parse out details for our tool_dependency
+        if opts.envshpath != 'system': # need to parse out details for our tool_dependency
             try: # fragile - depends on common naming convention as at jan 2015 = package_[interp]_v0_v1_v2... = version v0.v1.v2.. is in play
                 # this ONLY happens at tool generation by an admin - the generated tool always uses the default of system so path is from local env.sh
                 packdetails = opts.envshpath.split(os.path.sep)[-4:-1]  # eg ['fubar', 'package_r_3_1_1', '63cdb9b2234c']
@@ -518,7 +518,7 @@ o.close()
         xdict['interpreter_name'] = self.interpreter_name
         xdict['requirements'] = ''
         if self.opts.include_dependencies == "yes":
-            if self.opts.envshpath <> 'system':
+            if self.opts.envshpath != 'system':
                 xdict['requirements'] = self.protorequirements_interpreter % xdict       
             else:    
                 xdict['requirements'] = self.protorequirements
@@ -617,7 +617,7 @@ o.close()
         """
         retval = self.run()
         if retval:
-            print >> sys.stderr,'## Run failed. Cannot build yet. Please fix and retry'
+            sys.stderr.write('## Run failed. Cannot build yet. Please fix and retry')
             sys.exit(1)
         tdir = self.toolname
         os.mkdir(tdir)
@@ -643,11 +643,11 @@ o.close()
         os.mkdir(testdir) # make tests directory
         for i,intab in enumerate(self.opts.input_tab):
             si = self.opts.input_tab[i]
-            if si.find(',') <> -1:
+            if si.find(',') != -1:
                 s = si.split(',')[0]
                 si = s
             dest = os.path.join(testdir,os.path.basename(si))
-            if si <> dest:
+            if si != dest:
                 shutil.copyfile(si,dest)
         if self.opts.output_tab:
             shutil.copyfile(self.opts.output_tab,os.path.join(testdir,self.test1Output))
@@ -765,7 +765,7 @@ o.close()
         galhtmlpostfix = """</div></body></html>\n"""
 
         flist = os.listdir(self.opts.output_dir)
-        flist = [x for x in flist if x <> 'Rplots.pdf']
+        flist = [x for x in flist if x != 'Rplots.pdf']
         flist.sort()
         html = []
         html.append(galhtmlprefix % progname)
@@ -774,7 +774,7 @@ o.close()
         if len(flist) > 0:
             logfiles = [x for x in flist if x.lower().endswith('.log')] # log file names determine sections
             logfiles.sort()
-            logfiles = [x for x in logfiles if os.path.abspath(x) <> os.path.abspath(self.tlog)]
+            logfiles = [x for x in logfiles if os.path.abspath(x) != os.path.abspath(self.tlog)]
             logfiles.append(os.path.abspath(self.tlog)) # make it the last one
             pdflist = []
             npdf = len([x for x in flist if os.path.splitext(x)[-1].lower() == '.pdf'])
@@ -803,7 +803,7 @@ o.close()
                     realname = os.path.basename(logfname)
                     sectionname = os.path.splitext(realname)[0].split('_')[0] # break in case _ added to log
                     ourpdfs = [x for x in pdflist if os.path.basename(x[0]).split('_')[0] == sectionname]
-                    pdflist = [x for x in pdflist if os.path.basename(x[0]).split('_')[0] <> sectionname] # remove
+                    pdflist = [x for x in pdflist if os.path.basename(x[0]).split('_')[0] != sectionname] # remove
                 nacross = 1
                 npdf = len(ourpdfs)
 
@@ -866,7 +866,7 @@ o.close()
         Some devteam tools have this defensive stderr read so I'm keeping with the faith
         Feel free to update. 
         """
-        if self.opts.envshpath <> 'system':
+        if self.opts.envshpath != 'system':
             shell_source(self.opts.envshpath)
             # this only happens at tool generation - the generated tool relies on the dependencies all being set up
             # at toolshed installation by sourcing local env.sh 
@@ -874,7 +874,8 @@ o.close()
             ste = open(self.elog,'wb')
             sto = open(self.tlog,'wb')
             s = ' '.join(self.cl)
-            sto.write('## Executing Toolfactory generated command line = %s\n' % s)
+            #s = bytes(s, "utf8")
+            sto.write(bytes('## Executing Toolfactory generated command line = %s\n' % s,"utf8"))
             sto.flush()
             p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,cwd=self.opts.output_dir)
             retval = p.wait()
@@ -885,7 +886,7 @@ o.close()
             buffsize = 1048576
             try:
                 while True:
-                    err += tmp_stderr.read( buffsize )
+                    err += str(tmp_stderr.read( buffsize ))
                     if not err or len( err ) % buffsize != 0:
                         break
             except OverflowError:
@@ -895,8 +896,8 @@ o.close()
             p = subprocess.Popen(self.cl,shell=False)
             retval = p.wait()
         if self.opts.output_dir:
-            if retval <> 0 and err: # problem
-                print >> sys.stderr,err
+            if retval != 0 and err: # problem
+                sys.stderr.write(err)
         if self.opts.make_HTML:
             self.makeHtml()
         return retval
@@ -911,7 +912,7 @@ def main():
     """
     op = optparse.OptionParser()
     a = op.add_option
-    a('--script_path',default=None)
+    a('--script_path',default='')
     a('--tool_name',default=None)
     a('--interpreter',default=None)
     a('--output_dir',default='./')
@@ -937,7 +938,7 @@ def main():
     assert not opts.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to admin_users in universe_wsgi.ini' % (opts.bad_user,opts.bad_user)
     assert opts.tool_name,'## Tool Factory expects a tool name - eg --tool_name=DESeq'
     assert opts.interpreter,'## Tool Factory wrapper expects an interpreter - eg --interpreter=Rscript'
-    assert os.path.isfile(opts.script_path),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R'
+    assert len(opts.script_path) > 0 and os.path.isfile(opts.script_path),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R'
     if opts.output_dir:
         try:
             os.makedirs(opts.output_dir)
