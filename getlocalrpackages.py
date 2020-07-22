@@ -12,17 +12,20 @@ def find_packages(prefix="package_r_"):
     #/data/home/rlazarus/galaxy/tool_dependency_dir/R_3_1_1/3.1.1/fubar/package_r_3_1_1/d9964efbfbe3/env.sh
     #/data/home/rlazarus/galtest/tool_dependency_dir/R_3_1_1/3.1.1/fubar/package_r_3_1_1/63cdb9b2234c/env.sh
     eprefix = prefix
-    if prefix.find('/') <> -1:
+    if prefix.find('/') != -1:
         eprefix = prefix.replace('/','\/') # for grep
     path = '.'
     # fails on nitesh's recent mac - locate not working 
     # cl = ['locate env.sh | grep -i %s' % eprefix,]
     cl = ['find %s -iname "env.sh" | grep -i %s' % (path,eprefix),]
     p = subprocess.Popen(cl, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True)
-    out, err = p.communicate()
-    fpaths = out.split('\n')
-    fpaths = [x for x in fpaths if len(x) > 1]
-    fver = [x.split(os.path.sep)[-4:-1] for x in fpaths]
+    grepout, err = p.communicate()
+    fpaths = ''
+    if len(grepout) > 0:
+    	fpath = bytes(grepout, "utf8")
+    	fpaths = fpath.split('\n')
+    	fpaths = [x for x in fpaths if len(x) > 1]
+    	fver = [x.split(os.path.sep)[-4:-1] for x in fpaths]
     # >>> foo.split(os.path.sep)[-4:-1]
     # ['fubar', 'package_r_3_1_1', '63cdb9b2234c']
     if len(fpaths) > 0:
@@ -48,5 +51,5 @@ def testapi():
 
 
 if __name__ == "__main__":
-    print find_packages()
+    print(find_packages())
    
