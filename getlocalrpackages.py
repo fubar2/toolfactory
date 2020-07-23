@@ -1,6 +1,7 @@
 # updated to python3 2020/07/22 ross
 # this is a dynamic_option function for the toolfactory
 # it needs to be in the same directory as the xml!
+# can optionally run against the galaxy api
 
 import os
 import subprocess
