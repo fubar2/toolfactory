@@ -1,20 +1,20 @@
-<tool id="rgTF2" name="Tool Factory Two" version="1.17">
+<tool id="rgTF2" name="Tool Factory Two" version="2..00">
   <description>Scripts into tools</description>
    <requirements>
-      <requirement type="package" version="9.10">ghostscript</requirement>
-      <requirement type="package" version="1.3.20">graphicsmagick</requirement>
+      <requirement type="package">ghostscript</requirement>
+      <requirement type="package">graphicsmagick</requirement>
+      <requirement type="package">python3</requirement>
   </requirements>
-  <code file="getlocalrpackages.py"/>
-  <command interpreter="python">
+  <command interpreter="python3">
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
      rgToolFactory2.py --bad_user $__user_email__
 #else:
-    rgToolFactory2.py --script_path "$runme" --interpreter "$interp.interpreter" 
-     --tool_name "$tool_name"  --user_email "$__user_email__" --citations "$citeme"
-     --envshpath "$interp.envpath"
-
+    rgToolFactory2.py --script_path "$runme" --interpreter "$interpreter" 
+    #if len($interpreter_version) > 0: --interpreter_version "$interpreter_version"
+    #endif
+     --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$parampass"
     #if str($make_TAB)=="yes":
           --output_tab "$output1"
           --output_format "$output_format"
@@ -55,21 +55,37 @@
 #end if 
   </command>
   <inputs>
-    <param name="input_tab"  type="data"  label="Select one or more input file(s) from your history" optional="true" size="120" multiple="true"
-       help="Use the multiple input widget (above/right of input box) for multiple inputs - your script MUST be ready to parse the command line right - see samples below"/>
-    <param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
-      help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
-       <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-        <column name="value" index="0"/>
-       </options>
-    </param>
-    <param name="tool_name" type="text" value="My dynamic script"   label="New tool ID and title for outputs" size="60"
+   <param name="tool_name" type="text" value="My dynamic script"   label="New tool ID and title for outputs" size="60"
          help="This will become the toolshed repository name so please choose thoughtfully to avoid namespace clashes with other tool writers">
         <sanitizer invalid_char="">
             <valid initial="string.letters,string.digits">
                 <add value="_"/>
             </valid>
         </sanitizer>
+    </param>
+        <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
+        <option value="positional" selected="true">Positional: on CL in the order defined on this screen -> "... foo.bam bar.idx zot.xls"</option>
+        <option value="argparse">Argparse style: on CL in the form of --inputbam="foo.bam" if label below is "inputbam"</option>
+    </param>
+    <repeat name="history_inputs" title="Current history data files to pass in to the script - add as many as needed"
+         help="Each of these will become a history item selector as input for users of the new tool you are making">
+		<param name="input_tab"  type="data"  label="Select an input file from your history" optional="true" size="120" multiple="false"
+		   help=""/>
+		<param name="input_format" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
+		  help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
+		   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+			<column name="value" index="0"/>
+		   </options>
+		 </param>
+		<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
+		  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, -- will be prefixed to the string" value="">		   
+		</param>
+    </repeat>
+    <param name="output_format" type="select" multiple="false" label="Select the datatype that your tool/script emits as output"
+      help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
+     <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+        <column name="value" index="0"/>
+     </options>
     </param>
     <conditional name="makeMode">
         <param name="make_Tool" type="select" label="Generate new tool as  a tar.gz file ready to upload to a toolshed repository" 
@@ -114,7 +130,7 @@
                     </when>
                 </conditional>
             </repeat>
-            <param name="include_deps" type="select" label="Include ghostscript and graphicsmagick dependencies in generated tool" size="60"
+            <param name="include_deps" type="select" display="radio" label="Include ghostscript and graphicsmagick dependencies in generated tool" size="60"
             help="If an HTML file is being created, including dependencies is recommended. Otherwise this setting has no effect">
                 <option value="">Rely on system ghostscript and graphicsmagick rather than include these as dependencies</option>
                 <option value="yes" selected="true">Include dependencies so target installations will always work if HTML is being generated</option>
@@ -123,50 +139,29 @@
         <when value = "">
         </when>
     </conditional> 
-    <param name="make_HTML" type="select" label="Create an HTML report with links to every output file your script writes to the current directory" size="60"
+    <param name="make_HTML" type="select"  display="radio" label="Create an HTML report with links to every output file your script writes to the current directory" size="60"
          help="Recommended for presenting complex outputs in an accessible manner. Turn off for simple tools so they just create one output">
         <option value="yes">Yes, arrange and link all output files written by my script to the current directory as an HTML page</option>
         <option value="" selected="true">No, no HTML output file thanks</option>
     </param>
-    <param name="make_TAB" type="select" label="Create a new (default tabular) history output with or without an HTML file specified above" 
+    <param name="make_TAB" type="select"  display="radio" label="Create a new (default tabular) history output with or without an HTML file specified above" 
          help="This is useful if your script creates a single new tabular file you want to appear in the history after the tool executes">
         <option value="yes" selected="true">My script writes to a new history output</option>
         <option value="">I do not want a new history output file</option>
     </param>
-    <param name="output_format" type="select" multiple="false" label="Select the datatype that your tool/script emits as output"
-      help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
-     <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-        <column name="value" index="0"/>
-     </options>
-    </param>
-    <conditional name="interp">
     <param name="interpreter" type="select" label="Select the interpreter for your code.">
-        <option value="Rscript" selected="true">Rscript</option>
-        <option value="python">python</option>
+        <option value="python3" selected="true">python3</option>
+        <option value="Rscript">Rscript</option>
         <option value="perl">perl</option>
         <option value="bash">bash</option>
         <option value="sh">sh</option>
     </param>
-    <when value="Rscript">
-        <param name="envpath"  type="select" label="Interpreter to use" dynamic_options="find_packages(prefix='package_r_')"
-        help = "Select the R interpreter to use when running this code - should show all installed tool shed package_r_..." /> 
-    </when>
-    <when value="python">
-        <param name="envpath"  type="select" label="Interpreter to use" dynamic_options="find_packages(prefix='package_python_')"
-        help = "Select the python dependency to use when running this code - should show all installed tool shed package_python_..." /> 
-    </when>
-    <when value="perl">
-        <param name="envpath"  type="select" label="Interpreter to use" dynamic_options="find_packages(prefix='package_perl_')"
-        help = "Select the Perl interpreter to use when running this code - should show all installed tool shed package_perl_..." /> 
-    </when>
-    <when value="bash">
-        <param name="envpath" type="hidden" value="system" />
-    </when>
-    <when value="sh">
-        <param name="envpath" type="hidden" value="system" />
-    </when>
-    </conditional>
-    <param name="edit_params" type="select" label="Add all additional parameters to the generated tool form so they are user editable?" 
+    <param name="interpreter_version" type="text" value="" label="Optional specific interpreter version - otherwise latest will be chosen" size="60">
+    </param>
+ 
+    
+    
+    <param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
          help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
         <option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
         <option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
@@ -267,7 +262,7 @@ ${citation.citation_type.doi}
     <param name="make_TAB" value="yes" />
     <param name="output_format" value="tabular" />
     <param name="input_formats" value="tabular" />
-    <param name="interpreter" value='python' />
+    <param name="interpreter" value='python3' />
     <param name="envpath" value='system' />
     <param name="runme" value="tf2_test_runme.py"/>
     <output name='output1' file='tf2_test_out.xls' compare='diff' lines_diff = '10'/>
