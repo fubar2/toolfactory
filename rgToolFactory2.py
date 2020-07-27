@@ -1,11 +1,16 @@
-# rgToolFactoryMultIn.py
-# see https://bitbucket.org/fubar/galaxytoolfactory/wiki/Home
+# rgToolFactory.py
+# see https://github.com/fubar2/toolfactory
 # 
 # copyright ross lazarus (ross stop lazarus at gmail stop com) May 2012
 # 
 # all rights reserved
 # Licensed under the LGPL
-# suggestions for improvement and bug fixes welcome at https://bitbucket.org/fubar/galaxytoolfactory/wiki/Home
+# suggestions for improvement and bug fixes welcome at https://github.com/fubar2/toolfactory
+#
+# July 2020: BCC was fun and I feel like rip van winkle after 5 years. Decided to 
+# 1. Fix the toolfactory so it works.
+# 2. Fix planemo so the toolfactory function works
+# 3. Rewrite bits using planemo functions where that makes sense
 #
 # January 2015
 # unified all setups by passing the script on the cl rather than via a PIPE - no need for treat_bash_special so removed
@@ -165,19 +170,9 @@ def parse_citations(citations_text):
 			citation_tuples.append( ("bibtex", citation[len("bibtex"):].strip() ) )
 	return citation_tuples
 
-def wtf_remove_me_shell_source(script):
-	"""need a way to source a Galaxy tool interpreter env.sh to point at the right dependency package 
-	This based on the idea in http://pythonwise.blogspot.fr/2010/04/sourcing-shell-script.html
-	Note that we have to finesse any wierdly quoted newlines in automagic exports using nulls (env -0) as newlines"""
-	pipe = subprocess.Popen("env -i ; . %s ; env -0" % script, stdout=subprocess.PIPE, shell=True)
-	output = pipe.communicate()[0]
-	outl = output.split('\0')
-	outl = [x for x in outl if len(x.split("=")) == 2]
-	newenv = dict((line.split("=", 1) for line in outl))
-	os.environ.update(newenv)
 	
 class ScriptRunner:
-	"""class is a wrapper for an arbitrary script
+	"""Wrapper for an arbitrary script
 	note funky templating. this should all be done proper.
 	Problem is, this kludge developed quite naturally and seems to work ok with
 	little overhead...
@@ -282,7 +277,10 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 	<citation type="doi">10.1093/bioinformatics/bts573</citation>
 </citations>
 </tool>"""
-			
+		self.cl = []
+		self.html = []
+		self.test1Inputs = [] # now a list
+		a = self.cl.append			
 		self.useGM = cmd_exists('gm')
 		self.useIM = cmd_exists('convert')
 		self.useGS = cmd_exists('gs')
@@ -296,15 +294,20 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 		self.myname = sys.argv[0] # get our name because we write ourselves out as a tool later
 		self.pyfile = self.myname # crude but efficient - the cruft won't hurt much
 		self.xmlfile = '%s.xml' % self.toolname
-		rx = open(self.args.script_path,'r').readlines()
-		rx = [x.rstrip() for x in rx] # remove pesky dos line endings if needed
-		self.script = '\n'.join(rx)
-		fhandle,self.sfile = tempfile.mkstemp(prefix=self.toolname,suffix=".%s" % (args.interpreter_name))
-		tscript = open(self.sfile,'w') # use self.sfile as script source for Popen
-		tscript.write(self.script)
-		tscript.close()
-		self.indentedScript = "  %s" % '\n'.join([' %s' % html_escape(x) for x in rx]) # for restructured text in help
-		self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
+		if self.args.interpreter_name == "Executable": # binary - no need
+			a(self.args.exe_package)
+		else: # a script has been provided
+			rx = open(self.args.script_path,'r').readlines()
+			rx = [x.rstrip() for x in rx] # remove pesky dos line endings if needed
+			self.script = '\n'.join(rx)
+			fhandle,self.sfile = tempfile.mkstemp(prefix=self.toolname,suffix=".%s" % (args.interpreter_name))
+			tscript = open(self.sfile,'w') # use self.sfile as script source for Popen
+			tscript.write(self.script)
+			tscript.close()
+			self.indentedScript = "  %s" % '\n'.join([' %s' % html_escape(x) for x in rx]) # for restructured text in help
+			self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
+			a(self.args.interpreter_name)
+			a(self.sfile)		
 		self.elog = os.path.join(self.args.output_dir,"%s_error.log" % self.toolname)
 		if args.output_dir: # may not want these complexities 
 			self.tlog = os.path.join(self.args.output_dir,"%s_runner.log" % self.toolname)
@@ -313,12 +316,6 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			artifact = open(artpath,'w') # use self.sfile as script source for Popen
 			artifact.write(self.script)
 			artifact.close()
-		self.cl = []
-		self.html = []
-		self.test1Inputs = [] # now a list
-		a = self.cl.append
-		a(args.interpreter_name)
-		a(self.sfile)
 		# if multiple inputs - positional or need to distinguish them with cl params
 		if args.input_files:
 			tests = []
@@ -532,7 +529,7 @@ o.close()
 		if retval:
 			sys.stderr.write('## Run failed. Cannot build yet. Please fix and retry')
 			sys.exit(1)
-		tdir = self.toolname
+		tdir = 'tdir_%s' % self.toolname
 		os.mkdir(tdir)
 		self.makeXML()
 		if self.args.help_text:
@@ -541,7 +538,7 @@ o.close()
 			hlp = 'Please ask the tool author for help as none was supplied at tool generation\n'
 		readme_dict = {'readme':hlp,'interpreter_name':self.args.interpreter_name,'interpreter_version':self.args.interpreter_version}
 		if self.args.include_dependencies == "yes":
-			if self.args.envshpath == 'system':
+			if self.args.interpreter_name in ['sh','bash']:
 				tooldepcontent = self.toolhtmldepskel % readme_dict
 			else:
 				tooldepcontent = self.toolhtmldepinterpskel % readme_dict
@@ -774,10 +771,10 @@ o.close()
 		Some devteam tools have this defensive stderr read so I'm keeping with the faith
 		Feel free to update. 
 		"""
-		if self.args.envshpath != 'system':
-			shell_source(self.args.envshpath)
-			# this only happens at tool generation - the generated tool relies on the dependencies all being set up
-			# at toolshed installation by sourcing local env.sh 
+		# if self.args.envshpath != 'system':
+			# shell_source(self.args.envshpath)
+			# # this only happens at tool generation - the generated tool relies on the dependencies all being set up
+			# # at toolshed installation by sourcing local env.sh 
 		if self.args.output_dir:
 			ste = open(self.elog,'wb')
 			sto = open(self.tlog,'wb')
@@ -786,7 +783,7 @@ o.close()
 			sto.write(bytes('## Executing Toolfactory generated command line = %s\n' % s,"utf8"))
 			sto.flush()
 			p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,cwd=self.args.output_dir)
-			retval = p.wait()
+			p.wait()
 			sto.close()
 			ste.close()
 			tmp_stderr = open(self.elog, 'rb' )
@@ -800,11 +797,13 @@ o.close()
 			except OverflowError:
 				pass
 			tmp_stderr.close()
+			retval = p.returncode
 		else:
 			p = subprocess.Popen(self.cl,shell=False)
-			retval = p.wait()
+			p.wait()
+			retval = p.returncode
 		if self.args.output_dir:
-			if retval != 0 and err: # problem
+			if p.returncode != 0 and err: # problem
 				sys.stderr.write(err)
 		if self.args.make_HTML:
 			self.makeHtml()
@@ -824,6 +823,8 @@ def main():
 	a('--tool_name',default=None)
 	a('--interpreter_name',default=None)
 	a('--interpreter_version',default=None)
+	a('--exe_package',default=None)
+	a('--exe_package_version',default=None)
 	a('--output_dir',default='./')
 	a('--output_html',default=None)
 	a('--input_files',default=[], action="append") # these are "galaxypath,metadataname" pairs
@@ -842,7 +843,6 @@ def main():
 	a('--citations',default=None)
 	a('--additional_parameters', dest='additional_parameters', action='append', default=[])
 	a('--edit_additional_parameters', action="store_true", default=False)
-	a('--envshpath',default="system")   
 	a('--parampass',default="positional")   
 	args = parser.parse_args()
 	assert not args.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (args.bad_user,args.bad_user)
@@ -858,6 +858,7 @@ def main():
 	for i,x in enumerate(args.additional_parameters): # remove quotes we need to deal with spaces in CL params
 		args.additional_parameters[i] = args.additional_parameters[i].replace('"','')
 	r = ScriptRunner(args)
+	print('CL=',r.cl)
 	if args.make_Tool:
 		retcode = r.makeTooltar()
 	else:

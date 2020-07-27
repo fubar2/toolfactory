@@ -5,17 +5,104 @@
       <requirement type="package">graphicsmagick</requirement>
       <requirement type="package">python3</requirement>
   </requirements>
-  <command interpreter="python3"><![CDATA[
+  <macros>
+     <xml name="addpar">
+		<param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
+			 help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
+			<option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
+			<option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
+		</param>
+		<repeat name="additional_history_inputs" title="Additional Current history data files to pass in to the script - Use the '+' button to add as many as needed"
+			 help="Each of these will become a history item selector as input for users of the new tool you are making">
+			<param name="input_files" type="data" format="data" label="Select an input file from your history" optional="true" size="120" multiple="false"
+			   help=""/>
+			<param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
+			  help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
+			   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+				<column name="value" index="0"/>
+			   </options>
+			 </param>
+			<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
+			  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
+			</param>
+		</repeat>
+		<repeat name="additional_parameters" title="Pass additional parameters to the script"
+			 help="See examples below to see how these can be parsed by scripts in the various languages">
+		  <param name="param_name" type="text" value="parameter_name" label="Choose the name for this parameter" size="60">
+			<sanitizer invalid_char="">
+			  <valid initial="string.letters,string.digits"/>
+			  <mapping initial="none"/> 
+			</sanitizer>
+		  </param>
+		  <param name="param_type" type="select" label="Select the type for this parameter">
+			<option value="text" selected="true">text</option>
+			<option value="integer">integer</option>
+			<option value="float">float</option>
+			<option value="file">file</option>
+			<option value="library_data">library_data</option>
+		  </param>
+		  <param name="param_value" type="text" value="parameter_value" label="Enter this parameter's default value" size="60"
+			help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation" >
+			<sanitizer invalid_char="">
+			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+			  <mapping initial="none"/>
+			</sanitizer>
+		  </param>
+		  <param name="param_label" type="text" value="parameter_label" label="Enter this parameter's label for the form" size="60" 
+			 help="Note that '~~~' is used as n internal delimiter so cannot be used in this text field - please work around this technical limitation" >
+			<sanitizer invalid_char="">
+			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+			  <mapping initial="none"/>
+			</sanitizer>
+		  </param>
+		  <param name="param_help" type="text" value="parameter_help" label="Help for this parameter"
+			 help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation" size="60">
+			<sanitizer invalid_char="">
+			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+			  <mapping initial="none"/>
+			</sanitizer>
+		  </param>
+		</repeat>
+     </xml>
+     <xml name="builtin_dynpar">
+		  <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="" area="True" size="20x120"  
+			  help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
+			  <sanitizer>
+				 <valid initial="string.printable">
+				 </valid>
+				 <mapping initial="none"/>
+			  </sanitizer>
+		  </param>
+    </xml>
+    <xml name="dynpar">
+		  <param name="interpreter_version" type="text" value="" label="Specific script interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty" size="60"/>
+		  <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="" area="True" size="20x120"  
+			  help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
+			  <sanitizer>
+				 <valid initial="string.printable">
+				 </valid>
+				 <mapping initial="none"/>
+			  </sanitizer>
+		  </param>
+    </xml>
+  </macros>
+  <interpreter> '$__tool_directory__/python3'</interpreter>
+  <command><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
      gToolFactory2.py --bad_user $__user_email__
 #else:
-    rgToolFactory2.py --script_path "$runme" --interpreter_name "$interpreter" 
-    #if len($interpreter_version.value) > 0: 
-       --interpreter_version "$interpreter_version"
+    rgToolFactory2.py --script_path "$runme" 
+    #if $interexe.interpreter == "Executable":
+         --exe_package="$interexe.exe_package" --exe_package_version="$interexe.exe_package_version"
+    #else:
+         --interpreter_name "$interexe.interpreter"
+         #if not str($interexe.interpreter) in ['bash','sh']:
+              --interpreter_version "$interexe.interpreter_version"
+         #end if
     #end if
-    --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$parampass"
+    --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
     #if str($make_TAB)=="yes":
           --output_tab="$output1"
           --output_format="$output_format"
@@ -32,12 +119,12 @@
           #end if
       #end if
     #end if
-    #if str($additional_parameters) != 'None':
+    #if $ppass.parampass != '0':
       #if str($edit_params) == "yes":
          --edit_additional_parameters
       #end if
-      #for i in $additional_parameters:
-        --additional_parameters="$i.param_name,$i.param_value,$i.param_label,$i.param_help,$i.param_type"
+      #for i in $ppass.additional_parameters:
+        --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type"
       #end for
     #end if
     #if str($make_HTML)=="yes":
@@ -48,15 +135,21 @@
     #if str($input_files) != '':
 		--input_files="$input_files~~~$CL~~~$input_formats"
     #end if
-    #if str($additional_history_inputs) != 'None':
-        #for $intab in $additional_history_inputs:
-            --input_files="${intab.input_files}~~~${intab.CL}~~~${intab.input_formats}"
-        #end for
+    #if $ppass.parampass != '0' and $ppass.additional_history_inputs:
+       #for $intab in $ppass.additional_history_inputs:
+            --input_files="$intab.input_files~~~$intab.CL~~~$intab.input_formats"
+       #end for
     #end if
 #end if 
   ]]></command>
   <configfiles>
-	 <configfile name="runme">$dynScript</configfile>
+	 <configfile name="runme">
+		 #if $interexe.interpreter != "Executable":
+		    ${interexe.dynScript}
+		 #else
+		    "Not used"
+		 #end if
+		 </configfile>
 		 <configfile name="helpme">
 			#if $makeMode.make_Tool == "yes":
 			 ${makeMode.help_text}
@@ -85,36 +178,33 @@
             </valid>
         </sanitizer>
     </param>
-        <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
-        <option value="positional" selected="true">Positional: on CL in the order defined on this screen -> "... foo.bam bar.idx zot.xls"</option>
-        <option value="argparse">Argparse style: on CL in the form of --inputbam="foo.bam" if label below is "inputbam"</option>
-    </param>
 	<param name="input_files"  format="data" type="data" label="Select an input file from your history" optional="true" size="120" multiple="false"
 	   help=""/>
 	<param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts for this input"
-	  help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
+	  help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml." value="tabular">
 	   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
 		<column name="value" index="0"/>
 	   </options>
 	 </param>
-	<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
+	<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDIN' if your script reads from STDIN"
 	  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
 	</param>
-    <repeat name="additional_history_inputs" title="Additional Current history data files to pass in to the script - Use the '+' button to add as many as needed"
-         help="Each of these will become a history item selector as input for users of the new tool you are making">
-		<param name="input_files" type="data" format="data" label="Select an input file from your history" optional="true" size="120" multiple="false"
-		   help=""/>
-		<param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
-		  help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
-		   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-			<column name="value" index="0"/>
-		   </options>
-		 </param>
-		<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
-		  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
+	<conditional name="ppass">
+		<param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
+			<option value="argparse" selected="true">Argparse style: on CL in the form of --inputbam="foo.bam" if label below is "inputbam"</option>
+			<option value="positional">Positional: on CL in the order defined on this screen -> "... foo.bam bar.idx zot.xls"</option>
+			<option value="0">No parameters needed because tool reads selected history file from STDIN and writes to STDOUT for history"</option>
 		</param>
-    </repeat>
-    <param name="output_format" type="select" multiple="false" label="Select the datatype that your tool/script emits as output"
+		<when value="0">
+		</when>
+		<when value = "argparse">
+			<expand macro="addpar" />
+		</when>
+		<when value = "positional">
+			<expand macro="addpar" />
+		</when>
+	</conditional>
+    <param name="output_format" type="select" multiple="false" label="Select the Galaxy datatype that your tool/script emits as output for the new history item"
       help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
      <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
         <column name="value" index="0"/>
@@ -182,68 +272,39 @@
         <option value="yes" selected="true">My script writes to a new history output</option>
         <option value="">I do not want a new history output file</option>
     </param>
-    <param name="interpreter" type="select" label="Select the interpreter for your code.">
-        <option value="python3" selected="true">python3</option>
-        <option value="Rscript">Rscript</option>
-        <option value="perl">perl</option>
-        <option value="bash">bash</option>
-        <option value="sh">sh</option>
-    </param>
-    <param name="interpreter_version" type="text" value="" label="Optional specific interpreter version - otherwise latest will be chosen" size="60">
-    </param>
+    
+    
+    <conditional name="interexe">
+		<param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
+		help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
+			<option value="Executable" selected="true">An executable binary to be provided and managed by the Conda dependency management subsystem</option>
+			<option value="python">python3</option>
+			<option value="r-base">Rscript</option>
+			<option value="perl">perl</option>
+			<option value="bash">bash</option>
+			<option value="sh">sh</option>
+		</param>
+		<when value="Executable">
+		    <param name="exe_package" type="text" value="" label="Executable package name in dependency (Conda) repositories - e.g. bwa" size="60" optional="false"/>
+		    <param name="exe_package_version" type="text" value="" label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" size="60"/>
+		</when>
+		<when value = "python">
+           <expand macro="dynpar" />
+		</when>
+		<when value = "r-base">
+           <expand macro="dynpar" />
+		</when>
+		<when value = "perl">
+           <expand macro="dynpar" />
+		</when>
+		<when value = "bash">
+           <expand macro="builtin_dynpar" />
+		</when>
+		<when value = "sh">
+           <expand macro="builtin_dynpar" />
+		</when>
+    </conditional>
  
-    
-    
-    <param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
-         help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
-        <option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
-        <option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
-    </param>
-    <repeat name="additional_parameters" title="Pass additional parameters to the script"
-         help="See examples below to see how these can be parsed by scripts in the various languages">
-      <param name="param_name" type="text" value="parameter_name" label="Choose the name for this parameter" size="60">
-        <sanitizer invalid_char="">
-          <valid initial="string.letters,string.digits"/>
-          <mapping initial="none"/> 
-        </sanitizer>
-      </param>
-      <param name="param_type" type="select" label="Select the type for this parameter">
-        <option value="text" selected="true">text</option>
-        <option value="integer">integer</option>
-        <option value="float">float</option>
-        <option value="file">file</option>
-        <option value="library_data">library_data</option>
-      </param>
-      <param name="param_value" type="text" value="parameter_value" label="Enter this parameter's default value" size="60"
-        help="Note that commas and double quotes cannot be used in this text field - please work around this technical limitation" >
-        <sanitizer invalid_char="">
-          <valid initial="string.printable"> <remove value=','/> <remove value='"'/> </valid>
-          <mapping initial="none"/>
-        </sanitizer>
-      </param>
-      <param name="param_label" type="text" value="parameter_label" label="Enter this parameter's label for the form" size="60" 
-         help="Note that commas and double quotes cannot be used in this text field - please creatively work around this technical limitation" >
-        <sanitizer invalid_char="">
-          <valid initial="string.printable"> <remove value=','/> <remove value='"'/> </valid>
-          <mapping initial="none"/>
-        </sanitizer>
-      </param>
-      <param name="param_help" type="text" value="parameter_help" label="Help for this parameter"
-         help="Note that commas and double quotes cannot be used in this text field - please work around this technical limitation" size="60">
-        <sanitizer invalid_char="">
-          <valid initial="string.printable"> <remove value=','/> <remove value='"'/> </valid>
-          <mapping initial="none"/>
-        </sanitizer>
-      </param>
-    </repeat> 
-    <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="" area="True" size="20x120"  
-      help="Script must deal with three command line parameters: please cut and paste from examples below for the appropriate scripting language">
-      <sanitizer>
-         <valid initial="string.printable">
-         </valid>
-         <mapping initial="none"/>
-      </sanitizer>
-     </param>
   </inputs>
   <outputs>
     <data name="output1" label="${tool_name}.${output_format}" format="tabular" metadata_source="input_file">
