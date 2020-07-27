@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 # 
@@ -118,6 +119,7 @@ myversion = 'V2.1 July 2020'
 verbose = False 
 debug = False
 toolFactoryURL = 'https://github.com/fubar2/toolfactory'
+ourdelim = '~~~'
 
 # if we do html we need these dependencies specified in a tool_dependencies.xml file and referred to in the generated
 # tool xml
@@ -277,10 +279,11 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 	<citation type="doi">10.1093/bioinformatics/bts573</citation>
 </citations>
 </tool>"""
+		lastclredirect = None
 		self.cl = []
 		self.html = []
 		self.test1Inputs = [] # now a list
-		a = self.cl.append			
+		aCL = self.cl.append
 		self.useGM = cmd_exists('gm')
 		self.useIM = cmd_exists('convert')
 		self.useGS = cmd_exists('gs')
@@ -295,7 +298,7 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 		self.pyfile = self.myname # crude but efficient - the cruft won't hurt much
 		self.xmlfile = '%s.xml' % self.toolname
 		if self.args.interpreter_name == "Executable": # binary - no need
-			a(self.args.exe_package)
+			aCL(self.args.exe_package)  # this little CL will just run
 		else: # a script has been provided
 			rx = open(self.args.script_path,'r').readlines()
 			rx = [x.rstrip() for x in rx] # remove pesky dos line endings if needed
@@ -306,8 +309,8 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			tscript.close()
 			self.indentedScript = "  %s" % '\n'.join([' %s' % html_escape(x) for x in rx]) # for restructured text in help
 			self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
-			a(self.args.interpreter_name)
-			a(self.sfile)		
+			aCL(self.args.interpreter_name)
+			aCL(self.sfile)
 		self.elog = os.path.join(self.args.output_dir,"%s_error.log" % self.toolname)
 		if args.output_dir: # may not want these complexities 
 			self.tlog = os.path.join(self.args.output_dir,"%s_runner.log" % self.toolname)
@@ -316,10 +319,16 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			artifact = open(artpath,'w') # use self.sfile as script source for Popen
 			artifact.write(self.script)
 			artifact.close()
+		self.infile_paths = []
+		self.infile_format = []
+		self.infile_cl = []
+		if self.args.input_files:
+			aif = [x.split(ourdelim) for x in self.args.input_files]
+			laif = list(map(list, zip(*aif)))
+			self.infile_paths,self.infile_cl,self.infile_format,self.infile_label,self.infile_help = laif
 		# if multiple inputs - positional or need to distinguish them with cl params
-		if args.input_files:
 			tests = []
-			for i,infile in enumerate(args.input_files): # if multiple, make tests
+			for i,infile in enumerate(self.infile_paths): # if multiple, make tests
 				if infile.find(',') != -1:
 					(gpath,uname) = infile.split(',')
 				else:
@@ -328,37 +337,38 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			self.test1Inputs =  '<param name="input_files" value="%s" />' % (','.join(tests))
 		else:
 			self.test1Inputs = ''
-		self.infile_paths = []
-		self.infile_format = []
-		self.infile_cl = []
-		if self.args.input_files:
-			self.infile_paths = [x.split('~~~')[0].strip() for x in self.args.input_files]
-			self.infile_cl = [x.split('~~~')[1].strip() for x in self.args.input_files]
-			self.infile_format = [x.split('~~~')[2].strip() for x in self.args.input_files]
-		if self.args.parampass == "positional":
-			# inputs in order then params in order TODO fix ordering using self.infile_cl
-			for ipath in self.infile_paths:
-				a(ipath) 
-			#if self.args.output_tab:
-			#    a(self.args.output_tab)
-			for p in args.additional_parameters:
-				p = p.replace('"','')
-				psplit = p.split(',')
-				param = html_unescape(psplit[0])
-				value = html_unescape(psplit[1])
-				a(quote_non_numeric(value))         
-		if self.args.parampass == "argparse":
-			# inputs then params in argparse named form
-			for i,ipath in enumerate(self.infile_paths):
-				a('--%s=%s' % (self.infile_cl[i],ipath))
-			#if self.args.output_tab:
-			#    a(self.args.output_tab)
-			for p in args.additional_parameters: #"$i.param_name,$i.param_value,$i.param_label,$i.param_help,$i.param_type"
-				p = p.replace('"','')
-				psplit = p.split(',')
-				param = html_unescape(psplit[0])
-				value = html_unescape(psplit[1])
-				a('--%s=%s' % (param,quote_non_numeric(value)))         
+		if self.args.parampass == "0": # no params - use < and > for in and out
+			if len(self.infile_paths) > 0:
+				aCL('< %s' % self.infile_paths[0]) # first one is stdin - possibly a random generator without any input!
+			aCL('> %s' % self.args.output_tab) # write to history file
+		else:
+			clsuffix = [] # list all (cl param) pairs - positional needs sorting by cl index
+			for i,p in enumerate(self.infile_paths):
+				if infile_cl[i] == 'STDIN':
+					aCL('< %s' % p)
+				else:
+					clsuffix.append([self.infile_cl[i],p]) # decorator is cl - sort for positional
+			for p in self.args.additional_parameters:
+				psplit = p.split(ourdelim)
+				pform = psplit[5]
+				if pform == 'STDOUT':
+					lastclredirect = '> %s' % psplit[1]
+				else:
+					clsuffix.append([psplit[5],psplit[1]]) # cl,value
+			clsuffix.sort()
+			if self.args.parampass == "positional":
+				plist = [] # need to decorate with CL and sort
+				# inputs in order then params in order TODO fix ordering using self.infile_cl
+				for (k,v) in clsuffix:
+					aCL(quote_non_numeric(v))
+				for ipath in self.infile_paths:
+					aCL(ipath) 
+			elif self.args.parampass == "argparse":
+				# inputs then params in argparse named form
+				for (k,v) in clsuffix:
+					aCL('--%s=%s' % (k,quote_non_numeric(v)))   
+		if lastclredirect:
+			aCL(lastclredirect) # add the stdout parameter last
 		self.outFormats = args.output_format
 		self.inputFormats = args.input_formats
 		self.test1Output = '%s_test1_output.xls' % self.toolname
@@ -367,6 +377,9 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 	def makeXML(self):
 		"""
 		Create a Galaxy xml tool wrapper for the new script as a string to write out
+		It calls this python code you are reading and runs the script or executable with
+		parameters as required.
+		
 		fixme - use templating or something less fugly than this example of what we produce
 
 		<tool id="reverse" name="reverse" version="0.01">
@@ -422,7 +435,7 @@ o.close()
 		if self.args.additional_parameters:
 			if self.args.edit_additional_parameters: # add to new tool form with default value set to original value
 				xdict['additionalInputs'] = '\n'.join(['<param name="%s" value="%s" label="%s" help="%s" type="%s"/>' % \
-				(x.split(',')[0],html_escape(x.split(',')[1]),html_escape(x.split(',')[2]),html_escape(x.split(',')[3]), x.split(',')[4]) for x in self.args.additional_parameters])
+				(x.split(ourdelim)[0],html_escape(x.split(',')[1]),html_escape(x.split(',')[2]),html_escape(x.split(',')[3]), x.split(',')[4]) for x in self.args.additional_parameters])
 		xdict['additionalParams'] = '\n'.join(['<param name="%s" value="%s" />' % (x.split(',')[0],html_escape(x.split(',')[1])) for x in self.args.additional_parameters])
 		xdict['interpreter_version'] = self.args.interpreter_version
 		xdict['interpreter_name'] = self.args.interpreter_name
@@ -467,26 +480,26 @@ o.close()
 		xdict['outputs'] = '' 
 		if self.args.input_files:
 			cins = ['\n',]
-			cins.append('--input_formats %s' % self.args.input_formats)
-			cins.append('#for intab in $input1:')
-			cins.append('--input_files "${intab},${intab.name}"')
+			cins.append('--input_formats=%s' % self.args.input_formats)
+			cins.append('#for intab in $input_files:')
+			cins.append('--input_files="${intab},${intab.name}"')
 			cins.append('#end for\n')
 			xdict['command_inputs'] = '\n'.join(cins)
 			xdict['inputs'] = '''<param name="input_files" multiple="false"  type="data" format="%s" label="Select one or more %s input files from your history"
-					help="Multiple inputs may be selected assuming the script can deal with them..."/> \n''' % (self.inputFormats,self.inputFormats)
+					help=""/> \n''' % (self.inputFormats,self.inputFormats)
 		else:
 			xdict['command_inputs'] = '' # assume no input - eg a random data generator       
 			xdict['inputs'] = ''
 		if (len(self.args.additional_parameters) > 0):
 			cins = ['\n',]
 			for params in self.args.additional_parameters:
-					psplit = params.split(',') # name,value...
+					psplit = params.split(ourdelim) # name,value...
 					psplit[3] = html_escape(psplit[3])
 					if self.args.edit_additional_parameters:
 						psplit[1] = '$%s' % psplit[0] # replace with form value
 					else:
 						psplit[1] = html_escape(psplit[1]) # leave prespecified value
-					cins.append('--additional_parameters """%s"""' % ','.join(psplit)) 
+					cins.append('--additional_parameters """%s"""' % ourdelim.join(psplit)) 
 			xdict['command_inputs'] = '%s\n%s' % (xdict['command_inputs'],'\n'.join(cins))
 		xdict['inputs'] += '<param name="job_name" type="text" size="60" label="Supply a name for the outputs to remind you what they contain" value="%s"/> \n' % self.toolname
 		xdict['toolname'] = self.toolname
@@ -513,6 +526,7 @@ o.close()
 		else:
 			xdict['citations'] = ""
 		xmls = self.newXML % xdict
+		xmls = [x for x in xmls if x.strip > ''] # empty lines...
 		xf = open(self.xmlfile,'w')
 		xf.write(xmls)
 		xf.write('\n')
@@ -771,10 +785,6 @@ o.close()
 		Some devteam tools have this defensive stderr read so I'm keeping with the faith
 		Feel free to update. 
 		"""
-		# if self.args.envshpath != 'system':
-			# shell_source(self.args.envshpath)
-			# # this only happens at tool generation - the generated tool relies on the dependencies all being set up
-			# # at toolshed installation by sourcing local env.sh 
 		if self.args.output_dir:
 			ste = open(self.elog,'wb')
 			sto = open(self.tlog,'wb')
@@ -858,7 +868,6 @@ def main():
 	for i,x in enumerate(args.additional_parameters): # remove quotes we need to deal with spaces in CL params
 		args.additional_parameters[i] = args.additional_parameters[i].replace('"','')
 	r = ScriptRunner(args)
-	print('CL=',r.cl)
 	if args.make_Tool:
 		retcode = r.makeTooltar()
 	else:

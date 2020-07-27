@@ -21,9 +21,23 @@
 			   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
 				<column name="value" index="0"/>
 			   </options>
-			 </param>
-			<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
-			  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
+			</param>
+			<param name="param_label" type="text" value="" label="This will become the user prompt for the form so please make it informative" size="60" 
+			 help="Note that '~~~' is an internal delimiter so must not appear in this text field - please work around this technical limitation" >
+			<sanitizer invalid_char="">
+			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+			  <mapping initial="none"/>
+			</sanitizer>
+			</param>
+			<param name="param_help" type="text" value="parameter_help" label="This will become help text on the form."
+			 help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation" size="60">
+			<sanitizer invalid_char="">
+			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+			  <mapping initial="none"/>
+			</sanitizer>
+			</param>
+			<param name="CL" type="text" size="60" label="Positional: ordinal integer. Argparse: argument name."
+			  help="If you will pass positional parameters, enter the integer ordinal for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">		   
 			</param>
 		</repeat>
 		<repeat name="additional_parameters" title="Pass additional parameters to the script"
@@ -42,14 +56,14 @@
 			<option value="library_data">library_data</option>
 		  </param>
 		  <param name="param_value" type="text" value="parameter_value" label="Enter this parameter's default value" size="60"
-			help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation" >
+			help="Note that '~~~' is an internal delimiter must not appear in this text field - please work around this technical limitation" >
 			<sanitizer invalid_char="">
 			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
 			  <mapping initial="none"/>
 			</sanitizer>
 		  </param>
 		  <param name="param_label" type="text" value="parameter_label" label="Enter this parameter's label for the form" size="60" 
-			 help="Note that '~~~' is used as n internal delimiter so cannot be used in this text field - please work around this technical limitation" >
+			 help="Note that '~~~' is an internal delimiter so must not appear in this text field - please work around this technical limitation" >
 			<sanitizer invalid_char="">
 			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
 			  <mapping initial="none"/>
@@ -61,6 +75,9 @@
 			  <valid initial="string.printable"> <remove value='~~~'/> </valid>
 			  <mapping initial="none"/>
 			</sanitizer>
+		  </param>
+		  <param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
+			  help="Using positional parameters, enter the integer ordinal for this parameter on the command line. Using Argparse style, '--' will be prepended on the CL" value="">		   
 		  </param>
 		</repeat>
      </xml>
@@ -86,60 +103,59 @@
 		  </param>
     </xml>
   </macros>
-  <interpreter> '$__tool_directory__/python3'</interpreter>
   <command><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
-     gToolFactory2.py --bad_user $__user_email__
-#else:
-    rgToolFactory2.py --script_path "$runme" 
-    #if $interexe.interpreter == "Executable":
-         --exe_package="$interexe.exe_package" --exe_package_version="$interexe.exe_package_version"
-    #else:
-         --interpreter_name "$interexe.interpreter"
-         #if not str($interexe.interpreter) in ['bash','sh']:
-              --interpreter_version "$interexe.interpreter_version"
-         #end if
-    #end if
-    --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
-    #if str($make_TAB)=="yes":
-          --output_tab="$output1"
-          --output_format="$output_format"
-    #end if
-    #if str($makeMode.make_Tool)=="yes":
-      --make_Tool="$makeMode.make_Tool"
-      --tool_desc="$makeMode.tool_desc"
-      --tool_version="$makeMode.tool_version"
-      --new_tool="$new_tool"
-      --help_text="$helpme"
-      #if str($make_HTML)=="yes":
-          #if $makeMode.include_deps.value=="yes":
-             --include_dependencies="yes"
-          #end if
-      #end if
-    #end if
-    #if $ppass.parampass != '0':
-      #if str($edit_params) == "yes":
-         --edit_additional_parameters
-      #end if
-      #for i in $ppass.additional_parameters:
-        --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type"
-      #end for
-    #end if
+$__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
+ #else:
+$__tool_directory__/rgToolFactory2.py --script_path "$runme" 
+   #if $interexe.interpreter == "Executable":
+--exe_package="$interexe.exe_package" --exe_package_version="$interexe.exe_package_version"
+   #else:
+--interpreter_name "$interexe.interpreter"
+     #if not str($interexe.interpreter) in ['bash','sh']:
+--interpreter_version "$interexe.interpreter_version"
+     #end if
+   #end if
+--tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
+   #if str($make_TAB)=="yes":
+--output_tab="$output1"
+--output_format="$output_format"
+   #end if
+   #if str($makeMode.make_Tool)=="yes":
+--make_Tool="$makeMode.make_Tool"
+--tool_desc="$makeMode.tool_desc"
+--tool_version="$makeMode.tool_version"
+--new_tool="$new_tool"
+--help_text="$helpme"
     #if str($make_HTML)=="yes":
-      --output_dir="$html_file.files_path" --output_html="$html_file" --make_HTML="yes"
-    #else:
-       --output_dir="."
+     #if $makeMode.include_deps.value=="yes":
+--include_dependencies="yes"
+     #end if
     #end if
-    #if str($input_files) != '':
-		--input_files="$input_files~~~$CL~~~$input_formats"
-    #end if
-    #if $ppass.parampass != '0' and $ppass.additional_history_inputs:
-       #for $intab in $ppass.additional_history_inputs:
-            --input_files="$intab.input_files~~~$intab.CL~~~$intab.input_formats"
-       #end for
-    #end if
+   #end if
+   #if $ppass.parampass != '0':
+     #if str($edit_params) == "yes":
+--edit_additional_parameters
+     #end if
+     #for i in $ppass.additional_parameters:
+--additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
+     #end for
+   #end if
+   #if str($make_HTML)=="yes":
+--output_dir="$html_file.files_path" --output_html="$html_file" --make_HTML="yes"
+   #else:
+--output_dir="."
+   #end if
+   #if str($input_files) != '':
+--input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
+   #end if
+   #if $ppass.parampass != '0' and $ppass.additional_history_inputs:
+     #for $intab in $ppass.additional_history_inputs:
+--input_files="$intab.input_files~~~$intab.CL~~~$intab.input_formats~~~$intab.param_label~~~$intab.param_help"
+     #end for
+   #end if
 #end if 
   ]]></command>
   <configfiles>
@@ -178,14 +194,28 @@
             </valid>
         </sanitizer>
     </param>
-	<param name="input_files"  format="data" type="data" label="Select an input file from your history" optional="true" size="120" multiple="false"
-	   help=""/>
+	<param name="input_files"  format="data" type="data" label="Select a small test input file" optional="true" size="120" multiple="false"
+	   help="This will be used to test the new tool to generate a built in test for the generated tool"/>
 	<param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts for this input"
-	  help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml." value="tabular">
+	  help="Ifnot listed here, datatypes can be added in galaxy's datatypes_conf.xml." value="tabular">
 	   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
 		<column name="value" index="0"/>
 	   </options>
 	 </param>
+	<param name="input_label" type="text" value="parameter_label" label="Data input user prompt on the generated tool form" size="60" 
+	 help="Describe the input file so the user can understand how it will be used" >
+	<sanitizer invalid_char="">
+	  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+	  <mapping initial="none"/>
+	</sanitizer>
+	</param>
+	<param name="input_help" type="text" value="parameter_help" label="Data input user help on the generated tool form"
+	 help="Enter text to appear as help for the user on the generated tool form" size="60">
+	<sanitizer invalid_char="">
+	  <valid initial="string.printable"> <remove value='~~~'/> </valid>
+	  <mapping initial="none"/>
+	</sanitizer>
+	</param>
 	<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDIN' if your script reads from STDIN"
 	  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
 	</param>
