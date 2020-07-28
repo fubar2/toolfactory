@@ -1,10 +1,5 @@
-<tool id="rgTF2" name="Tool Factory Two" version="2.00">
+<tool id="rgTF2" name="ToolFactory" version="2.00">
   <description>Scripts into tools</description>
-   <requirements>
-      <requirement type="package">ghostscript</requirement>
-      <requirement type="package">graphicsmagick</requirement>
-      <requirement type="package">python3</requirement>
-  </requirements>
   <macros>
      <xml name="addpar">
 		<param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
@@ -52,8 +47,6 @@
 			<option value="text" selected="true">text</option>
 			<option value="integer">integer</option>
 			<option value="float">float</option>
-			<option value="file">file</option>
-			<option value="library_data">library_data</option>
 		  </param>
 		  <param name="param_value" type="text" value="parameter_value" label="Enter this parameter's default value" size="60"
 			help="Note that '~~~' is an internal delimiter must not appear in this text field - please work around this technical limitation" >
@@ -103,6 +96,11 @@
 		  </param>
     </xml>
   </macros>
+   <requirements>
+      <requirement type="package">ghostscript</requirement>
+      <requirement type="package">graphicsmagick</requirement>
+      <requirement type="package">python3</requirement>
+  </requirements>
   <command><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
@@ -136,7 +134,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
     #end if
    #end if
    #if $ppass.parampass != '0':
-     #if str($edit_params) == "yes":
+     #if str($ppass.edit_params) == "yes":
 --edit_additional_parameters
      #end if
      #for i in $ppass.additional_parameters:
@@ -157,7 +155,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
      #end for
    #end if
 #end if 
-  ]]></command>
+]]></command>
   <configfiles>
 	 <configfile name="runme">
 		 #if $interexe.interpreter != "Executable":
@@ -186,6 +184,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 		 </configfile>
   </configfiles>
   <inputs>
+
    <param name="tool_name" type="text" value="My dynamic script"   label="New tool ID and title for outputs" size="60"
          help="This will become the toolshed repository name so please choose thoughtfully to avoid namespace clashes with other tool writers">
         <sanitizer invalid_char="">
@@ -197,7 +196,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 	<param name="input_files"  format="data" type="data" label="Select a small test input file" optional="true" size="120" multiple="false"
 	   help="This will be used to test the new tool to generate a built in test for the generated tool"/>
 	<param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts for this input"
-	  help="Ifnot listed here, datatypes can be added in galaxy's datatypes_conf.xml." value="tabular">
+	  help="If not listed here, datatypes can be added in galaxy's datatypes_conf.xml." value="tabular">
 	   <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
 		<column name="value" index="0"/>
 	   </options>
@@ -219,6 +218,53 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 	<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDIN' if your script reads from STDIN"
 	  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
 	</param>
+    <param name="output_format" type="select" multiple="false" label="Select the Galaxy datatype that your tool/script emits as output for the new history item"
+      help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
+     <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+        <column name="value" index="0"/>
+     </options>
+    </param>
+    <conditional name="interexe">
+		<param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
+		help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
+			<option value="Executable" selected="true">An executable binary to be provided and managed by the Conda dependency management subsystem</option>
+			<option value="python">python3</option>
+			<option value="r-base">Rscript</option>
+			<option value="perl">perl</option>
+			<option value="bash">bash</option>
+			<option value="sh">sh</option>
+		</param>
+		<when value="Executable">
+		    <param name="exe_package" type="text" value="" label="Executable package name in dependency (Conda) repositories - e.g. 'bwa'" size="60" optional="false"/>
+		    <param name="exe_package_version" type="text" value="" label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" size="60"/>
+		</when>
+		<when value = "python">
+           <expand macro="dynpar" />
+		</when>
+		<when value = "r-base">
+           <expand macro="dynpar" />
+		</when>
+		<when value = "perl">
+           <expand macro="dynpar" />
+		</when>
+		<when value = "bash">
+           <expand macro="builtin_dynpar" />
+		</when>
+		<when value = "sh">
+           <expand macro="builtin_dynpar" />
+		</when>
+    </conditional>
+ 
+	<param name="make_HTML" type="select"  display="radio" label="Create an HTML report with links to every output file your script writes to the current directory" size="60"
+	 help="Recommended for presenting complex outputs in an accessible manner. Turn off for simple tools so they just create one output">
+	<option value="yes">Yes, arrange and link all output files written by my script to the current directory as an HTML page</option>
+	<option value="" selected="true">No, no HTML output file thanks</option>
+    </param>
+    <param name="make_TAB" type="select"  display="radio" label="Create a new (default tabular) history output with or without an HTML file specified above" 
+         help="This is useful if your script creates a single new file you want to appear in the history after the tool executes">
+        <option value="yes" selected="true">My script writes to a new history output</option>
+        <option value="">I do not want a new history output file</option>
+    </param>
 	<conditional name="ppass">
 		<param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
 			<option value="argparse" selected="true">Argparse style: on CL in the form of --inputbam="foo.bam" if label below is "inputbam"</option>
@@ -234,12 +280,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 			<expand macro="addpar" />
 		</when>
 	</conditional>
-    <param name="output_format" type="select" multiple="false" label="Select the Galaxy datatype that your tool/script emits as output for the new history item"
-      help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
-     <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-        <column name="value" index="0"/>
-     </options>
-    </param>
     <conditional name="makeMode">
         <param name="make_Tool" type="select" display="radio" label="Generate new tool as  a tar.gz file ready to upload to a toolshed repository" 
           help="Generate a toolshed archive - upload to a toolshed from where it can be auto-installed via the Galaxy admin functions" 
@@ -292,49 +332,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
         <when value = "">
         </when>
     </conditional> 
-    <param name="make_HTML" type="select"  display="radio" label="Create an HTML report with links to every output file your script writes to the current directory" size="60"
-         help="Recommended for presenting complex outputs in an accessible manner. Turn off for simple tools so they just create one output">
-        <option value="yes">Yes, arrange and link all output files written by my script to the current directory as an HTML page</option>
-        <option value="" selected="true">No, no HTML output file thanks</option>
-    </param>
-    <param name="make_TAB" type="select"  display="radio" label="Create a new (default tabular) history output with or without an HTML file specified above" 
-         help="This is useful if your script creates a single new tabular file you want to appear in the history after the tool executes">
-        <option value="yes" selected="true">My script writes to a new history output</option>
-        <option value="">I do not want a new history output file</option>
-    </param>
-    
-    
-    <conditional name="interexe">
-		<param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
-		help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
-			<option value="Executable" selected="true">An executable binary to be provided and managed by the Conda dependency management subsystem</option>
-			<option value="python">python3</option>
-			<option value="r-base">Rscript</option>
-			<option value="perl">perl</option>
-			<option value="bash">bash</option>
-			<option value="sh">sh</option>
-		</param>
-		<when value="Executable">
-		    <param name="exe_package" type="text" value="" label="Executable package name in dependency (Conda) repositories - e.g. bwa" size="60" optional="false"/>
-		    <param name="exe_package_version" type="text" value="" label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" size="60"/>
-		</when>
-		<when value = "python">
-           <expand macro="dynpar" />
-		</when>
-		<when value = "r-base">
-           <expand macro="dynpar" />
-		</when>
-		<when value = "perl">
-           <expand macro="dynpar" />
-		</when>
-		<when value = "bash">
-           <expand macro="builtin_dynpar" />
-		</when>
-		<when value = "sh">
-           <expand macro="builtin_dynpar" />
-		</when>
-    </conditional>
- 
   </inputs>
   <outputs>
     <data name="output1" label="${tool_name}.${output_format}" format="tabular" metadata_source="input_file">

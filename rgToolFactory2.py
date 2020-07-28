@@ -113,11 +113,13 @@ import tarfile
 import re
 import shutil
 import math
+import galaxyxml.tool as gxt
+import galaxyxml.tool.parameters as gxtp
 
 progname = os.path.split(sys.argv[0])[1] 
 myversion = 'V2.1 July 2020' 
-verbose = False 
-debug = False
+verbose = True
+debug = True
 toolFactoryURL = 'https://github.com/fubar2/toolfactory'
 ourdelim = '~~~'
 
@@ -188,65 +190,65 @@ class ScriptRunner:
 		
 		"""
 		
-		self.toolhtmldepinterpskel = """<?xml version="1.0"?>
-		<requirements>
-			<requirement type="package">ghostscript</requirement>
-			<requirement type="package">graphics_magic</requirement>
-			<requirement type="package">"%(interpreter_name)s"</requirement>     
-		</requirements>
+		self.toolhtmldepinterpskel = """
+<requirements>
+	<requirement type="package">ghostscript</requirement>
+	<requirement type="package">graphics_magic</requirement>
+	<requirement type="package">"%(interpreter_name)s"</requirement>     
+</requirements>
 		"""
 		
-		self.toolhtmldepskel = """<?xml version="1.0"?>
-		<requirements>
-			<requirement type="package">ghostscript</requirement>
-			<requirement type="package">graphics_magic</requirement>
-		</requirements>
+		self.toolhtmldepskel = """
+<requirements>
+	<requirement type="package">ghostscript</requirement>
+	<requirement type="package">graphics_magic</requirement>
+</requirements>
 
 		"""
 
-		self.emptytoolhtmldepskel = """<?xml version="1.0"?>
+		self.emptytoolhtmldepskel = """
 		"""
 
 
-		self.newCommand="""
-			%(toolname)s.py --script_path "$runMe" --interpreter_name "%(interpreter_name)s" 
-				--tool_name "%(toolname)s"
-				%(command_inputs)s
-				%(command_outputs)s
-			"""
+		self.newCommand = """
+%(toolname)s.py --script_path "$runMe" --interpreter_name "%(interpreter_name)s" 
+	--tool_name "%(toolname)s"
+	%(command_inputs)s
+	%(command_outputs)s
+"""
 	
 		self.tooltestsTabOnly = """
-			<test>
-			%(test1Inputs)s
-			<param name="job_name" value="test1"/>
-			<param name="runMe" value="$runMe"/>
-			<output name="output1="%(test1Output)s" ftype="tabular"/>
-			%(additionalParams)s
-			</test>
-			"""
+<test>
+%(test1Inputs)s
+	<param name="job_name" value="test1"/>
+	<param name="runMe" value="$runMe"/>
+	<output name="output1="%(test1Output)s" ftype="tabular"/>
+	%(additionalParams)s
+</test>
+"""
 			
 		self.tooltestsHTMLOnly = """
-			<test>
-			%(test1Inputs)s
-			<param name="job_name" value="test1"/>
-			<param name="runMe" value="$runMe"/>
-			%(additionalParams)s
-			<output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="5"/>
-			</test>
-			"""
+<test>
+	%(test1Inputs)s
+	<param name="job_name" value="test1"/>
+	<param name="runMe" value="$runMe"/>
+	%(additionalParams)s
+	<output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="5"/>
+</test>
+"""
 			
 		self.tooltestsBoth = """
-			<test>
-			%(test1Inputs)s
-			<param name="job_name" value="test1"/>
-			<param name="runMe" value="$runMe"/>
-			%(additionalParams)s
-			<output name="output1" file="%(test1Output)s" ftype="tabular" />
-			<output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="10"/>
-			</test>
-			"""
+<test>
+	%(test1Inputs)s
+	<param name="job_name" value="test1"/>
+	<param name="runMe" value="$runMe"/>
+	%(additionalParams)s
+	<output name="output1" file="%(test1Output)s" ftype="tabular" />
+	<output name="html_file" file="%(test1HTML)s" ftype="html" lines_diff="10"/>
+</test>
+"""
 
-		self.newXML="""<tool id="%(toolid)s" name="%(toolname)s" version="%(tool_version)s">
+		self.newXML="""<tool id="%(tool_id)s" name="%(toolname)s" version="%(tool_version)s">
 %(tooldesc)s
 %(requirements)s
 <command interpreter="python">
@@ -292,18 +294,18 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			os.chdir(args.output_dir)
 		self.thumbformat = 'png'
 		self.args = args
-		self.toolname = re.sub('[^a-zA-Z0-9_]+', '', args.tool_name) # a sanitizer now does this but..
-		self.toolid = self.toolname
+		self.tool_name = re.sub('[^a-zA-Z0-9_]+', '', args.tool_name) # a sanitizer now does this but..
+		self.tool_id = self.tool_name
 		self.myname = sys.argv[0] # get our name because we write ourselves out as a tool later
 		self.pyfile = self.myname # crude but efficient - the cruft won't hurt much
-		self.xmlfile = '%s.xml' % self.toolname
+		self.xmlfile = '%s.xml' % self.tool_name
 		if self.args.interpreter_name == "Executable": # binary - no need
 			aCL(self.args.exe_package)  # this little CL will just run
 		else: # a script has been provided
 			rx = open(self.args.script_path,'r').readlines()
 			rx = [x.rstrip() for x in rx] # remove pesky dos line endings if needed
 			self.script = '\n'.join(rx)
-			fhandle,self.sfile = tempfile.mkstemp(prefix=self.toolname,suffix=".%s" % (args.interpreter_name))
+			fhandle,self.sfile = tempfile.mkstemp(prefix=self.tool_name,suffix=".%s" % (args.interpreter_name))
 			tscript = open(self.sfile,'w') # use self.sfile as script source for Popen
 			tscript.write(self.script)
 			tscript.close()
@@ -311,10 +313,10 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
 			aCL(self.args.interpreter_name)
 			aCL(self.sfile)
-		self.elog = os.path.join(self.args.output_dir,"%s_error.log" % self.toolname)
+		self.elog = os.path.join(self.args.output_dir,"%s_error.log" % self.tool_name)
 		if args.output_dir: # may not want these complexities 
-			self.tlog = os.path.join(self.args.output_dir,"%s_runner.log" % self.toolname)
-			art = '%s.%s' % (self.toolname,args.interpreter_name)
+			self.tlog = os.path.join(self.args.output_dir,"%s_runner.log" % self.tool_name)
+			art = '%s.%s' % (self.tool_name,args.interpreter_name)
 			artpath = os.path.join(self.args.output_dir,art) # need full path
 			artifact = open(artpath,'w') # use self.sfile as script source for Popen
 			artifact.write(self.script)
@@ -324,9 +326,14 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 		self.infile_cl = []
 		if self.args.input_files:
 			aif = [x.split(ourdelim) for x in self.args.input_files]
-			laif = list(map(list, zip(*aif)))
+			laif = list(map(list, zip(*aif))) # transpose the input_files array
 			self.infile_paths,self.infile_cl,self.infile_format,self.infile_label,self.infile_help = laif
-		# if multiple inputs - positional or need to distinguish them with cl params
+			self.infile_name = []
+			for scl in self.infile_cl: # positionals have integers indicating order - need valid internal names
+				if scl.isdigit():
+					scl = 'input_%s' % scl
+				self.infile_name.append(scl) # make a list of internal names for each input file
+			# if multiple inputs - positional or need to distinguish them with cl params
 			tests = []
 			for i,infile in enumerate(self.infile_paths): # if multiple, make tests
 				if infile.find(',') != -1:
@@ -371,10 +378,126 @@ https://toolshed.g2.bx.psu.edu/view/fubar/tool_factory_2
 			aCL(lastclredirect) # add the stdout parameter last
 		self.outFormats = args.output_format
 		self.inputFormats = args.input_formats
-		self.test1Output = '%s_test1_output.xls' % self.toolname
-		self.test1HTML = '%s_test1_output.html' % self.toolname
-
+		self.test1Output = '%s_test1_output.xls' % self.tool_name
+		self.test1HTML = '%s_test1_output.html' % self.tool_name
+		
 	def makeXML(self):
+		"""
+		Create a Galaxy xml tool wrapper for the new script as a string to write out
+		It calls this python code you are reading and runs the script or executable with
+		parameters as required.
+		
+wrong! 
+<tool name="test" id="test" version="0.01">
+  <!--This tool descriptor has been generated using galaxyxml and the Toolfactory-->
+  <description>test</description>
+  <requirements>
+    <requirement type="package">ghostscript</requirement>
+    <requirement type="package">graphicsmagick</requirement>
+    <requirement type="package">sh</requirement>
+  </requirements>
+  <configfiles>
+    <configfile name="runMe"><![CDATA[
+		    echo "Hello world!"
+]]></configfile>
+  </configfiles>
+  <stdio>
+    <exit_code range="1:" level="fatal"/>
+  </stdio>
+  <version_command><![CDATA[interpreter filename.exe --version]]></version_command>
+  <command><![CDATA[sh STDIN $STDIN
+output1 $output1]]></command>
+  <inputs>
+    <param help="parameter_help" label="parameter_label" optional="false" multiple="false" format="tabular" type="data" name="STDIN" argument="STDIN"/>
+  </inputs>
+  <outputs>
+    <data hidden="false" format="tabular" name="output1"/>
+  </outputs>
+  <help><![CDATA[
+			 **What it Does**
+
+it tests
+		 ]]></help>
+</tool>
+
+
+		"""
+		if self.args.interpreter_name:
+			exe = self.args.interpreter_name
+		else:
+			exe = self.args.exe_package
+		assert exe != None, 'No interpeter or executable passed in to makeXML'
+		tool = gxt.Tool(self.args.tool_name,self.tool_id,self.args.tool_version,self.args.tool_desc,exe)
+		if self.args.help_text:
+			helptext = open(self.args.help_text,'r').readlines()
+			helptext = [html_escape(x) for x in helptext] # must html escape here too - thanks to Marius van den Beek
+			tool.help = ''.join([x for x in helptext])
+		else:
+				tool.help = 'Please ask the tool author (%s) for help as none was supplied at tool generation\n' % (user_email)
+		inputs = gxtp.Inputs()
+		outputs = gxtp.Outputs()
+		requirements = gxtp.Requirements()
+		if self.args.include_dependencies == "yes":
+			requirements.append(gxtp.Requirement('package', 'ghostscript'))
+			requirements.append(gxtp.Requirement('package', 'graphicsmagick'))
+		if self.args.interpreter_name:
+			if self.args.interpreter_name == 'python': # always needed for this runner script
+				requirements.append(gxtp.Requirement('package', 'python',self.args.interpreter_version))
+			else:
+				requirements.append(gxtp.Requirement('package', self.args.interpreter_name,self.args.interpreter_version))
+		else:
+			if not self.args.interpreter_name in ['bash','sh']:
+				if self.args.exe_package: # uses exe not interpreter
+					requirements.append(gxtp.Requirement('package', self.args.exe_package,self.args.exe_package_version))
+		tool.requirements = requirements
+		for i,infpath in enumerate(self.infile_paths):
+			assert len(self.infile_name) > 0,'Newname supplied for parameter %s is empty' % self.infile_label[i]
+			if self.args.parampass == '0':
+				ndash = 0
+			elif len(newname) > 1:
+				ndash = 2
+			else:
+				ndash = 1	
+			aninput = gxtp.DataParam(self.infile_name[i],optional=False, label=self.infile_label[i], help=self.infile_help[i], format=self.infile_format,multiple=False,num_dashes=ndash)
+			inputs.append(aninput)
+		for parm in self.args.additional_parameters:
+			newname,newval,newlabel,newhelp,newtype,newcl = parm.split(ourdelim)
+			assert len(newname) > 0,'Newname supplied for parameter %s is empty' % newlabel
+			if self.args.parampass == '0':
+				ndash = 0
+			elif len(newname) > 1:
+				ndash = 2
+			else:
+				ndash = 1	
+			if newt == "text":
+				aparm = gxtp.TextParam(newname,label=newlabel,help=newhelp,value=newval,num_dashes=ndash)
+			elif newt == "integer":
+				aparm = gxtp.IntegerParam(newname,label=newname,help=newhelp,value=newval,num_dashes=ndash)
+			elif newt == "float":
+				aparm = gxtp.FloatParam(newname,label=newname,help=newhelp,value=newval,num_dashes=ndash)
+			else:
+				raise ValueError('Unrecognised parameter type "%s" for additional parameter %s in makeXML' % (newt,psplit[0]))
+			inputs.append(aparm)
+		tool.inputs = inputs
+		# Configfile for script
+		configfiles = gxtp.Configfiles()
+		configfiles.append(gxtp.Configfile(name="runMe",text=self.script))
+		tool.configfiles = configfiles
+		if self.args.output_tab:
+			param = gxtp.OutputData('output1', format=self.args.output_format)
+			param.space_between_arg = ' '
+			outputs.append(param)
+		tool.outputs = outputs
+		tool.add_comment("This tool descriptor has been generated using galaxyxml and the Toolfactory")
+		exml = tool.export()
+		xf = open(self.xmlfile,'w')
+		xf.write(exml)
+		xf.write('\n')
+		xf.close()
+		# ready for the tarball
+
+		
+	def omakeXML(self):
 		"""
 		Create a Galaxy xml tool wrapper for the new script as a string to write out
 		It calls this python code you are reading and runs the script or executable with
@@ -501,9 +624,9 @@ o.close()
 						psplit[1] = html_escape(psplit[1]) # leave prespecified value
 					cins.append('--additional_parameters """%s"""' % ourdelim.join(psplit)) 
 			xdict['command_inputs'] = '%s\n%s' % (xdict['command_inputs'],'\n'.join(cins))
-		xdict['inputs'] += '<param name="job_name" type="text" size="60" label="Supply a name for the outputs to remind you what they contain" value="%s"/> \n' % self.toolname
-		xdict['toolname'] = self.toolname
-		xdict['toolid'] = self.toolid
+		xdict['inputs'] += '<param name="job_name" type="text" size="60" label="Supply a name for the outputs to remind you what they contain" value="%s"/> \n' % self.tool_name
+		xdict['toolname'] = self.tool_name
+		xdict['toolid'] = self.tool_id
 		xdict['interpreter_name'] = self.args.interpreter_name
 		xdict['scriptname'] = self.sfile
 		if self.args.make_HTML:
@@ -526,9 +649,9 @@ o.close()
 		else:
 			xdict['citations'] = ""
 		xmls = self.newXML % xdict
-		xmls = [x for x in xmls if x.strip > ''] # empty lines...
+		xmls = [x for x in xmls.split('\n') if len(x.strip()) > 0] # empty lines...
 		xf = open(self.xmlfile,'w')
-		xf.write(xmls)
+		xf.write('\n'.join(xmls))
 		xf.write('\n')
 		xf.close()
 		# ready for the tarball
@@ -543,7 +666,7 @@ o.close()
 		if retval:
 			sys.stderr.write('## Run failed. Cannot build yet. Please fix and retry')
 			sys.exit(1)
-		tdir = 'tdir_%s' % self.toolname
+		tdir = 'tdir_%s' % self.tool_name
 		os.mkdir(tdir)
 		self.makeXML()
 		if self.args.help_text:
@@ -573,12 +696,13 @@ o.close()
 		if self.args.make_HTML:
 			shutil.copyfile(self.args.output_html,os.path.join(testdir,self.test1HTML))
 		if self.args.output_dir:
-			shutil.copyfile(self.tlog,os.path.join(testdir,'test1_out.log'))
-		outpif = '%s.py' % self.toolname # new name
+			if os.path.exists(self.tlog):
+				shutil.copyfile(self.tlog,os.path.join(testdir,'test1_out.log'))
+		outpif = '%s.py' % self.tool_name # new name
 		outpiname = os.path.join(tdir,outpif) # path for the tool tarball
 		pyin = os.path.basename(self.pyfile) # our name - we rewrite ourselves (TM)
 		notes = ['# %s - a self annotated version of %s generated by running %s\n' % (outpiname,pyin,pyin),]
-		notes.append('# to make a new Galaxy tool called %s\n' % self.toolname)
+		notes.append('# to make a new Galaxy tool called %s\n' % self.tool_name)
 		notes.append('# User %s at %s\n' % (self.args.user_email,timenow()))
 		pi = open(self.pyfile,'r').readlines() # our code becomes new tool wrapper (!) - first Galaxy worm
 		notes += pi
@@ -592,9 +716,9 @@ o.close()
 		xtname = os.path.join(tdir,self.xmlfile)
 		if not os.path.exists(xtname):
 			shutil.copyfile(self.xmlfile,xtname)
-		tarpath = "%s.tar.gz" % self.toolname
+		tarpath = "%s.tar.gz" % self.tool_name
 		tar = tarfile.open(tarpath, "w:gz")
-		tar.add(tdir,arcname='%s' % self.toolname)
+		tar.add(tdir,recursive=True,arcname='%s' % self.tool_name)
 		tar.close()
 		shutil.copyfile(tarpath,self.args.new_tool)
 		shutil.rmtree(tdir)
@@ -688,7 +812,7 @@ o.close()
 		flist.sort()
 		html = []
 		html.append(galhtmlprefix % progname)
-		html.append('<div class="infomessage">Galaxy Tool "%s" run at %s</div><br/>' % (self.toolname,timenow()))
+		html.append('<div class="infomessage">Galaxy Tool "%s" run at %s</div><br/>' % (self.tool_name,timenow()))
 		fhtml = []
 		if len(flist) > 0:
 			logfiles = [x for x in flist if x.lower().endswith('.log')] # log file names determine sections
@@ -755,15 +879,16 @@ o.close()
 						if ntogo > 0: # pad
 						   html.append('<td>&nbsp;</td>'*ntogo)
 						html.append('</tr></table></div>\n')
-				logt = open(logfname,'r').readlines()
-				logtext = [x for x in logt if x.strip() > '']
-				html.append('<div class="toolFormTitle">%s log output</div>' % sectionname)
-				if len(logtext) > 1:
-					html.append('\n<pre>\n')
-					html += logtext
-					html.append('\n</pre>\n')
-				else:
-					html.append('%s is empty<br/>' % logfname)
+				if os.path.exists(logfname):
+					logt = open(logfname,'r').readlines()
+					logtext = [x for x in logt if x.strip() > '']
+					html.append('<div class="toolFormTitle">%s log output</div>' % sectionname)
+					if len(logtext) > 1:
+						html.append('\n<pre>\n')
+						html += logtext
+						html.append('\n</pre>\n')
+					else:
+						html.append('%s is empty<br/>' % logfname)
 		if len(fhtml) > 0:
 		   fhtml.insert(0,'<div><table class="colored" cellpadding="3" cellspacing="3"><tr><th>Output File Name (click to view)</th><th>Size</th></tr>\n')
 		   fhtml.append('</table></div><br/>')
@@ -785,7 +910,7 @@ o.close()
 		Some devteam tools have this defensive stderr read so I'm keeping with the faith
 		Feel free to update. 
 		"""
-		if self.args.output_dir:
+		if self.args.parampass != '0':
 			ste = open(self.elog,'wb')
 			sto = open(self.tlog,'wb')
 			s = ' '.join(self.cl)
