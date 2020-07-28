@@ -97,8 +97,6 @@
     </xml>
   </macros>
    <requirements>
-      <requirement type="package">ghostscript</requirement>
-      <requirement type="package">graphicsmagick</requirement>
       <requirement type="package">python3</requirement>
   </requirements>
   <command><![CDATA[
@@ -127,11 +125,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 --tool_version="$makeMode.tool_version"
 --new_tool="$new_tool"
 --help_text="$helpme"
-    #if str($make_HTML)=="yes":
-     #if $makeMode.include_deps.value=="yes":
---include_dependencies="yes"
-     #end if
-    #end if
    #end if
    #if $ppass.parampass != '0':
      #if str($ppass.edit_params) == "yes":
@@ -141,11 +134,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
      #end for
    #end if
-   #if str($make_HTML)=="yes":
---output_dir="$html_file.files_path" --output_html="$html_file" --make_HTML="yes"
-   #else:
 --output_dir="."
-   #end if
    #if str($input_files) != '':
 --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
    #end if
@@ -255,12 +244,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 		</when>
     </conditional>
  
-	<param name="make_HTML" type="select"  display="radio" label="Create an HTML report with links to every output file your script writes to the current directory" size="60"
-	 help="Recommended for presenting complex outputs in an accessible manner. Turn off for simple tools so they just create one output">
-	<option value="yes">Yes, arrange and link all output files written by my script to the current directory as an HTML page</option>
-	<option value="" selected="true">No, no HTML output file thanks</option>
-    </param>
-    <param name="make_TAB" type="select"  display="radio" label="Create a new (default tabular) history output with or without an HTML file specified above" 
+    <param name="make_TAB" type="select"  display="radio" label="Create a new (default tabular) history output" 
          help="This is useful if your script creates a single new file you want to appear in the history after the tool executes">
         <option value="yes" selected="true">My script writes to a new history output</option>
         <option value="">I do not want a new history output file</option>
@@ -323,11 +307,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
                     </when>
                 </conditional>
             </repeat>
-            <param name="include_deps" type="select" display="radio" label="Include ghostscript and graphicsmagick dependencies in generated tool" size="60"
-            help="If an HTML file is being created, including dependencies is recommended. Otherwise this setting has no effect">
-                <option value="">Rely on system ghostscript and graphicsmagick rather than include these as dependencies</option>
-                <option value="yes" selected="true">Include dependencies so target installations will always work if HTML is being generated</option>
-            </param>
         </when>
         <when value = "">
         </when>
@@ -341,9 +320,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
                 <option type="from_param" name="output_format" />
           </action>
         </actions>
-    </data>
-    <data format="html" name="html_file" label="${tool_name}.html">
-        <filter>make_HTML == "yes"</filter>
     </data>
     <data format="toolshed.gz" name="new_tool" label="${tool_name}.toolshed.gz">
         <filter>makeMode['make_Tool'] == "yes"</filter>
@@ -359,7 +335,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
     <param name="tool_desc" value='testing_tf2' />
     <param name="help_text" value='help text goes here' />
     <param name='include_deps' value='yes' />
-    <param name="make_HTML" value="yes" />
     <param name="make_TAB" value="yes" />
     <param name="output_format" value="tabular" />
     <param name="input_formats" value="tabular" />
@@ -367,7 +342,6 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
     <param name="envpath" value='system' />
     <param name="runme" value="tf2_test_runme.py"/>
     <output name='output1' file='tf2_test_out.xls' compare='diff' lines_diff = '10'/>
-    <output name='html_file' file="tf2_test.html" compare='diff' lines_diff = '10'/>
     <output name='new_tool' file="tf2_test.toolshed.gz" compare="sim_size" delta="600" />
 </test>
 </tests>
