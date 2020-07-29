@@ -102,6 +102,12 @@
 # no real risk. The universe_wsgi.ini admin_users string is checked - only admin users are permitted to run this tool.
 #
 
+"""
+a sample job
+/home/ross/galaxy/tools/tool_makers/rgToolFactory2.py --script_path "/home/ross/galaxy/database/jobs_directory/000/141/configs/tmpzrj57n18" --interpreter_name "sh" --tool_name="test"  --user_email="ross.lazarus@gmail.com" --citations="/home/ross/galaxy/database/jobs_directory/000/141/configs/tmp8q9v8myd"  --parampass="0" --output_tab="/home/ross/galaxy/database/objects/e/3/b/dataset_e3b7ab22-7b32-4e21-8f59-751544ad56c9.dat" --output_format="tabular" --make_Tool="yes" --tool_desc="test" --tool_version="0.01" --new_tool="/home/ross/galaxy/database/objects/3/0/d/dataset_30df9882-56b9-44f8-a3b1-7ddf443216b7.dat" --help_text="/home/ross/galaxy/database/jobs_directory/000/141/configs/tmpq6g85fss" --output_dir="." --input_files="/home/ross/galaxy/database/objects/3/5/2/dataset_352183fc-9148-44e6-a703-0c1b06d0a365.dat~~~1~~~tabular~~~parameter_label~~~parameter_help"
+
+"""
+
 import sys
 import shutil
 import subprocess
@@ -237,17 +243,10 @@ class ScriptRunner:
 					scl = 'input%d' % (i+1)
 				self.infile_name.append(scl) # make a list of internal names for each input file
 			
-		if self.args.parampass == "0": # no params - use < and > for in and out
-			if len(self.infile_paths) > 0:
-				aCL('< %s' % self.infile_paths[0]) # first one is stdin - possibly a random generator without any input!
-			aCL('> %s' % self.args.output_tab) # write to history file
-		else:
+		if self.args.parampass != "0":
 			clsuffix = [] # list all (cl param) pairs - positional needs sorting by cl index
 			for i,p in enumerate(self.infile_paths):
-				if infile_cl[i] == 'STDIN':
-					aCL('< %s' % p)
-				else:
-					clsuffix.append([self.infile_cl[i],p]) # decorator is cl - sort for positional
+				clsuffix.append([self.infile_cl[i],p]) # decorator is cl - sort for positional
 			for p in self.args.additional_parameters:
 				psplit = p.split(ourdelim)
 				pform = psplit[5]
@@ -281,20 +280,21 @@ class ScriptRunner:
 		parameters as required.
 recent
 <tool name="test" id="test" version="0.01">
-  <!--Please cite: Creating re-usable tools from scripts, Ross Lazarus; Antony Kaspi; Mark Ziemann; The Galaxy Team. doi: 10.1093/bioinformatics/bts573-->
+  <!--Cite: Creating re-usable tools from scripts doi: 10.1093/bioinformatics/bts573-->
   <!--Source in git at: https://github.com/fubar2/toolfactory-->
-  <!--Created by ross.lazarus@gmail.com at 28/07/2020 18:25:47 using the Galaxy Tool Factory.-->
+  <!--Created by ross.lazarus@gmail.com at 29/07/2020 11:42:24 using the Galaxy Tool Factory.-->
   <description>test</description>
+  <requirements/>
   <configfiles>
     <configfile name="runMe"><![CDATA[
-		    echo "Hello world!"
+		    tac | rev
 ]]></configfile>
   </configfiles>
   <stdio>
     <exit_code range="1:" level="fatal"/>
   </stdio>
   <version_command/>
-  <command interpreter="sh"><![CDATA[runMe < $input1
+  <command interpreter="bash"><![CDATA[$runMe < $input1
 > $output1]]></command>
   <inputs>
     <param help="parameter_help" label="parameter_label" optional="false" multiple="false" format="tabular" type="data" name="input1" argument="--input1"/>
@@ -308,15 +308,15 @@ recent
       <param value="test_a" name="job_name"/>
       <param value="$runMe" name="runMe"/>
       <output value="test_test1_output.xls" name="output1"/>
-      <output value="test_test1_output.html" name="html_file"/>
     </test>
   </tests>
   <help><![CDATA[
 			 **What it Does**
 
-it tests
+reverses lines in the input
 		 ]]></help>
 </tool>
+
 
 old
 		<tool id="reverse" name="reverse" version="0.01">
@@ -476,7 +476,8 @@ o.close()
 			sys.stderr.write('## Run failed. Cannot build yet. Please fix and retry')
 			sys.exit(1)
 		tdir = 'tdir_%s' % self.tool_name
-		os.mkdir(tdir)
+		if not os.path.exists(tdir):
+			os.mkdir(tdir)
 		self.makeXML()
 		if self.args.help_text:
 			hlp = open(self.args.help_text,'r').read()
@@ -484,13 +485,16 @@ o.close()
 			hlp = 'Please ask the tool author for help as none was supplied at tool generation\n'
 		readme_dict = {'readme':hlp,'interpreter_name':self.args.interpreter_name,'interpreter_version':self.args.interpreter_version}
 		testdir = os.path.join(tdir,'test-data')
-		os.mkdir(testdir) # make tests directory
+		if not os.path.exists(testdir):
+			os.mkdir(testdir) # make tests directory
 		for i,infile in enumerate(self.infile_paths):
 			dest = os.path.join(testdir,'%s.%s' % (self.infile_name[i],self.infile_format[i]))
 			if infile != dest:
 				shutil.copyfile(infile,dest)
-		if self.args.output_tab:
+		if self.args.output_tab and os.path.exists(self.args.output_tab):
 			shutil.copyfile(self.args.output_tab,os.path.join(testdir,self.test1Output))
+		else:
+			print('#### no output_tab %s exists' % self.args.output_tab)
 		if self.args.output_dir:
 			if os.path.exists(self.tlog):
 				shutil.copyfile(self.tlog,os.path.join(testdir,'test1_out.log'))
@@ -517,13 +521,13 @@ o.close()
 		"""
 		
 		scl = ' '.join(self.cl)
+		err = None
 		if self.args.parampass != '0':
 			ste = open(self.elog,'wb')
 			sto = open(self.tlog,'wb')
 			sto.write(bytes('## Executing Toolfactory generated command line = %s\n' % scl,"utf8"))
 			sto.flush()
-			p = subprocess.Popen(self.cl,shell=False,stdout=sto,stderr=ste,cwd=self.args.output_dir)
-			p.wait()
+			p = subprocess.run(self.cl,shell=False,stdout=sto,stderr=ste,cwd=self.args.output_dir)
 			sto.close()
 			ste.close()
 			tmp_stderr = open(self.elog, 'rb' )
@@ -538,14 +542,13 @@ o.close()
 				pass
 			tmp_stderr.close()
 			retval = p.returncode
-		else:
-			sto = open(self.tlog,'wb')
-			p = subprocess.Popen(self.cl, shell=False, stdout=sto,cwd=self.args.output_dir)
-			p.wait()
+		else: # work around special case of simple scripts that take stdin and write to stdout
+			sti = open(self.infile_paths[0],'rb')
+			sto = open(self.args.output_tab,'wb')
+			p = subprocess.run(self.cl, shell=False, stdout=sto,stdin=sti) # must use shell to redirect
 			retval = p.returncode
 			sto.close()
-			ourout = open(self.tlog,'r').readlines()
-			sys.stdout.write('\n'.join(ourout))
+			sti.close()
 		if self.args.output_dir:
 			if p.returncode != 0 and err: # problem
 				sys.stderr.write(err)
