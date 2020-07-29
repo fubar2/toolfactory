@@ -115,10 +115,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
      #end if
    #end if
 --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
-   #if str($make_TAB)=="yes":
---output_tab="$output1"
---output_format="$output_format"
-   #end if
+--output_tab="$output1" --output_format="$output_format" --output_cl="$output_CL"
    #if str($makeMode.make_Tool)=="yes":
 --make_Tool="$makeMode.make_Tool"
 --tool_desc="$makeMode.tool_desc"
@@ -136,7 +133,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
    #end if
 --output_dir="."
    #if str($input_files) != '':
---input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
+--input_files="$input_files~~~$input_CL~~~$input_formats~~~$input_label~~~$input_help"
    #end if
    #if $ppass.parampass != '0' and $ppass.additional_history_inputs:
      #for $intab in $ppass.additional_history_inputs:
@@ -148,9 +145,9 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
   <configfiles>
 	 <configfile name="runme">
 		 #if $interexe.interpreter != "Executable":
-		    ${interexe.dynScript}
+${interexe.dynScript}
 		 #else
-		    "Not used"
+"Not used"
 		 #end if
 		 </configfile>
 		 <configfile name="helpme">
@@ -204,7 +201,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 	  <mapping initial="none"/>
 	</sanitizer>
 	</param>
-	<param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDIN' if your script reads from STDIN"
+	<param name="input_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDIN' if your script reads from STDIN"
 	  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">		   
 	</param>
     <param name="output_format" type="select" multiple="false" label="Select the Galaxy datatype that your tool/script emits as output for the new history item"
@@ -213,6 +210,9 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
         <column name="value" index="0"/>
      </options>
     </param>
+	<param name="output_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDOUT' if your script writes to stdout"
+	  help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">
+	 </param> 		   
     <conditional name="interexe">
 		<param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
 		help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
@@ -359,28 +359,22 @@ Only users whose IDs found in the local admin_user configuration setting in univ
 Please raise an issue at the bitbucket repository GTFI_
 
 **What it does** 
-This tool enables a user to paste and submit an arbitrary R/python/perl script to Galaxy passing
-any number of input files and their metadata names to the script for use in (eg) summaries or reports.
-This allows quick generation of tools capable of taking some arbitrary number of user selected inputs
-for the "reduce" step of a map-reduce HPC model.
+This tool optionally generates normal workflow compatible first class Galaxy tools
 
-**Input options** 
-This version allows multiple input file selected from the history - their paths and metadata names
-are provided to your script - see the examples below for each scripting language. Python uses argparse.
-Rscript uses some code to create all the command line variables. Parameters are injected into the bash/sh
-execution environment so they magically "appear" as $ prefixed variables and will also be found on the
-command line as parameters to be parsed if that's your preference.
-Note that additional parameters are NOT presented to the user of the generated tool but are frozen with the script.
-If there's demand, it would not be too hard to add them to the generated script...
+Generated tools can run existing binary packages that become requirements, existing scripts, or new scripts pasted into this tool form.
+Pasted scripts are written so they are part of the new tool and cannot be adjusted by the downstream user.
+Binary packages are managed by the dependency subsystem - conda usually, so anything in bioconda or conda_forge is available for example.
 
-**Output options** 
-Optional script outputs include one single new history tabular file and for scripts that create multiple file reports
-or analyses, an Html page linking every file and image created by the script can be automatically generated.
+Any number of parameters can be built into the new tool form for passing in to the script or executable at runtime.
+These can be editable by the downstream user or baked in.
 
-**Tool Generation option** 
-Once the script is working with test data, this tool will optionally generate a new Galaxy tool in a Tool Shed (gzip) repository file
-ready to upload to your local toolshed for sharing and installation.
-Provide a small sample input when you run generate the tool because it will become the input for the generated functional test.
+When you run this tool, your executable or script and supplied parameter values will be run to produce a canonical
+set of outputs - these are used to construct a test for the new tool.
+
+If tool generation is required, a new tarball compatible with any Galaxy toolshed is created.
+It can be unpacked in your galaxy/tools directory and manually added to tool_conf.xml, or
+installed into any toolshed from where it can be installed into your Galaxy.
+
 
 .. class:: warningmark
 
@@ -393,113 +387,49 @@ Admin_users will have the power to do anything they want as the Galaxy user if y
 **Use on public servers**  is STRONGLY discouraged for obvious reasons
 
 The tools generated by this tool will run just as securely as any other normal installed Galaxy tool but like any other new tools, should always be checked carefully before installation.
-We recommend that you follow the good code hygiene practices associated with safe toolshed.
+We recommend that you follow the good code hygiene practices associated with safe toolshed practices.
 
-**Scripting conventions** The pasted script will be executed with the path to the (optional) input tabular data file path or NONE if you do not select one, and the path to the optional
-output file or None if none is wanted, as the first and second command line parameters. The script must deal appropriately with these - see Rscript examples below.
-Note that if an optional HTML output is selected, all the output files created by the script will be nicely presented as links, with pdf images linked as thumbnails in that output.
-This can be handy for complex scripts creating lots of output.
+Here's a sample python script that can be cut and pasted into the tool form, suitable for positional parameter passing:
 
-<![CDATA[
+::
 
-**Multiple inputs**
+	# reverse order of text by row
+	import sys
+	inp = sys.argv[1]
+	outp = sys.argv[2]
+	i = open(inp,'r').readlines()
+	o = open(outp,'w')
+	for row in i:
+	  rs = row.rstrip()
+	  rs = list(rs)
+	  rs.reverse()
+	  o.write(''.join(rs))
+	  o.write('\n')
+	o.close()
 
-Your script will receive up to 3 named parameters
-INPATHS is a comma separated list of input file paths
-INNAMES is a comma separated list of input file names in the same order
-OUTPATH is optional if a file is being generated, your script should write there
-Your script should open and write files in the provided working directory if you are using the Html
-automatic presentation option.
+With argparse style parameters:
+	
+::
 
-Python script command lines will have --INPATHS and --additional_arguments etc. to make it easy to use argparse
-
-Rscript will need to use commandArgs(TRUE) - see the example below - additional arguments will
-appear as themselves - eg foo="bar" will mean that foo is defined as "bar" for the script.
-
-Bash and sh will see any additional parameters on their command lines and the 3 named parameters
-in their environment magically - well, using env on the CL
-
-***python***::
-
- # argparse for 3 possible comma separated lists
- # additional parameters need to be parsed !
- # then echo parameters to the output file
- import sys
- import os
- import argparse
-
- argp=argparse.ArgumentParser()
- argp.add_argument('--innames',default=None)
- argp.add_argument('--inpaths',default=None)
- argp.add_argument('--outpath',default=None)
- argp.add_argument('--additional_parameters',default=[],action="append")
- argp.add_argument('otherargs', nargs=argparse.REMAINDER)
- args = argp.parse_args()
- opath = args.outpath
- odir = os.path.split(opath)[0]
- try:
-    os.makedirs(odir)
-    print '### made',odir
- except:
-    pass
- f= open(opath,'w')
- s = '### args=%s\n' % str(args)
- f.write(s)
- s = 'sys.argv=%s\n' % sys.argv
- f.write(s)
- f.close()
-
-
-***Rscript***::
-
- # tool factory Rscript parser suggested by Forester
- # http://www.r-bloggers.com/including-arguments-in-r-cmd-batch-mode/
- # additional parameters will appear in the ls() below - they are available
- # to your script
- # echo parameters to the output file
- ourargs = commandArgs(TRUE)
- if(length(ourargs)==0){
-    print("No arguments supplied.")
- }else{
-    for(i in 1:length(ourargs)){
-         eval(parse(text=ourargs[[i]]))
-    }
- sink(OUTPATH)
- cat('INPATHS=',INPATHS,'\n')
- cat('INNAMES=',INNAMES,'\n')
- cat('OUTPATH=',OUTPATH,'\n')
- x=ls()
- cat('all objects=',x,'\n')
- sink()
- }
- sessionInfo()
- print.noquote(date())
-
-
-***bash/sh***::
-
- # tool factory sets up these environmental variables
- # this example writes those to the output file
- # additional params appear on command line
- if [ ! -f "$OUTPATH" ] ; then
-    touch "$OUTPATH"
- fi
- echo "INPATHS=$INPATHS" >> "$OUTPATH"
- echo "INNAMES=$INNAMES" >> "$OUTPATH"
- echo "OUTPATH=$OUTPATH" >> "$OUTPATH"
- echo "CL=$@" >> "$OUTPATH"
-
-***perl***::
-
- (my $INPATHS,my $INNAMES,my $OUTPATH ) = @ARGV;
- open(my $fh, '>', $OUTPATH) or die "Could not open file '$OUTPATH' $!";
- print $fh "INPATHS=$INPATHS\n INNAMES=$INNAMES\n OUTPATH=$OUTPATH\n";
- close $fh;
- 
-
-]]>
-
-
+	# reverse order of text by row
+	import argparse
+	parser = argparse.ArgumentParser()
+	a = parser.add_argument
+	a('--infile',default='')
+	a('--outfile',default=None)
+	args = parser.parse_args()
+	inp = args.infile
+	outp = args.outfile
+	i = open(inp,'r').readlines()
+	o = open(outp,'w')
+	for row in i:
+	  rs = row.rstrip()
+	  rs = list(rs)
+	  rs.reverse()
+	  o.write(''.join(rs))
+	  o.write('\n')
+	o.close()
+	 
 
 Paper_ :
 
