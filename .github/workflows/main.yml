@@ -26,9 +26,9 @@ jobs:
       with: 
         python-version: '3.8'
     - name: finesse python3
-      run: rm -f /usr/bin/python
+      run: sudo rm -f /usr/bin/python
     - name: finesse python2
-      run: ln -s `which python3` /usr/bin/python
+      run: sudo ln -s `which python3` /usr/bin/python
     - name: Install dependencies
       run: python3 -m pip install --upgrade pip setuptools wheel planemo
     - name: Test with planemo
