@@ -307,7 +307,12 @@ ${interexe.dynScript}
     </conditional> 
   </inputs>
   <outputs>
-    <data name="output1" label="${tool_name}.${output_format}" format="$output_format" metadata_source="input_file">
+    <data name="output1" label="${tool_name}.${output_format}" format="tabular" metadata_source="input_file">
+        <actions>
+          <action type="format">
+                <option type="from_param" name="output_format" />
+          </action>
+        </actions>
     </data>
     <data format="toolshed.gz" name="new_tool" label="${tool_name}.toolshed.gz">
         <filter>makeMode['make_Tool'] == "yes"</filter>

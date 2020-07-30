@@ -189,8 +189,6 @@ class ScriptRunner:
 			if lastclredirect:
 				for v in lastclredirect:
 					aCL(v) # add the stdout parameter last
-		self.outFormats = args.output_format
-		self.inputFormats = args.input_formats
 		self.test1Output = '%s_test1_output.xls' % self.tool_name
 		self.test1HTML = '%s_test1_output.html' % self.tool_name
 		self.logf.write('### cl=%s\n' % str(' '.join(self.cl)))
@@ -270,6 +268,7 @@ class ScriptRunner:
 				ndash = 1	
 			if newtype == "text":
 				aparm = gxtp.TextParam(newname,label=newlabel,help=newhelp,value=newval,num_dashes=ndash)
+				aparm.command_line_override = '--%s "$%s"' % (newname,newname) # needed for spacey ones
 			elif newtype == "integer":
 				aparm = gxtp.IntegerParam(newname,label=newname,help=newhelp,value=newval,num_dashes=ndash)
 			elif newtype == "float":
@@ -285,18 +284,20 @@ class ScriptRunner:
 		configfiles.append(gxtp.Configfile(name="runMe",text=self.script))
 		tool.configfiles = configfiles
 		if self.args.output_tab:
-			aparm = gxtp.OutputData(self.args.output_cl, format=self.args.output_format)
+			ext = self.args.output_format
+			aparm = gxtp.OutputData(self.args.output_cl, format=ext,num_dashes=ndash)
 			if is_positional:
-				aparm.command_line_override = '> $output1' 
+				aparm.command_line_override = '> $output1'
 			aparm.positional = is_positional
 			outputs.append(aparm)
 		tool.outputs = outputs
 		tests = gxtp.Tests()
 		test_a = gxtp.Test()
+		ext = self.infile_format[0].split(',')[0]
 		if is_positional:
-			param = gxtp.TestParam('input1',value='input1.%s' % self.infile_format[0],ftype=self.infile_format[0])
+			param = gxtp.TestParam('input1',value='input1.%s' % ext,ftype=ext)
 		else:
-			param = gxtp.TestParam(self.infile_name[0],value='%s.%s' % (self.infile_name[0],self.infile_format[0]),ftype=self.infile_format[0])
+			param = gxtp.TestParam(self.infile_name[0],value='%s.%s' % (self.infile_name[0],ext),ftype=ext)
 		test_a.append(param)	
 		param = gxtp.TestParam('job_name', value='test_a')
 		test_a.append(param)
@@ -446,8 +447,8 @@ def main():
 	args = parser.parse_args()
 	assert not args.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (args.bad_user,args.bad_user)
 	assert args.tool_name,'## Tool Factory expects a tool name - eg --tool_name=DESeq'
-	assert args.interpreter_name or args.exec_package,'## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript'
-	assert len(args.script_path) > 0 and os.path.isfile(args.script_path),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R'
+	assert args.interpreter_name or args.exe_package,'## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript or an executable package findable by the dependency management package'
+	assert args.exe_package or (len(args.script_path) > 0 and os.path.isfile(args.script_path)),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable'
 	if args.output_dir:
 		try:
 			os.makedirs(args.output_dir)
