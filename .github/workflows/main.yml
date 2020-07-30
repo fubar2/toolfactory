@@ -25,6 +25,8 @@ jobs:
       uses: actions/setup-python@v2
       with: 
         python-version: '3.8'
+    - name finesse python3
+      run: rm -f /usr/bin/python && ln -s `which python3` /usr/bin/python
     - name: Install dependencies
       run: python3 -m pip install --upgrade pip setuptools wheel planemo
     - name: Test with planemo
