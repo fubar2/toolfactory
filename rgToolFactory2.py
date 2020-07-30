@@ -32,7 +32,6 @@ import math
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
 import logging
-logging.basicConfig(filename='toolfactory.log',level=logging.DEBUG,format='%(asctime)s %(message)s',filemode='w')
 
 
 progname = os.path.split(sys.argv[0])[1] 
@@ -100,7 +99,7 @@ class ScriptRunner:
 		cleanup inputs, setup some outputs
 		
 		"""
-
+		self.logf = open('/home/ross/rossgit/toolfactory/tmp/toolfactory.log','w')
 		lastclredirect = None
 		self.cl = []
 		aCL = self.cl.append
@@ -122,7 +121,10 @@ class ScriptRunner:
 			tscript.close()
 			self.indentedScript = "  %s" % '\n'.join([' %s' % html_escape(x) for x in rx]) # for restructured text in help
 			self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
-			aCL(self.args.interpreter_name)
+			if self.args.interpreter_name == 'python': # work around - actually python3 now but for conda deps....
+				aCL('python3')
+			else:
+				aCL(self.args.interpreter_name)
 			aCL(self.sfile)
 		self.elog = os.path.join(self.args.output_dir,"%s_error.log" % self.tool_name)
 		if args.output_dir: # may not want these complexities 
@@ -135,6 +137,8 @@ class ScriptRunner:
 		self.infile_paths = []
 		self.infile_format = []
 		self.infile_cl = []
+		self.infile_label = []
+		self.infile_help = []
 		if self.args.input_files:
 			aif = [x.split(ourdelim) for x in self.args.input_files]
 			laif = list(map(list, zip(*aif))) # transpose the input_files array --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
@@ -149,8 +153,10 @@ class ScriptRunner:
 		clsuffix = [] # list all (cl param) pairs - positional needs sorting by cl index
 		clsuffix.append([self.args.output_cl,self.args.output_tab])		
 		if self.args.parampass == '0': # only need two
-			aCL('< %s' % self.infile_paths[0])
-			aCL('> %s' % self.args.output_tab)
+			aCL('<')
+			aCL('%s' % self.infile_paths[0])
+			aCL('>')
+			aCL('%s' % self.args.output_tab)
 		else:
 			for i,p in enumerate(self.infile_paths):
 				clsuffix.append([self.infile_cl[i],p]) # decorator is cl - sort for positional
@@ -158,118 +164,46 @@ class ScriptRunner:
 				psplit = p.split(ourdelim)
 				pform = psplit[5]
 				if pform == 'STDOUT':
-					lastclredirect = '> %s' % psplit[1]
+					lastclredirect = ['>',psplit[1]]
 				else:
-					clsuffix.append([psplit[5],psplit[1]]) # cl,value
+					clsuffix.append([pform,psplit[1]]) # cl,value
 			clsuffix.sort()
 			if self.args.parampass == "positional":
 				plist = [] # need to decorate with CL and sort
 				# inputs in order then params in order TODO fix ordering using self.infile_cl
 				for (k,v) in clsuffix:
-					aCL(v)
-				for ipath in self.infile_paths:
-					aCL(ipath) 
+					if ' ' in v:
+						aCL("v")
+					else:
+						aCL(v)
 			elif self.args.parampass == "argparse":
 				# inputs then params in argparse named form
 				for (k,v) in clsuffix:
-					aCL("--%s=%s" % (k,v))
-
-				
+					if ' ' in v:
+						aCL('--%s' % k)
+						aCL('"%s"' % v)
+					else:
+						aCL('--%s' % k)
+						aCL('%s' % v)
 			if lastclredirect:
-				aCL(lastclredirect) # add the stdout parameter last
+				for v in lastclredirect:
+					aCL(v) # add the stdout parameter last
 		self.outFormats = args.output_format
 		self.inputFormats = args.input_formats
 		self.test1Output = '%s_test1_output.xls' % self.tool_name
 		self.test1HTML = '%s_test1_output.html' % self.tool_name
+		self.logf.write('### cl=%s\n' % str(' '.join(self.cl)))
 		
 	def makeXML(self):
 		"""
 		Create a Galaxy xml tool wrapper for the new script as a string to write out
 		It calls this python code you are reading and runs the script or executable with
 		parameters as required.
-recent
-<tool name="test" id="test" version="0.01">
-  <!--Cite: Creating re-usable tools from scripts doi: 10.1093/bioinformatics/bts573-->
-  <!--Source in git at: https://github.com/fubar2/toolfactory-->
-  <!--Created by ross.lazarus@gmail.com at 29/07/2020 11:42:24 using the Galaxy Tool Factory.-->
-  <description>test</description>
-  <requirements/>
-  <configfiles>
-    <configfile name="runMe"><![CDATA[
-		    tac | rev
-]]></configfile>
-  </configfiles>
-  <stdio>
-    <exit_code range="1:" level="fatal"/>
-  </stdio>
-  <version_command/>
-  <command interpreter="bash"><![CDATA[$runMe < $input1
-> $output1]]></command>
-  <inputs>
-    <param help="parameter_help" label="parameter_label" optional="false" multiple="false" format="tabular" type="data" name="input1" argument="--input1"/>
-  </inputs>
-  <outputs>
-    <data hidden="false" format="tabular" name="output1"/>
-  </outputs>
-  <tests>
-    <test>
-      <param ftype="tabular" value="input1.tabular" name="input1"/>
-      <param value="test_a" name="job_name"/>
-      <param value="$runMe" name="runMe"/>
-      <output value="test_test1_output.xls" name="output1"/>
-    </test>
-  </tests>
-  <help><![CDATA[
-			 **What it Does**
-
-reverses lines in the input
-		 ]]></help>
-</tool>
-
-
-old
-		<tool id="reverse" name="reverse" version="0.01">
-			<description>a tabular file</description>
-			<command interpreter="python">
-			reverse.py --script_path "$runMe" --interpreter_name "python" 
-			--tool_name "reverse" --input_files "$input1" --output_tab "$output1" 
-			</command>
-			<inputs>
-			<param name="input1"  type="data" format="tabular" label="Select one or more input files from your history"/>
-			<param name="job_name" type="text" label="Supply a name for the outputs to remind you what they contain" value="reverse"/>
-			</inputs>
-			<outputs>
-			<data format="tabular" name="output1q" label="${job_name}"/>
-
-			</outputs>
-			<help>
-			
-**What it Does**
-
-Reverse the columns in a tabular file
-
-			</help>
-			<configfiles>
-			<configfile name="runMe">
-			
-# reverse order of columns in a tabular file
-import sys
-inp = sys.argv[1].strip()
-outp = sys.argv[2].strip()
-i = open(inp,'r')
-o = open(outp,'w')
-for row in i:
-	 rs = row.rstrip().split('\t')
-	 rs.reverse()
-	 o.write('\t'.join(rs))
-	 o.write('\n')
-i.close()
-o.close()
- 
-
-			</configfile>
-			</configfiles>
-			</tool>
+		
+		WRONG
+		<command interpreter="python"><![CDATA[$runMe --infile $infile
+--prefix $prefix
+output1 $output1]]></command>
 		"""
 		# need interp and executable (?script) or else executable only
 		if self.args.interpreter_name:
@@ -293,6 +227,7 @@ o.close()
 		outputs = gxtp.Outputs()
 		requirements = gxtp.Requirements()
 		testparam = []
+		is_positional = (self.args.parampass == 'positional')
 		if self.args.include_dependencies == "yes":
 			requirements.append(gxtp.Requirement('package', 'ghostscript'))
 			requirements.append(gxtp.Requirement('package', 'graphicsmagick'))
@@ -318,7 +253,7 @@ o.close()
 				format=self.infile_format[i],multiple=False,num_dashes=ndash)
 			if self.args.parampass == '0':
 				aninput.command_line_override = '< $%s' % self.infile_name[i]
-			aninput.positional = self.args.parampass == 'positional'
+			aninput.positional = is_positional
 			inputs.append(aninput)
 		for parm in self.args.additional_parameters:
 			newname,newval,newlabel,newhelp,newtype,newcl = parm.split(ourdelim)
@@ -327,32 +262,35 @@ o.close()
 				ndash = 2
 			else:
 				ndash = 1	
-			if newt == "text":
+			if newtype == "text":
 				aparm = gxtp.TextParam(newname,label=newlabel,help=newhelp,value=newval,num_dashes=ndash)
-			elif newt == "integer":
+			elif newtype == "integer":
 				aparm = gxtp.IntegerParam(newname,label=newname,help=newhelp,value=newval,num_dashes=ndash)
-			elif newt == "float":
+			elif newtype == "float":
 				aparm = gxtp.FloatParam(newname,label=newname,help=newhelp,value=newval,num_dashes=ndash)
 			else:
-				raise ValueError('Unrecognised parameter type "%s" for additional parameter %s in makeXML' % (newt,psplit[0]))
-			aparm.positional = self.args.parampass == 'positional'
+				raise ValueError('Unrecognised parameter type "%s" for additional parameter %s in makeXML' % (newtype,psplit[0]))
+			aparm.positional = is_positional
 			inputs.append(aparm)
-			testparam.append(aparm)
+			tparm = gxtp.TestParam(newname,value=newval)
+			testparam.append(tparm)
 		tool.inputs = inputs
 		configfiles = gxtp.Configfiles()
 		configfiles.append(gxtp.Configfile(name="runMe",text=self.script))
 		tool.configfiles = configfiles
 		if self.args.output_tab:
-			aparm = gxtp.OutputData('output1', format=self.args.output_format)
-			aparm.space_between_arg = ' '
-			if self.args.parampass == '0':
+			aparm = gxtp.OutputData(self.args.output_cl, format=self.args.output_format)
+			if is_positional:
 				aparm.command_line_override = '> $output1' 
-			aparm.positional = self.args.parampass == 'positional'
+			aparm.positional = is_positional
 			outputs.append(aparm)
 		tool.outputs = outputs
 		tests = gxtp.Tests()
 		test_a = gxtp.Test()
-		param = gxtp.TestParam('input1',value='input1.%s' % self.infile_format[0],ftype=self.infile_format[0])
+		if is_positional:
+			param = gxtp.TestParam('input1',value='input1.%s' % self.infile_format[0],ftype=self.infile_format[0])
+		else:
+			param = gxtp.TestParam(self.infile_name[0],value='%s.%s' % (self.infile_name[0],self.infile_format[0]),ftype=self.infile_format[0])
 		test_a.append(param)	
 		param = gxtp.TestParam('job_name', value='test_a')
 		test_a.append(param)
@@ -360,7 +298,7 @@ o.close()
 		test_a.append(param)
 		for aparam in testparam:
 			test_a.append(aparam)
-		test_out = gxtp.TestOutput(name='output1', value=self.test1Output)
+		test_out = gxtp.TestOutput(name=self.args.output_tab, value=self.test1Output)
 		test_a.append(test_out)
 		tests.append(test_a)		
 		tool.tests = tests
@@ -372,6 +310,7 @@ o.close()
 		xf.write(exml)
 		xf.write('\n')
 		xf.close()
+		self.logf.write('xml=%s\n' % exml)
 		# ready for the tarball
 
 
@@ -508,6 +447,7 @@ def main():
 			os.makedirs(args.output_dir)
 		except:
 			pass
+	#logging.basicConfig(filename=os.path.join(args.output_dir,'toolfactory.log'),level=logging.DEBUG,format='%(asctime)s %(message)s',filemode='w')
 	args.input_files = [x.replace('"','').replace("'",'') for x in args.input_files]
 	for i,x in enumerate(args.additional_parameters): # remove quotes we need to deal with spaces in CL params
 		args.additional_parameters[i] = args.additional_parameters[i].replace('"','')
@@ -517,6 +457,7 @@ def main():
 	else:
 		retcode = r.run()
 	os.unlink(r.sfile)
+	r.logf.close()
 	if retcode:
 		sys.exit(retcode) # indicate failure to job runner
 
