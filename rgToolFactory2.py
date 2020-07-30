@@ -15,9 +15,10 @@
 # 3. Rewrite bits using galaxyxml functions where that makes sense - done
 #
 # removed all the old complications including making the new tool use this same script
-# galaxyxml now generates the tool xml and we no longer support automatic HTML file creation.
-
-
+# galaxyxml now generates the tool xml https://github.com/hexylena/galaxyxml
+# No support for automatic HTML file creation from arbitrary outputs
+# TODO: add option to run that code as a post execution hook
+# TODO: add additional history input parameters - currently only one 
 
 import sys
 import subprocess
@@ -196,14 +197,19 @@ class ScriptRunner:
 		
 	def makeXML(self):
 		"""
-		Create a Galaxy xml tool wrapper for the new script as a string to write out
-		It calls this python code you are reading and runs the script or executable with
-		parameters as required.
+		Create a Galaxy xml tool wrapper for the new script
+		Uses galaxyhtml
+.
 		
-		WRONG
-		<command interpreter="python"><![CDATA[$runMe --infile $infile
---prefix $prefix
-output1 $output1]]></command>
+		WRONG - fixme!
+		   <test>
+      <param ftype="tabular,txt" value="infile.tabular,txt" name="infile"/>
+      <param value="test_a" name="job_name"/>
+      <param value="$runMe" name="runMe"/>
+      <param value="hello world" name="prefix"/>
+      <output value="reverseargp2_test1_output.xls" name="/home/ross/galaxy/database/objects/7/d/3/dataset_7d32a4f7-e5af-4f6d-9241-8b5347118c73.dat"/>
+    </test>
+
 		"""
 		# need interp and executable (?script) or else executable only
 		if self.args.interpreter_name:
@@ -298,7 +304,7 @@ output1 $output1]]></command>
 		test_a.append(param)
 		for aparam in testparam:
 			test_a.append(aparam)
-		test_out = gxtp.TestOutput(name=self.args.output_tab, value=self.test1Output)
+		test_out = gxtp.TestOutput(name=self.args.output_cl, value=self.test1Output)
 		test_a.append(test_out)
 		tests.append(test_a)		
 		tool.tests = tests
@@ -440,7 +446,7 @@ def main():
 	args = parser.parse_args()
 	assert not args.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (args.bad_user,args.bad_user)
 	assert args.tool_name,'## Tool Factory expects a tool name - eg --tool_name=DESeq'
-	assert args.interpreter_name,'## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript'
+	assert args.interpreter_name or args.exec_package,'## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript'
 	assert len(args.script_path) > 0 and os.path.isfile(args.script_path),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R'
 	if args.output_dir:
 		try:

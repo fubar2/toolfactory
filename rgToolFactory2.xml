@@ -243,12 +243,6 @@ ${interexe.dynScript}
            <expand macro="builtin_dynpar" />
 		</when>
     </conditional>
- 
-    <param name="make_TAB" type="select"  display="radio" label="Create a new (default tabular) history output" 
-         help="This is useful if your script creates a single new file you want to appear in the history after the tool executes">
-        <option value="yes" selected="true">My script writes to a new history output</option>
-        <option value="">I do not want a new history output file</option>
-    </param>
 	<conditional name="ppass">
 		<param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
 			<option value="argparse" selected="true">Argparse style: on CL in the form of --inputbam="foo.bam" if label below is "inputbam"</option>
@@ -313,13 +307,7 @@ ${interexe.dynScript}
     </conditional> 
   </inputs>
   <outputs>
-    <data name="output1" label="${tool_name}.${output_format}" format="tabular" metadata_source="input_file">
-        <filter>make_TAB=="yes"</filter>
-        <actions>
-          <action type="format">
-                <option type="from_param" name="output_format" />
-          </action>
-        </actions>
+    <data name="output1" label="${tool_name}.${output_format}" format="$output_format" metadata_source="input_file">
     </data>
     <data format="toolshed.gz" name="new_tool" label="${tool_name}.toolshed.gz">
         <filter>makeMode['make_Tool'] == "yes"</filter>
@@ -335,7 +323,6 @@ ${interexe.dynScript}
     <param name="tool_desc" value='testing_tf2' />
     <param name="help_text" value='help text goes here' />
     <param name='include_deps' value='yes' />
-    <param name="make_TAB" value="yes" />
     <param name="output_format" value="tabular" />
     <param name="input_formats" value="tabular" />
     <param name="interpreter" value='python3' />
