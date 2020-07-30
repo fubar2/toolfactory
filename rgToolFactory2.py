@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 # 
@@ -100,7 +99,6 @@ class ScriptRunner:
 		cleanup inputs, setup some outputs
 		
 		"""
-		self.logf = open('/home/ross/rossgit/toolfactory/tmp/toolfactory.log','w')
 		lastclredirect = None
 		self.cl = []
 		aCL = self.cl.append
@@ -122,10 +120,7 @@ class ScriptRunner:
 			tscript.close()
 			self.indentedScript = "  %s" % '\n'.join([' %s' % html_escape(x) for x in rx]) # for restructured text in help
 			self.escapedScript = "%s" % '\n'.join([' %s' % html_escape(x) for x in rx])
-			if self.args.interpreter_name == 'python': # work around - actually python3 now but for conda deps....
-				aCL('python3')
-			else:
-				aCL(self.args.interpreter_name)
+			aCL(self.args.interpreter_name)
 			aCL(self.sfile)
 		self.elog = os.path.join(self.args.output_dir,"%s_error.log" % self.tool_name)
 		if args.output_dir: # may not want these complexities 
@@ -191,7 +186,6 @@ class ScriptRunner:
 					aCL(v) # add the stdout parameter last
 		self.test1Output = '%s_test1_output.xls' % self.tool_name
 		self.test1HTML = '%s_test1_output.html' % self.tool_name
-		self.logf.write('### cl=%s\n' % str(' '.join(self.cl)))
 		
 	def makeXML(self):
 		"""
@@ -245,7 +239,6 @@ class ScriptRunner:
 				requirements.append(gxtp.Requirement('package', self.args.exe_package,self.args.exe_package_version))
 		tool.requirements = requirements
 		for i,infpath in enumerate(self.infile_paths):
-			assert len(self.infile_name[i]) > 0,'Newname supplied for input parameter %s is empty' % self.infile_label[i]
 			if self.args.parampass == 0:
 				assert len(self.infile_name) == 1,'Maximum one "<" if parampass is 0 - more than one input files supplied'
 			newname = self.infile_name[i]
@@ -253,7 +246,11 @@ class ScriptRunner:
 				ndash = 2
 			else:
 				ndash = 1	
-			aninput = gxtp.DataParam(self.infile_name[i],optional=False, label=self.infile_label[i], help=self.infile_help[i], \
+			if not len(self.infile_label[i]) > 0:
+				alab = self.infile_name[i]
+			else:
+				alab = self.infile_label[i]
+			aninput = gxtp.DataParam(self.infile_name[i],optional=False, label=alab, help=self.infile_help[i], \
 				format=self.infile_format[i],multiple=False,num_dashes=ndash)
 			if self.args.parampass == '0':
 				aninput.command_line_override = '< $%s' % self.infile_name[i]
@@ -261,14 +258,14 @@ class ScriptRunner:
 			inputs.append(aninput)
 		for parm in self.args.additional_parameters:
 			newname,newval,newlabel,newhelp,newtype,newcl = parm.split(ourdelim)
-			assert len(newname) > 0,'Newname supplied for parameter %s is empty' % newlabel
+			if not len(newlabel) > 0:
+				newlabel = newname
 			if len(newname) > 1:
 				ndash = 2
 			else:
 				ndash = 1	
 			if newtype == "text":
 				aparm = gxtp.TextParam(newname,label=newlabel,help=newhelp,value=newval,num_dashes=ndash)
-				aparm.command_line_override = '--%s "$%s"' % (newname,newname) # needed for spacey ones
 			elif newtype == "integer":
 				aparm = gxtp.IntegerParam(newname,label=newname,help=newhelp,value=newval,num_dashes=ndash)
 			elif newtype == "float":
@@ -317,7 +314,6 @@ class ScriptRunner:
 		xf.write(exml)
 		xf.write('\n')
 		xf.close()
-		self.logf.write('xml=%s\n' % exml)
 		# ready for the tarball
 
 
@@ -447,14 +443,13 @@ def main():
 	args = parser.parse_args()
 	assert not args.bad_user,'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (args.bad_user,args.bad_user)
 	assert args.tool_name,'## Tool Factory expects a tool name - eg --tool_name=DESeq'
-	assert args.interpreter_name or args.exe_package,'## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript or an executable package findable by the dependency management package'
+	assert (args.interpreter_name or args.exe_package),'## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript or an executable package findable by the dependency management package'
 	assert args.exe_package or (len(args.script_path) > 0 and os.path.isfile(args.script_path)),'## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable'
 	if args.output_dir:
 		try:
 			os.makedirs(args.output_dir)
 		except:
 			pass
-	#logging.basicConfig(filename=os.path.join(args.output_dir,'toolfactory.log'),level=logging.DEBUG,format='%(asctime)s %(message)s',filemode='w')
 	args.input_files = [x.replace('"','').replace("'",'') for x in args.input_files]
 	for i,x in enumerate(args.additional_parameters): # remove quotes we need to deal with spaces in CL params
 		args.additional_parameters[i] = args.additional_parameters[i].replace('"','')
@@ -463,8 +458,6 @@ def main():
 		retcode = r.makeTooltar()
 	else:
 		retcode = r.run()
-	os.unlink(r.sfile)
-	r.logf.close()
 	if retcode:
 		sys.exit(retcode) # indicate failure to job runner
 

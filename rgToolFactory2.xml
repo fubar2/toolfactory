@@ -97,21 +97,22 @@
     </xml>
   </macros>
    <requirements>
-      <requirement type="package">python3</requirement>
+      <requirement type="package">python</requirement>
+      <requirement type="package">galaxyxml</requirement>
   </requirements>
-  <command><![CDATA[
+  <command interpreter="python"><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
  #else:
 $__tool_directory__/rgToolFactory2.py --script_path "$runme" 
-   #if $interexe.interpreter == "Executable":
+   #if str($interexe.interpreter)=="Executable":
 --exe_package="$interexe.exe_package" --exe_package_version="$interexe.exe_package_version"
    #else:
---interpreter_name "$interexe.interpreter"
+--interpreter_name="$interexe.interpreter"
      #if not str($interexe.interpreter) in ['bash','sh']:
---interpreter_version "$interexe.interpreter_version"
+--interpreter_version="$interexe.interpreter_version"
      #end if
    #end if
 --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
@@ -217,7 +218,7 @@ ${interexe.dynScript}
 		<param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
 		help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
 			<option value="Executable" selected="true">An executable binary to be provided and managed by the Conda dependency management subsystem</option>
-			<option value="python">python3</option>
+			<option value="python">python</option>
 			<option value="r-base">Rscript</option>
 			<option value="perl">perl</option>
 			<option value="bash">bash</option>
@@ -321,20 +322,18 @@ ${interexe.dynScript}
 
 <tests>
 <test>
-    <param name='input_file' value='tf2_test_in.xls' ftype='tabular' />
-    <param name='tool_name' value='tf2_test' />
+    <param name='input_files' value='infile.tabular' ftype='tabular' />
+    <param name='script_path' value='runme.py' />
+    <param name='tool_name' value='reverseargp2_test1' />
     <param name='make_Tool' value='yes' />
     <param name='tool_version' value='0.01' />
     <param name="tool_desc" value='testing_tf2' />
     <param name="help_text" value='help text goes here' />
-    <param name='include_deps' value='yes' />
     <param name="output_format" value="tabular" />
     <param name="input_formats" value="tabular" />
-    <param name="interpreter" value='python3' />
-    <param name="envpath" value='system' />
-    <param name="runme" value="tf2_test_runme.py"/>
-    <output name='output1' file='tf2_test_out.xls' compare='diff' lines_diff = '10'/>
-    <output name='new_tool' file="tf2_test.toolshed.gz" compare="sim_size" delta="600" />
+    <param name="interpreter" value='python' />
+    <output name='output1' file='reverseargp2_test1_output.xls' compare='diff' lines_diff = '10'/>
+    <output name='new_tool' file="reverseargp2.toolshed.gz" compare="sim_size" delta="600" />
 </test>
 </tests>
 <help>
