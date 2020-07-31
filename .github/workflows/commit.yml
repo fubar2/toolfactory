@@ -44,7 +44,7 @@ jobs:
     - name: Planemo lint
       run: planemo lint .
     - name: Planemo test tools
-      run: planemo test --galaxy_root $GALAXY_REPO --test_output_json tool_test_output.json --galaxy_python_version ${{ matrix.python-version }}  .
+      run: planemo test --test_output tool_test_output.html --conda_use_local --conda_dependency_resolution --galaxy_root $GALAXY_REPO --test_output_json tool_test_output.json --galaxy_python_version ${{ matrix.python-version }}  .
     - name: Copy artifacts into place
       run: |
         mkdir upload
