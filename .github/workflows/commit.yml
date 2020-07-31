@@ -32,7 +32,7 @@ jobs:
     - name: make venv ready for this galaxy and planemo 
       run:  |
         python3 -m venv $GITHUB_WORKSPACE/galaxy/.venv
-        . .venv/bin/activate
+        . $GITHUB_WORKSPACE/galaxy/.venv/bin/activate
         pip install pip
         pip install wheel
         pip install -r requirements.txt
