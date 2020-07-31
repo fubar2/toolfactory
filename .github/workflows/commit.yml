@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7]
+        python-version: [3.6]
     steps:
     - name: Print github context properties
       run: |
@@ -63,7 +63,7 @@ jobs:
         PIP_QUIET=1 planemo test --galaxy_python_version ${{ matrix.python-version }} --no_conda_auto_init --galaxy_source $GALAXY_REPO --galaxy_branch $GALAXY_RELEASE
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0
+        fetch-depth: 1
     # The range of commits to check for changes is:
     # - `origin/master...` for all events happening on a feature branch
     # - for events on the master branch we compare against the sha before the event
@@ -99,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7]
+        python-version: [3.6]
     steps:
     # checkout the repository
     # and use it as the current working directory
@@ -124,42 +124,42 @@ jobs:
     - name: Install Planemo
       run: pip install planemo
     - name: Planemo lint
-      run: planemo shed_lint --tools --ensure_metadata --urls --report_level warn --fail_level error --recursive "."
+      run: planemo lint rgToolFactory.xml
 
-  # flake8 of Python scripts in the changed repositories
-  flake8:
-    name: Lint Python scripts
-    needs: setup
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.7]
-    steps:
-    # checkout the repository to master
-    # and use it as the current working directory
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
-    - uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-    - uses: actions/download-artifact@v2
-      with:
-        name: Workflow artifacts
-        path: ../workflow_artifacts/
-    - name: Determine latest galaxy commit
-      run: echo ::set-env name=GALAXY_HEAD_SHA::$(cat ../workflow_artifacts/galaxy.sha)
-    - name: Cache .cache/pip
-      uses: actions/cache@v2
-      id: cache-pip
-      with:
-        path: ~/.cache/pip
-        key: pip_cache_py_${{ matrix.python-version }}_gxy_${{ env.GALAXY_HEAD_SHA }}
-    - name: Install flake8
-      run: pip install flake8 flake8-import-order
-    - name: Flake8
-      run: flake8 .
+  ## flake8 of Python scripts in the changed repositories
+  #flake8:
+    #name: Lint Python scripts
+    #needs: setup
+    #runs-on: ubuntu-latest
+    #strategy:
+      #fail-fast: false
+      #matrix:
+        #python-version: [3.6]
+    #steps:
+    ## checkout the repository to master
+    ## and use it as the current working directory
+    #- uses: actions/checkout@v2
+      #with:
+        #fetch-depth: 1
+    #- uses: actions/setup-python@v1
+      #with:
+        #python-version: ${{ matrix.python-version }}
+    #- uses: actions/download-artifact@v2
+      #with:
+        #name: Workflow artifacts
+        #path: ../workflow_artifacts/
+    #- name: Determine latest galaxy commit
+      #run: echo ::set-env name=GALAXY_HEAD_SHA::$(cat ../workflow_artifacts/galaxy.sha)
+    #- name: Cache .cache/pip
+      #uses: actions/cache@v2
+      #id: cache-pip
+      #with:
+        #path: ~/.cache/pip
+        #key: pip_cache_py_${{ matrix.python-version }}_gxy_${{ env.GALAXY_HEAD_SHA }}
+    #- name: Install flake8
+      #run: pip install flake8 flake8-import-order
+    #- name: Flake8
+      #run: flake8 .
 
 
   # Planemo test the changed repositories, each chunk creates an artifact
@@ -173,7 +173,7 @@ jobs:
       fail-fast: false
       matrix:
         chunk: [0, 1, 2, 3]
-        python-version: [3.7]
+        python-version: [3.6]
     services:
       postgres:
         image: postgres:11
@@ -214,7 +214,7 @@ jobs:
       run: pip install planemo
     - name: Planemo test tools
       run: |
-            PIP_QUIET=1 planemo test --database_connection postgresql://postgres:postgres@localhost:5432/galaxy --biocontainers 
+            PIP_QUIET=1 planemo test --database_connection postgresql://postgres:postgres@localhost:5432/galaxy 
             --no_dependency_resolution --no_conda_auto_init --galaxy_source $GALAXY_REPO --galaxy_branch $GALAXY_RELEASE 
             --galaxy_python_version ${{ matrix.python-version }} --test_output_json tool_test_output.json .
     - name: Merge tool_test_output.json files
@@ -240,7 +240,7 @@ jobs:
     needs: test
     strategy:
       matrix:
-        python-version: [3.7]
+        python-version: [3.6]
     # This job runs on Linux
     runs-on: ubuntu-latest
     steps:

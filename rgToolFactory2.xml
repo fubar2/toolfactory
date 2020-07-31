@@ -1,4 +1,4 @@
-<tool id="rgTF2" name="ToolFactory" version="2.00">
+<tool id="rgTF2" name="Tool_factory" version="2.00">
   <description>Scripts into tools</description>
   <macros>
      <xml name="addpar">
