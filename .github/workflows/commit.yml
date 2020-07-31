@@ -33,9 +33,9 @@ jobs:
       run:  |
         python3 -m venv $GITHUB_WORKSPACE/galaxy/.venv
         . $GITHUB_WORKSPACE/galaxy/.venv/bin/activate
-        pip install pip
+        pip install --upgrade pip
         pip install wheel
-        pip install -r requirements.txt
+        pip install -r $GITHUB_WORKSPACE/galaxy/requirements.txt
         pip install galaxyxml
     - name: Upgrade pip
       run: pip install --upgrade pip
