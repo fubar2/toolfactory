@@ -42,4 +42,12 @@ jobs:
     - name: Planemo lint
       run: planemo lint .
     - name: Planemo test tools
-      run: planemo test --galaxy_root $GALAXY_REPO --galaxy_python_version 3.6  .
+      run: planemo test --galaxy_root $GALAXY_REPO --test_output_json tool_test_output.json --galaxy_python_version 3.6  .
+    - name: Copy artifacts into place
+      run: |
+        mkdir upload
+        mv tool_test_output.json tool_test_output.html upload/
+    - uses: actions/upload-artifact@v2.0.1
+      with:
+        name: 'All tool test results'
+        path: upload
