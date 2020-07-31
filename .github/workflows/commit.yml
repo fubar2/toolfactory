@@ -28,7 +28,7 @@ jobs:
     # Repository name with owner. For example, actions/checkout
     # Default: ${{ github.repository }}
         repository: 'galaxyproject/galaxy'
-        path: '$GITHUB_WORKSPACE/galaxy'
+        path: 'galaxy'
     - name: make venv ready for this galaxy and planemo 
       run:  |
         python3 -m venv $GITHUB_WORKSPACE/galaxy/.venv
