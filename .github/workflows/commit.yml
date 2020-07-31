@@ -124,11 +124,7 @@ jobs:
     - name: Install Planemo
       run: pip install planemo
     - name: Planemo lint
-      run: |
-        set -e
-        while read -r DIR; do
-            planemo shed_lint --tools --ensure_metadata --urls --report_level warn --fail_level error --recursive "$DIR";
-        done < ../workflow_artifacts/changed_repositories.list
+      run: planemo shed_lint --tools --ensure_metadata --urls --report_level warn --fail_level error --recursive "."
 
   # flake8 of Python scripts in the changed repositories
   flake8:
@@ -163,65 +159,8 @@ jobs:
     - name: Install flake8
       run: pip install flake8 flake8-import-order
     - name: Flake8
-      run: |
-        if [ -s ../workflow_artifacts/changed_repositories.list ]; then
-            flake8 $(cat ../workflow_artifacts/changed_repositories.list)
-        fi
+      run: flake8 .
 
-  lintr:
-    name: Lint R scripts
-    needs: setup
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        r-version: [4.0.1]
-    steps:
-    # checkout the repository to master
-    # and use it as the current working directory
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
-    - uses: actions/download-artifact@v2
-      with:
-        name: Workflow artifacts
-        path: ../workflow_artifacts/
-    - uses: r-lib/actions/setup-r@master
-      with:
-        r-version: ${{ matrix.r-version }}
-    - name: Cache R packages
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.R_LIBS_USER }}
-        key: r_cache_${{ matrix.r-version }}
-    - name: Install non-R lintr dependencies
-      run: sudo apt-get install libcurl4-openssl-dev 
-    - name: Install lintr
-      run: |
-        install.packages('remotes')
-        remotes::install_cran("lintr")
-      shell: Rscript {0}
-    - name: lintr
-      run: |
-        library(lintr)
-        linters <- with_defaults(line_length_linter = NULL)
-        con <- file("../workflow_artifacts/changed_repositories.list", "r")
-        status <- 0
-        while (TRUE) {
-          repo <- readLines(con, n = 1)
-          if (length(repo) == 0) {
-             break
-          }
-          lnt <- lint_dir(repo, relative_path=T, linters=linters)
-          if (length(lnt) > 0) {
-            status <- 1
-            for (l in lnt) {
-              rel_path <- paste(repo, l$filename, sep="/")
-              write(paste(paste(rel_path, l$line_number, l$column_number, sep=":"), l$message), stderr())
-            }
-          }
-        }
-        quit(status = status)
-      shell: Rscript {0}
 
   # Planemo test the changed repositories, each chunk creates an artifact
   # containing HTML and JSON reports for the executed tests
@@ -273,40 +212,11 @@ jobs:
         key: planemo_cache_py_${{ matrix.python-version }}_gxy_${{ env.GALAXY_HEAD_SHA }}
     - name: Install Planemo
       run: pip install planemo
-    - name: Planemo ci_find_tools
-      run: |
-        touch changed_repositories_chunk.list changed_tools_chunk.list
-        if [ -s ../workflow_artifacts/changed_repositories.list ]; then
-            if [ $(wc -l < ../workflow_artifacts/changed_repositories.list) -eq 1 ]; then
-                planemo ci_find_tools --chunk_count 4 --chunk ${{ matrix.chunk }} \
-                               --output changed_tools_chunk.list \
-                               $(cat ../workflow_artifacts/changed_repositories.list)
-            else
-                planemo ci_find_repos --chunk_count 4 --chunk ${{ matrix.chunk }} \
-                               --output changed_repositories_chunk.list \
-                               $(cat ../workflow_artifacts/changed_repositories.list)
-            fi
-        fi
-    - name: Show changed tools/repositories chunk list
-      run: cat changed_tools_chunk.list changed_repositories_chunk.list
     - name: Planemo test tools
       run: |
-        if [ -s changed_tools_chunk.list ]; then
-            PIP_QUIET=1 planemo test --database_connection postgresql://postgres:postgres@localhost:5432/galaxy --biocontainers --no_dependency_resolution --no_conda_auto_init --galaxy_source $GALAXY_REPO --galaxy_branch $GALAXY_RELEASE --galaxy_python_version ${{ matrix.python-version }} --test_output_json tool_test_output.json $(cat changed_tools_chunk.list) || true
-            docker system prune --all --force --volumes || true
-        elif [ -s changed_repositories_chunk.list ]; then
-            while read -r DIR; do
-                if [[ "$DIR" =~ ^data_managers.* ]]; then
-                    TESTPATH=$(planemo ci_find_tools "$DIR")
-                else
-                    TESTPATH="$DIR"
-                fi
-                PIP_QUIET=1 planemo test --database_connection postgresql://postgres:postgres@localhost:5432/galaxy --biocontainers --no_dependency_resolution --no_conda_auto_init --galaxy_source $GALAXY_REPO --galaxy_branch $GALAXY_RELEASE --galaxy_python_version ${{ matrix.python-version }} --test_output_json "$DIR"/tool_test_output.json "$TESTPATH" || true
-                docker system prune --all --force --volumes || true
-            done < changed_repositories_chunk.list
-        else
-            echo '{"tests":[]}' > tool_test_output.json
-        fi
+            PIP_QUIET=1 planemo test --database_connection postgresql://postgres:postgres@localhost:5432/galaxy --biocontainers 
+            --no_dependency_resolution --no_conda_auto_init --galaxy_source $GALAXY_REPO --galaxy_branch $GALAXY_RELEASE 
+            --galaxy_python_version ${{ matrix.python-version }} --test_output_json tool_test_output.json .
     - name: Merge tool_test_output.json files
       run: find . -name tool_test_output.json -exec sh -c 'planemo merge_test_reports "$@" tool_test_output.json' sh {} +
     - name: Create tool_test_output.html

@@ -1,0 +1,13 @@
+name: ToolFactory
+owner: fubar
+description: ToolFactory - tool to make Galaxy tools ready for the toolshed
+homepage_url: https://github.com/fubar2/toolfactory
+long_description: |
+    ToolFactory - turn executable packages and R/python/perl/bash scripts into ordinary Galaxy tools
+
+    Creating re-usable tools from scripts: The Galaxy Tool Factory Ross Lazarus; Antony Kaspi; Mark Ziemann; The Galaxy Team 
+    Bioinformatics 2012; doi: 10.1093/bioinformatics/bts573
+remote_repository_url: https://github.com/fubar2/toolfactory
+type: tool_dependency_definition
+categories:
+- Tool Generators
