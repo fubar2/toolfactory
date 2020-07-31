@@ -64,32 +64,6 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-    # The range of commits to check for changes is:
-    # - `origin/master...` for all events happening on a feature branch
-    # - for events on the master branch we compare against the sha before the event
-    #   (note that this does not work for feature branch events since we want all
-    #   commits on the feature branch and not just the commits of the last event)
-    # - for pull requests we compare against the 1st ancestor, given the current
-    #   HEAD is the merge between the PR branch and the base branch
-    - name: Set commit range (push to the feature branch)
-      if: github.ref != 'refs/heads/master' && github.event_name == 'push'
-      run: |
-        git fetch origin master
-        echo ::set-env name=COMMIT_RANGE::"origin/master..."
-    - name: Set commit range (push to the master branch, e.g. merge)
-      if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-      run: echo ::set-env name=COMMIT_RANGE::${{ github.event.before }}..""
-    - name: Set commit range (pull request)
-      if: github.event_name == 'pull_request'
-      run: echo ::set-env name=COMMIT_RANGE::"HEAD~.."
-    - name: Planemo ci_find_repos
-      run: planemo ci_find_repos --changed_in_commit_range ${{ env.COMMIT_RANGE }} --exclude packages --exclude deprecated --output changed_repositories.list
-    - name: Show repo list
-      run: cat changed_repositories.list
-    - uses: actions/upload-artifact@v2.0.1
-      with:
-        name: Workflow artifacts
-        path: changed_repositories.list
 
   # Planemo lint the changed repositories
   lint:
@@ -110,9 +84,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - uses: actions/download-artifact@v2
-      with:
-        name: Workflow artifacts
-        path: ../workflow_artifacts/
     - name: Determine latest galaxy commit
       run: echo ::set-env name=GALAXY_HEAD_SHA::$(cat ../workflow_artifacts/galaxy.sha)
     - name: Cache .cache/pip
