@@ -28,16 +28,16 @@ jobs:
     # Repository name with owner. For example, actions/checkout
     # Default: ${{ github.repository }}
         repository: 'galaxyproject/galaxy'
+        path: '$GITHUB_WORKSPACE/galaxy'
     - name: make venv ready for this galaxy and planemo 
       run:  |
-        cd galaxy
+        cd '$GITHUB_WORKSPACE/galaxy'
         python3 -m venv .venv
         . .venv/bin/activate
         pip install --upgrade pip
         pip install wheel
         pip install -r requirements.txt
         pip install galaxyxml
-
     - name: Upgrade pip
       run: pip install --upgrade pip
     # Install the `wheel` package so that when installing other packages which
@@ -52,7 +52,7 @@ jobs:
     - name: Planemo lint
       run: planemo lint .
     - name: Planemo test tool
-      run: planemo test --test_output tool_test_output.html --conda_use_local --conda_dependency_resolution --galaxy_root ./galaxy --test_output_json tool_test_output.json --galaxy_python_version ${{ matrix.python-version }}  .
+      run: planemo test --test_output tool_test_output.html --conda_use_local --conda_dependency_resolution --galaxy_root $GITHUB_WORKSPACE/galaxy --test_output_json tool_test_output.json --galaxy_python_version ${{ matrix.python-version }}  .
     - name: Copy artifacts into place
       run: |
         mkdir upload
