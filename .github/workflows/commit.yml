@@ -95,7 +95,7 @@ jobs:
     - name: Install Planemo
       run: pip install planemo
     - name: Planemo lint
-      run: planemo lint rgToolFactory.xml
+      run: planemo lint .
 
   ## flake8 of Python scripts in the changed repositories
   #flake8:
