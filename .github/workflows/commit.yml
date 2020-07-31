@@ -4,13 +4,6 @@ env:
   GALAXY_REPO: https://github.com/galaxyproject/galaxy
   GALAXY_RELEASE: release_20.05
 jobs:
-  # the setup job does two things:
-  # 1. cache the pip cache and .planemo
-  # 2. determine the list of changed repositories
-  # it produces one artifact which contains
-  # - a file with the latest SHA from the chosen branch of the Galaxy repo
-  # - a file containing the list of changed repositories
-  # which are needed in subsequent steps.
   setup:
     name: test a git repository containing a galaxy tool before commit or PR
     runs-on: ubuntu-latest
@@ -30,6 +23,21 @@ jobs:
     - uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    - uses: actions/checkout@v2
+      with:
+    # Repository name with owner. For example, actions/checkout
+    # Default: ${{ github.repository }}
+        repository: 'galaxyproject/galaxy'
+    - name: make venv ready for this galaxy and planemo 
+      run:  |
+        cd galaxy
+        python3 -m venv .venv
+        . .venv/bin/activate
+        pip install --upgrade pip
+        pip install wheel
+        pip install -r requirements.txt
+        pip install galaxyxml
+
     - name: Upgrade pip
       run: pip install --upgrade pip
     # Install the `wheel` package so that when installing other packages which
@@ -43,8 +51,8 @@ jobs:
         fetch-depth: 1
     - name: Planemo lint
       run: planemo lint .
-    - name: Planemo test tools
-      run: planemo test --test_output tool_test_output.html --conda_use_local --conda_dependency_resolution --galaxy_root $GALAXY_REPO --test_output_json tool_test_output.json --galaxy_python_version ${{ matrix.python-version }}  .
+    - name: Planemo test tool
+      run: planemo test --test_output tool_test_output.html --conda_use_local --conda_dependency_resolution --galaxy_root ./galaxy --test_output_json tool_test_output.json --galaxy_python_version ${{ matrix.python-version }}  .
     - name: Copy artifacts into place
       run: |
         mkdir upload
