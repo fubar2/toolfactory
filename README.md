@@ -137,14 +137,9 @@ installation in any production Galaxy configured to use your toolshed.
 Once you install a generated tool, it's just
 another tool - assuming the script is safe. They just run normally and their
 user cannot do anything unusually insecure but please, practice safe toolshed.
-Read the fucking code before you install any tool. Especially this one -
-it is really scary.
+Read the code before you install any tool. Especially this one - it is really scary.
 
-If you opt for an HTML output, you get all the script outputs arranged
-as a single Html history item - all output files are linked, thumbnails for
-all the pdfs. Ugly but really inexpensive.
-
-**Send Code***
+**Send Code**
 
 Patches and suggestions welcome as bitbucket issues please?
 
