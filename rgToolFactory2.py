@@ -102,8 +102,8 @@ class ScriptRunner:
 
     def __init__(self, args=None):
         """
-        cleanup inputs, setup some outputs
-
+        prepare command line cl for running the tool here
+        and prepare elements needed for galaxyxml tool generation
         """
         lastclredirect = None
         self.cl = []
@@ -154,7 +154,7 @@ class ScriptRunner:
         self.infile_help = []
         if self.args.input_files:
             aif = [x.split(ourdelim) for x in self.args.input_files]
-            # transpose the input_files array
+            # transpose the input_files array passed as
             # --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
             laif = list(map(list, zip(*aif)))
             self.infile_paths, self.infile_cl, self.infile_format, self.infile_label, self.infile_help = laif
@@ -168,7 +168,7 @@ class ScriptRunner:
                     scl = 'input%d' % (i + 1)
                 # make a list of internal names for each input file
                 self.infile_name.append(scl)
-        # list all (cl param) pairs - positional needs sorting by cl index
+        # list all (cl param) pairs - positional needs sorting by cl index so decorate
         clsuffix = []
         clsuffix.append([self.args.output_cl, self.args.output_tab])
         if self.args.parampass == '0':  # only need two
