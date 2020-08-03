@@ -172,8 +172,8 @@ ${interexe.dynScript}
   </configfiles>
   <inputs>
 
-   <param name="tool_name" type="text" value="My dynamic script"   label="New tool ID and title for outputs" size="60"
-         help="This will become the toolshed repository name so please choose thoughtfully to avoid namespace clashes with other tool writers">
+   <param name="tool_name" type="text" value="new_tool"   label="New tool ID and title for outputs" size="60"
+         help="This will become the toolshed repository name so choose thoughtfully to avoid namespace clashes with other tool writers. lower case, digits and underscores only">
         <sanitizer invalid_char="">
             <valid initial="string.letters,string.digits">
                 <add value="_"/>
@@ -202,7 +202,7 @@ ${interexe.dynScript}
       <mapping initial="none"/>
     </sanitizer>
     </param>
-    <param name="input_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDIN' if your script reads from STDIN"
+    <param name="input_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Leave blank if your script reads from STDIN"
       help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">         
     </param>
     <param name="output_format" type="select" multiple="false" label="Select the Galaxy datatype that your tool/script emits as output for the new history item"
@@ -211,7 +211,7 @@ ${interexe.dynScript}
         <column name="value" index="0"/>
      </options>
     </param>
-    <param name="output_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Use 'STDOUT' if your script writes to stdout"
+    <param name="output_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Leave blank if your script writes to stdout"
       help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">
      </param>          
     <conditional name="interexe">
@@ -347,7 +347,7 @@ ${interexe.dynScript}
 Only users whose IDs found in the local admin_user configuration setting in universe_wsgi.ini can run this tool.
 
 **If you find a bug** 
-Please raise an issue at the bitbucket repository GTFI_
+Please raise an issue, or even better, submit a pull request fixing it, on the github repository GTF_
 
 **What it does** 
 This tool optionally generates normal workflow compatible first class Galaxy tools
@@ -435,8 +435,7 @@ All rights reserved.
 Licensed under the LGPL_
 
 .. _LGPL: http://www.gnu.org/copyleft/lesser.html
-.. _GTF:  https://bitbucket.org/fubar/galaxytoolfactory
-.. _GTFI:  https://bitbucket.org/fubar/galaxytoolfactory/issues
+.. _GTF:  https://github.com/fubar2/toolfactory
 .. _Paper: http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573
 
 

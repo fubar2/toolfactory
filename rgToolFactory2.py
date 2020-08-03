@@ -164,18 +164,21 @@ class ScriptRunner:
             for i, scl in enumerate(self.infile_cl):
                 if scl.isdigit():
                     scl = 'input%s' % scl
-                if scl.upper() in ['STDOUT', 'STDIN']:
+                if scl.strip().upper() in ['STDOUT', 'STDIN','']:
                     scl = 'input%d' % (i + 1)
                 # make a list of internal names for each input file
                 self.infile_name.append(scl)
         # list all (cl param) pairs - positional needs sorting by cl index so decorate
         clsuffix = []
         clsuffix.append([self.args.output_cl, self.args.output_tab])
+        self.testoutname = None # not used for parampass != '0'
         if self.args.parampass == '0':  # only need two
             aCL('<')
             aCL('%s' % self.infile_paths[0])
             aCL('>')
-            aCL('%s' % self.args.output_tab)
+            self.testoutname = 'output1.%s' % self.infile_format[0]
+            aCL(self.testoutname)
+
         else:
             for i, p in enumerate(self.infile_paths):
                 # decorator is cl - sort for positional
@@ -208,8 +211,9 @@ class ScriptRunner:
             if lastclredirect:
                 for v in lastclredirect:
                     aCL(v)  # add the stdout parameter last
-        self.test1Output = '%s_test1_output.xls' % self.tool_name
-        self.test1HTML = '%s_test1_output.html' % self.tool_name
+        oext = self.args.output_format
+        self.test1Output = '%s_test1_output.%s' % (self.tool_name,oext)
+
 
     def makeXML(self):
         """
@@ -241,10 +245,9 @@ class ScriptRunner:
         outputs = gxtp.Outputs()
         requirements = gxtp.Requirements()
         testparam = []
+        testinputs = []
+        testoutputs = []
         is_positional = (self.args.parampass == 'positional')
-        if self.args.include_dependencies == "yes":
-            requirements.append(gxtp.Requirement('package', 'ghostscript'))
-            requirements.append(gxtp.Requirement('package', 'graphicsmagick'))
         if self.args.interpreter_name:
             if self.args.interpreter_name == 'python':  # always needed for this runner script
                 requirements.append(gxtp.Requirement(
@@ -257,82 +260,87 @@ class ScriptRunner:
                 requirements.append(gxtp.Requirement(
                     'package', self.args.exe_package, self.args.exe_package_version))
         tool.requirements = requirements
-        for i, infpath in enumerate(self.infile_paths):
-            if self.args.parampass == 0:
-                assert len(
-                    self.infile_name) == 1, 'Maximum one "<" if parampass is 0 - more than one input files supplied'
-            newname = self.infile_name[i]
-            if len(newname) > 1:
-                ndash = 2
-            else:
-                ndash = 1
-            if not len(self.infile_label[i]) > 0:
-                alab = self.infile_name[i]
-            else:
-                alab = self.infile_label[i]
-            aninput = gxtp.DataParam(self.infile_name[i], optional=False, label=alab, help=self.infile_help[i],
-                                     format=self.infile_format[i], multiple=False, num_dashes=ndash)
-            if self.args.parampass == '0':
-                aninput.command_line_override = '< $%s' % self.infile_name[i]
-            aninput.positional = is_positional
+        if self.args.parampass == '0':
+            alab = self.infile_label[0]
+            if len(alab) == 0:
+                alab = self.infile_name[0]
+            max1s = 'Maximum one input if parampass is 0 - more than one input files supplied - %s' % str(self.infile_name)
+            assert len(self.infile_name) == 1,max1s
+            aninput = gxtp.DataParam('input1', optional=False, label=alab, help=self.infile_help[0],
+                                    format=self.infile_format[0], multiple=False, num_dashes=0)
+            aninput.command_line_override = '< $input1'
             inputs.append(aninput)
-        for parm in self.args.additional_parameters:
-            newname, newval, newlabel, newhelp, newtype, newcl = parm.split(
-                ourdelim)
-            if not len(newlabel) > 0:
-                newlabel = newname
-            if len(newname) > 1:
-                ndash = 2
-            else:
-                ndash = 1
-            if newtype == "text":
-                aparm = gxtp.TextParam(
-                    newname, label=newlabel, help=newhelp, value=newval, num_dashes=ndash)
-            elif newtype == "integer":
-                aparm = gxtp.IntegerParam(
-                    newname, label=newname, help=newhelp, value=newval, num_dashes=ndash)
-            elif newtype == "float":
-                aparm = gxtp.FloatParam(
-                    newname, label=newname, help=newhelp, value=newval, num_dashes=ndash)
-            else:
-                raise ValueError('Unrecognised parameter type "%s" for\
-                 additional parameter %s in makeXML' % (newtype, newname))
+            aparm = gxtp.OutputData('output1', format=self.args.output_format, num_dashes=1)
+            aparm.command_line_override = '> $output1'
             aparm.positional = is_positional
-            inputs.append(aparm)
-            tparm = gxtp.TestParam(newname, value=newval)
-            testparam.append(tparm)
+            outputs.append(aparm)
+            newname = '%s.%s' % (self.infile_name[0],self.infile_format[0])
+            tp = gxtp.TestParam(name='input1', value=newname)
+            testparam.append(tp)
+            tp = gxtp.TestOutput(name='output1', value=self.test1Output,format=self.infile_format[0])
+            testparam.append(tp)
+        else:
+            for i, infpath in enumerate(self.infile_paths):
+                newname = self.infile_name[i]
+                if len(newname) > 1:
+                    ndash = 2
+                else:
+                    ndash = 1
+                if not len(self.infile_label[i]) > 0:
+                    alab = self.infile_name[i]
+                else:
+                    alab = self.infile_label[i]
+                aninput = gxtp.DataParam(self.infile_name[i], optional=False, label=alab, help=self.infile_help[i],
+                                         format=self.infile_format[i], multiple=False, num_dashes=ndash)
+                aninput.positional = is_positional
+                inputs.append(aninput)
+                tp = gxtp.TestParam(name=self.infile_name[i], value='$%s' % self.infile_name[i] ,format=self.infile_format[i])
+                testparam.append(tp)
+            for parm in self.args.additional_parameters:
+                newname, newval, newlabel, newhelp, newtype, newcl = parm.split(
+                    ourdelim)
+                if not len(newlabel) > 0:
+                    newlabel = newname
+                if len(newname) > 1:
+                    ndash = 2
+                else:
+                    ndash = 1
+                if newtype == "text":
+                    aparm = gxtp.TextParam(
+                        newname, label=newlabel, help=newhelp, value=newval, num_dashes=ndash)
+                elif newtype == "integer":
+                    aparm = gxtp.IntegerParam(
+                        newname, label=newname, help=newhelp, value=newval, num_dashes=ndash)
+                elif newtype == "float":
+                    aparm = gxtp.FloatParam(
+                        newname, label=newname, help=newhelp, value=newval, num_dashes=ndash)
+                else:
+                    raise ValueError('Unrecognised parameter type "%s" for\
+                     additional parameter %s in makeXML' % (newtype, newname))
+                aparm.positional = is_positional
+                inputs.append(aparm)
+                tparm = gxtp.TestParam(newname, value=newval)
+                testparam.append(tparm)
+            newname = self.args.output_tab
+            newfmt = self.args.output_format
+            ndash = 2
+            if len(newname) < 2:
+                ndash = 1
+            aparm = gxtp.OutputData(newname, format=newfmt, num_dashes=ndash)
+            aparm.positional = is_positional
+            outputs.append(aparm)
+            
+
+
+        tool.outputs = outputs
         tool.inputs = inputs
         configfiles = gxtp.Configfiles()
         configfiles.append(gxtp.Configfile(name="runMe", text=self.script))
         tool.configfiles = configfiles
-        if self.args.output_tab:
-            ext = self.args.output_format
-            aparm = gxtp.OutputData(
-                self.args.output_cl, format=ext, num_dashes=ndash)
-            if is_positional:
-                aparm.command_line_override = '> $output1'
-            aparm.positional = is_positional
-            outputs.append(aparm)
-        tool.outputs = outputs
         tests = gxtp.Tests()
         test_a = gxtp.Test()
-        ext = self.infile_format[0].split(',')[0]
-        if is_positional:
-            param = gxtp.TestParam(
-                'input1', value='input1.%s' % ext, ftype=ext)
-        else:
-            param = gxtp.TestParam(self.infile_name[0], value='%s.%s' % (
-                self.infile_name[0], ext), ftype=ext)
-        test_a.append(param)
-        param = gxtp.TestParam('job_name', value='test_a')
-        test_a.append(param)
-        param = gxtp.TestParam('runMe', value="$runMe")
-        test_a.append(param)
-        for aparam in testparam:
-            test_a.append(aparam)
-        test_out = gxtp.TestOutput(
-            name=self.args.output_cl, value=self.test1Output)
-        test_a.append(test_out)
+        for tp in testparam:
+            test_a.append(tp)
         tests.append(test_a)
         tool.tests = tests
         tool.add_comment('Created by %s at %s using the Galaxy Tool Factory.' % (
@@ -465,7 +473,6 @@ def main():
     a('--tool_desc', default=None)
     a('--new_tool', default=None)
     a('--tool_version', default=None)
-    a('--include_dependencies', default=None)
     a('--citations', default=None)
     a('--additional_parameters', dest='additional_parameters',
       action='append', default=[])
