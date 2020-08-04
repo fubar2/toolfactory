@@ -40,6 +40,26 @@ debug = True
 toolFactoryURL = 'https://github.com/fubar2/toolfactory'
 ourdelim = '~~~'
 
+# --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
+IPATHPOS = 0
+ICLPOS = 1
+IFMTPOS = 2
+ILABPOS = 3
+IHELPOS = 4
+
+# --output_files "$otab.history_name~~~$otab.history_format~~~$otab.CL
+ONAMEPOS = 0
+OFMTPOS = 1
+OCLPOS = 2
+
+
+#--additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
+ANAMEPOS = 0
+AVALPOS = 1
+ALABPOS = 1
+AHELPPOS = 1
+ATYPEPOS = 1
+ACLPOS = 1
 
 def timenow():
     """return current time as a string
@@ -105,13 +125,15 @@ class ScriptRunner:
         prepare command line cl for running the tool here
         and prepare elements needed for galaxyxml tool generation
         """
-        lastclredirect = None
+        self.infiles = [x.split(ourdelim) for x in args.input_files]
+        self.outfiles = [x.split(ourdelim) for x in args.output_files]
+        self.addpar = [x.split(ourdelim) for x in args.additional_parameters]
+        self.cleanuppar()
+        self.lastclredirect = None
         self.cl = []
         aCL = self.cl.append
-        if args.output_dir:  # simplify for the tool tarball
-            os.chdir(args.output_dir)
         self.args = args
-        # a sanitizer now does this but..
+        assert args.parampass in ['0','argparse','positional'],'Parameter passing in args.parampass must be "0","positional" or "argparse"'
         self.tool_name = re.sub('[^a-zA-Z0-9_]+', '', args.tool_name)
         self.tool_id = self.tool_name
         self.xmlfile = '%s.xml' % self.tool_name
@@ -134,85 +156,87 @@ class ScriptRunner:
                 [' %s' % html_escape(x) for x in rx])
             aCL(self.args.interpreter_name)
             aCL(self.sfile)
-        self.elog = os.path.join(self.args.output_dir,
-                                 "%s_error.log" % self.tool_name)
-        if args.output_dir:  # may not want these complexities
-            self.tlog = os.path.join(
-                self.args.output_dir, "%s_runner.log" % self.tool_name)
-            art = '%s.%s' % (self.tool_name, args.interpreter_name)
-            artpath = os.path.join(
-                self.args.output_dir,
-                art)  # need full path
-            # use self.sfile as script source for Popen
-            artifact = open(artpath, 'w')
-            artifact.write(self.script)
-            artifact.close()
-        self.infile_paths = []
-        self.infile_format = []
-        self.infile_cl = []
-        self.infile_label = []
-        self.infile_help = []
-        if self.args.input_files:
-            aif = [x.split(ourdelim) for x in self.args.input_files]
-            # transpose the input_files array passed as
-            # --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
-            laif = list(map(list, zip(*aif)))
-            self.infile_paths, self.infile_cl, self.infile_format, self.infile_label, self.infile_help = laif
-            self.infile_name = []
-            # positionals have integers indicating order - need valid internal
-            # names
-            for i, scl in enumerate(self.infile_cl):
-                if scl.isdigit():
-                    scl = 'input%s' % scl
-                if scl.strip().upper() in ['STDOUT', 'STDIN','']:
-                    scl = 'input%d' % (i + 1)
-                # make a list of internal names for each input file
-                self.infile_name.append(scl)
-        # list all (cl param) pairs - positional needs sorting by cl index so decorate
-        clsuffix = []
-        clsuffix.append([self.args.output_cl, self.args.output_tab])
-        self.testoutname = None # not used for parampass != '0'
-        if self.args.parampass == '0':  # only need two
-            aCL('<')
-            aCL('%s' % self.infile_paths[0])
-            aCL('>')
-            self.testoutname = 'output1.%s' % self.infile_format[0]
-            aCL(self.testoutname)
-
+        self.elog = "%s_error_log.txt" % self.tool_name
+        self.tlog = "%s_runner_log.txt" % self.tool_name
+        art = '%s.%s' % (self.tool_name, args.interpreter_name)
+        # use self.sfile as script source for Popen
+        artifact = open(art, 'wb')
+        artifact.write(bytes(self.script, "utf8"))
+        artifact.close()
+        if self.args.parampass == '0':
+            self.clsimple()
         else:
-            for i, p in enumerate(self.infile_paths):
+            clsuffix = []
+            for i, p in enumerate(self.infiles):
                 # decorator is cl - sort for positional
-                clsuffix.append([self.infile_cl[i], p])
-            for p in self.args.additional_parameters:
-                psplit = p.split(ourdelim)
-                pform = psplit[5]
-                if pform == 'STDOUT':
-                    lastclredirect = ['>', psplit[1]]
-                else:
-                    clsuffix.append([pform, psplit[1]])  # cl,value
+                clsuffix.append([p[ICLPOS], p[IPATHPOS]])
+            for i, p in enumerate(self.outfiles):
+                # decorator is cl - sort for positional
+                clsuffix.append([p[OCLPOS], p[OCLPOS]])            
+            for p in self.args.additional_parameters: 
+                clsuffix.append([p[ACLPOS], p[AVALPOS]])  # cl,value
             clsuffix.sort()
-            if self.args.parampass == "positional":
-                # inputs in order then params in order TODO fix ordering using
-                # self.infile_cl
-                for (k, v) in clsuffix:
-                    if ' ' in v:
-                        aCL("v")
-                    else:
-                        aCL(v)
-            elif self.args.parampass == "argparse":
-                # inputs then params in argparse named form
-                for (k, v) in clsuffix:
-                    if ' ' in v:
-                        aCL('--%s' % k)
-                        aCL('"%s"' % v)
-                    else:
-                        aCL('--%s' % k)
-                        aCL('%s' % v)
-            if lastclredirect:
-                for v in lastclredirect:
-                    aCL(v)  # add the stdout parameter last
-        oext = self.args.output_format
-        self.test1Output = '%s_test1_output.%s' % (self.tool_name,oext)
+            if self.args.parampass == 'positional':
+                self.clpositional(clsuffix)
+            else:
+                self.clargparse(clsuffix)
+                
+    def cleanuppar(self):
+        """ positional parameters are complicated by their numeric ordinal"""
+        for i,p in enumerate(self.infiles):
+            if p[ICLPOS].isdigit() or p[ICLPOS].strip().upper() in ['STDOUT', 'STDIN']:
+                scl = 'input%s' % p[ICLPOS]
+                self.infiles[i][ICLPOS] = scl
+        for i,p in enumerate(self.outfiles):  # trying to automagically gather using extensions
+            if p[OCLPOS].isdigit() or p[OCLPOS].strip().upper() in ['STDOUT', 'STDIN']:
+                scl = 'output%s.%s' % (p[OCLPOS],p[OFMTPOS])
+                self.outfiles[i][OCLPOS] = scl
+            if not p[ONAMEPOS].endswith(p[OFMTPOS]):
+                self.outfiles[i][ONAMEPOS] = '%s_%s' % (p[ONAMEPOS],p[OFMTPOS])
+        for i,p in enumerate(self.addpar):
+            if p[ACLPOS].isdigit() or p[ACLPOS].strip().upper() in ['STDOUT', 'STDIN']:
+                scl = 'param%s' % p[ACLPOS]
+                self.addpar[i][ACLPOS] = scl
+                
+ 
+            
+    def clsimple(self):
+        """ no parameters - uses < and > for i/o
+        """
+        aCL = self.cl.append
+        aCL('<')
+        aCL('%s' % self.infiles[0][IPATHPOS])
+        aCL('>')
+        ocl = self.outfiles[0][OCLPOS] # galaxy name
+        aCL(ocl)
+
+    def clpositional(self,clsuffix):
+        # inputs in order then params
+        aCL = self.cl.append
+        for (k, v) in clsuffix:
+            if ' ' in v:
+                aCL("%s" % v)
+            else:
+                aCL(v)
+        if self.lastclredirect:
+            aCL(self.lastclredirect[0])  # add the stdout parameter last
+            aCL(self.lastclredirect[1])
+
+    def clargparse(self,clsuffix):
+        """ no parameters - uses < and > for i/o
+        """
+        aCL = self.cl.append
+        # inputs then params in argparse named form
+        for (k, v) in clsuffix:
+            if ' ' in v:
+                aCL('--%s' % k)
+                aCL('"%s"' % v)
+            else:
+                aCL('--%s' % k)
+                aCL('%s' % v)
+        if self.lastclredirect:
+            aCL(self.lastclredirect[0])  # add the stdout parameter last
+            aCL(self.lastclredirect[1])
 
 
     def makeXML(self):
@@ -241,12 +265,10 @@ class ScriptRunner:
             tool.help = 'Please ask the tool author (%s) for help \
               as none was supplied at tool generation\n' % (self.args.user_email)
         tool.version_command = None  # do not want
-        inputs = gxtp.Inputs()
-        outputs = gxtp.Outputs()
+        tinputs = gxtp.Inputs()
+        toutputs = gxtp.Outputs()
         requirements = gxtp.Requirements()
         testparam = []
-        testinputs = []
-        testoutputs = []
         is_positional = (self.args.parampass == 'positional')
         if self.args.interpreter_name:
             if self.args.interpreter_name == 'python':  # always needed for this runner script
@@ -260,51 +282,74 @@ class ScriptRunner:
                 requirements.append(gxtp.Requirement(
                     'package', self.args.exe_package, self.args.exe_package_version))
         tool.requirements = requirements
-        if self.args.parampass == '0':
-            alab = self.infile_label[0]
+        if self.args.parampass == '0': # foo < input1.txt > output1.txt
+            alab = self.infiles[0][ILABPOS]
             if len(alab) == 0:
-                alab = self.infile_name[0]
-            max1s = 'Maximum one input if parampass is 0 - more than one input files supplied - %s' % str(self.infile_name)
-            assert len(self.infile_name) == 1,max1s
-            aninput = gxtp.DataParam('input1', optional=False, label=alab, help=self.infile_help[0],
-                                    format=self.infile_format[0], multiple=False, num_dashes=0)
-            aninput.command_line_override = '< $input1'
-            inputs.append(aninput)
-            aparm = gxtp.OutputData('output1', format=self.args.output_format, num_dashes=1)
-            aparm.command_line_override = '> $output1'
-            aparm.positional = is_positional
-            outputs.append(aparm)
-            newname = '%s.%s' % (self.infile_name[0],self.infile_format[0])
-            tp = gxtp.TestParam(name='input1', value=newname)
+                alab = self.infiles[0][ICLPOS]
+            max1s = 'Maximum one input if parampass is 0 - more than one input files supplied - %s' % str(self.infiles)
+            assert len(self.infiles) == 1,max1s
+            newname = self.infiles[0][ICLPOS]
+            aninput = gxtp.DataParam(newname, optional=False, label=alab, help=self.infiles[0][IHELPOS],
+                                    format=self.infiles[0][IFMTPOS], multiple=False, num_dashes=0)
+            aninput.command_line_override = '< $%s' % newname
+            tinputs.append(aninput)
+            tp = gxtp.TestParam(name=newname, value='%s.sample' % newname)
             testparam.append(tp)
-            tp = gxtp.TestOutput(name='output1', value=self.test1Output,format=self.infile_format[0])
+            newname = self.outfiles[0][OCLPOS]
+            newfmt = self.outfiles[0][OFMTPOS]
+            anout = gxtp.OutputData(newname, format=newfmt, num_dashes=0)
+            anout.command_line_override = '> $%s' % newname
+            anout.positional = is_positional
+            toutputs.append(anout)
+            tp = gxtp.TestOutput(name=newname, value='%s.sample' % newname,format=newfmt)
             testparam.append(tp)
         else:
-            for i, infpath in enumerate(self.infile_paths):
-                newname = self.infile_name[i]
-                if len(newname) > 1:
+            for p in self.outfiles:
+                newname,newfmt,newcl = p
+                if is_positional:
+                    ndash = 0
+                else:
                     ndash = 2
-                else:
-                    ndash = 1
-                if not len(self.infile_label[i]) > 0:
-                    alab = self.infile_name[i]
-                else:
-                    alab = self.infile_label[i]
-                aninput = gxtp.DataParam(self.infile_name[i], optional=False, label=alab, help=self.infile_help[i],
-                                         format=self.infile_format[i], multiple=False, num_dashes=ndash)
-                aninput.positional = is_positional
-                inputs.append(aninput)
-                tp = gxtp.TestParam(name=self.infile_name[i], value='$%s' % self.infile_name[i] ,format=self.infile_format[i])
+                    if len(newcl) < 2:
+                        ndash = 1
+                aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
+                aparm.positional = is_positional
+                if is_positional:
+                    aparm.command_line_override = '$%s' % newcl
+                toutputs.append(aparm)
+                tp = gxtp.TestOutput(name=newcl, value='%s.sample' % newcl ,format=newfmt)
                 testparam.append(tp)
-            for parm in self.args.additional_parameters:
-                newname, newval, newlabel, newhelp, newtype, newcl = parm.split(
-                    ourdelim)
+            for p in self.infiles:
+                newname = p[ICLPOS]
+                newfmt = p[IFMTPOS]
+                if is_positional:
+                    ndash = 0
+                else:
+                    if len(newname) > 1:
+                        ndash = 2
+                    else:
+                        ndash = 1
+                if not len(p[ILABPOS]) > 0:
+                    alab = p[ICLPOS]
+                else:
+                    alab = p[ILABPOS]
+                aninput = gxtp.DataParam(newname, optional=False, label=alab, help=p[IHELPOS],
+                                         format=newfmt, multiple=False, num_dashes=ndash)
+                aninput.positional = is_positional
+                tinputs.append(aninput)
+                tparm = gxtp.TestParam(name=newname, value='%s.sample' % newname )
+                testparam.append(tparm)
+            for p in self.addpar:
+                newname, newval, newlabel, newhelp, newtype, newcl = p
                 if not len(newlabel) > 0:
                     newlabel = newname
-                if len(newname) > 1:
-                    ndash = 2
+                if is_positional:
+                    ndash = 0
                 else:
-                    ndash = 1
+                    if len(newname) > 1:
+                        ndash = 2
+                    else:
+                        ndash = 1
                 if newtype == "text":
                     aparm = gxtp.TextParam(
                         newname, label=newlabel, help=newhelp, value=newval, num_dashes=ndash)
@@ -318,22 +363,11 @@ class ScriptRunner:
                     raise ValueError('Unrecognised parameter type "%s" for\
                      additional parameter %s in makeXML' % (newtype, newname))
                 aparm.positional = is_positional
-                inputs.append(aparm)
+                tinputs.append(aparm)
                 tparm = gxtp.TestParam(newname, value=newval)
                 testparam.append(tparm)
-            newname = self.args.output_tab
-            newfmt = self.args.output_format
-            ndash = 2
-            if len(newname) < 2:
-                ndash = 1
-            aparm = gxtp.OutputData(newname, format=newfmt, num_dashes=ndash)
-            aparm.positional = is_positional
-            outputs.append(aparm)
-            
-
-
-        tool.outputs = outputs
-        tool.inputs = inputs
+        tool.outputs = toutputs
+        tool.inputs = tinputs
         configfiles = gxtp.Configfiles()
         configfiles.append(gxtp.Configfile(name="runMe", text=self.script))
         tool.configfiles = configfiles
@@ -359,6 +393,8 @@ class ScriptRunner:
         """
         a tool is a gz tarball with eg
         /toolname/tool.xml /toolname/tool.py /toolname/test-data/test1_in.foo ...
+        NOTE names for test inputs and outputs are munged here so must
+        correspond to actual input and output names used on the generated cl
         """
         retval = self.run()
         if retval:
@@ -372,32 +408,35 @@ class ScriptRunner:
         testdir = os.path.join(tdir, 'test-data')
         if not os.path.exists(testdir):
             os.mkdir(testdir)  # make tests directory
-        for i, infile in enumerate(self.infile_paths):
-            dest = os.path.join(testdir, '%s.%s' %
-                                (self.infile_name[i], self.infile_format[i]))
-            if infile != dest:
-                shutil.copyfile(infile, dest)
-        if self.args.output_tab and os.path.exists(self.args.output_tab):
-            shutil.copyfile(self.args.output_tab,
-                            os.path.join(testdir, self.test1Output))
-        else:
-            print('#### no output_tab %s exists' % self.args.output_tab)
-        if self.args.output_dir:
-            if os.path.exists(self.tlog):
-                shutil.copyfile(self.tlog, os.path.join(
-                    testdir, 'test1_out.log'))
+        for p in self.infiles:
+            pth = p[IPATHPOS]
+            dest = os.path.join(testdir, '%s.sample' % 
+              p[ICLPOS])
+            shutil.copyfile(pth, dest)
+        for p in self.outfiles:
+            pth = p[OCLPOS]
+            dest = os.path.join(testdir, '%s.sample' % 
+              p[OCLPOS])
+            shutil.copyfile(pth, dest)            
+        if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
+            shutil.copyfile(self.tlog, os.path.join(
+                testdir, 'test1_log.txt'))
         stname = os.path.join(tdir, self.sfile)
         if not os.path.exists(stname):
             shutil.copyfile(self.sfile, stname)
         xtname = os.path.join(tdir, self.xmlfile)
         if not os.path.exists(xtname):
             shutil.copyfile(self.xmlfile, xtname)
-        tarpath = "%s.tar.gz" % self.tool_name
+        tarpath = "%s_toolshed_tar.gz" % self.tool_name
         tar = tarfile.open(tarpath, "w:gz")
         tar.add(tdir, recursive=True, arcname='%s' % self.tool_name)
         tar.close()
-        shutil.copyfile(tarpath, self.args.new_tool)
-        shutil.rmtree(tdir)
+        tardir = 'tardir'
+        if not os.path.exists(tardir):
+            os.mkdir(tardir)
+        dest = os.path.join(tardir,tarpath)
+        shutil.copyfile(tarpath, dest)
+        # shutil.rmtree(tdir)
         # TODO: replace with optional direct upload to local toolshed?
         return retval
 
@@ -409,6 +448,7 @@ class ScriptRunner:
         logging.debug('run cl=%s' % str(self.cl))
         scl = ' '.join(self.cl)
         err = None
+        os.chdir(self.args.tfout)
         if self.args.parampass != '0':
             ste = open(self.elog, 'wb')
             sto = open(self.tlog, 'wb')
@@ -416,7 +456,7 @@ class ScriptRunner:
                 bytes('## Executing Toolfactory generated command line = %s\n' % scl, "utf8"))
             sto.flush()
             p = subprocess.run(self.cl, shell=False, stdout=sto,
-                               stderr=ste, cwd=self.args.output_dir)
+                               stderr=ste)
             sto.close()
             ste.close()
             tmp_stderr = open(self.elog, 'rb')
@@ -432,16 +472,19 @@ class ScriptRunner:
             tmp_stderr.close()
             retval = p.returncode
         else:  # work around special case of simple scripts that take stdin and write to stdout
-            sti = open(self.infile_paths[0], 'rb')
-            sto = open(self.args.output_tab, 'wb')
+            sti = open(self.infiles[0][IPATHPOS], 'rb')
+            sto = open(self.outfiles[0][OCLPOS], 'wb')
             # must use shell to redirect
             p = subprocess.run(self.cl, shell=False, stdout=sto, stdin=sti)
             retval = p.returncode
             sto.close()
             sti.close()
-        if self.args.output_dir:
-            if p.returncode != 0 and err:  # problem
-                sys.stderr.write(err)
+        if os.path.isfile(self.tlog) and os.stat(self.tlog).st_size == 0:
+            os.unlink(self.tlog)
+        if os.path.isfile(self.elog) and os.stat(self.elog).st_size == 0:
+            os.unlink(self.elog)
+        if p.returncode != 0 and err:  # problem
+            sys.stderr.write(err)
         logging.debug('run done')
         return retval
 
@@ -460,24 +503,19 @@ def main():
     a('--interpreter_version', default=None)
     a('--exe_package', default=None)
     a('--exe_package_version', default=None)
-    a('--output_dir', default='./')
     a('--input_files', default=[], action="append")
-    a("--input_formats", default="tabular")
-    a('--output_tab', default=None)
-    a('--output_format', default='tabular')
-    a('--output_cl', default=None)
+    a('--output_files', default=[], action="append")
     a('--user_email', default='Unknown')
     a('--bad_user', default=None)
     a('--make_Tool', default=None)
     a('--help_text', default=None)
     a('--tool_desc', default=None)
-    a('--new_tool', default=None)
     a('--tool_version', default=None)
     a('--citations', default=None)
-    a('--additional_parameters', dest='additional_parameters',
-      action='append', default=[])
+    a('--additional_parameters', action='append', default=[])
     a('--edit_additional_parameters', action="store_true", default=False)
     a('--parampass', default="positional")
+    a('--tfout', default="./tfout")
     args = parser.parse_args()
     assert not args.bad_user, 'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (
         args.bad_user, args.bad_user)
@@ -485,17 +523,13 @@ def main():
     assert (args.interpreter_name or args.exe_package), '## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript or an executable package findable by the dependency management package'
     assert args.exe_package or (len(args.script_path) > 0 and os.path.isfile(
         args.script_path)), '## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable'
-    if args.output_dir:
-        try:
-            os.makedirs(args.output_dir)
-        except BaseException:
-            pass
     args.input_files = [x.replace('"', '').replace("'", '')
                         for x in args.input_files]
     # remove quotes we need to deal with spaces in CL params
     for i, x in enumerate(args.additional_parameters):
         args.additional_parameters[i] = args.additional_parameters[i].replace(
             '"', '')
+    os.makedirs(args.tfout, exist_ok=True)
     r = ScriptRunner(args)
     if args.make_Tool:
         retcode = r.makeTooltar()

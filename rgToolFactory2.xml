@@ -1,14 +1,9 @@
 <tool id="rgTF2" name="toolfactory" version="2.00">
   <description>Scripts into tools</description>
   <macros>
-     <xml name="addpar">
-        <param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
-             help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
-            <option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
-            <option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
-        </param>
-        <repeat name="additional_history_inputs" title="Additional Current history data files to pass in to the script - Use the '+' button to add as many as needed"
-             help="Each of these will become a history item selector as input for users of the new tool you are making">
+     <xml name="io">
+        <repeat name="history_inputs" title="Current history data files to pass in to the script - Use the '+' button to add as many as needed"
+             help="USE SMALL SAMPLES because these will be used for the new tool's test. The names will become a history item selector as input for users of the new tool you are making">
             <param name="input_files" type="data" format="data" label="Select an input file from your history" optional="true" size="120" multiple="false"
                help=""/>
             <param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
@@ -35,6 +30,28 @@
               help="If you will pass positional parameters, enter the integer ordinal for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">          
             </param>
         </repeat>
+        <repeat name="history_outputs" title="Tool run output files to be added to the user's history - Use the '+' button to add as many as needed"
+             help="The name will become a history item for users of the new tool you are making containing one of it's outputs">
+            <param name="history_name" type="text" label="Name for this output to appear in new history" optional="false" size="120" 
+               help=""/>
+            <param name="history_format" type="select" multiple="false" label="Select the datatype for this output"
+              help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
+               <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
+                <column name="value" index="0"/>
+               </options>
+            </param>
+            <param name="CL" type="text" size="60" label="Positional: ordinal integer. Argparse: argument name expected for this output parameter"
+              help="If positional parameters, enter the integer ordinal expected for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">          
+            </param>
+        </repeat>
+     </xml>
+     <xml name="additparam">
+        <param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
+             help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
+            <option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
+            <option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
+        </param>
+
         <repeat name="additional_parameters" title="Pass additional parameters to the script"
              help="See examples below to see how these can be parsed by scripts in the various languages">
           <param name="param_name" type="text" value="parameter_name" label="Choose the name for this parameter" size="60">
@@ -116,12 +133,10 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
      #end if
    #end if
 --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
---output_tab="$output1" --output_format="$output_format" --output_cl="$output_CL"
    #if str($makeMode.make_Tool)=="yes":
 --make_Tool="$makeMode.make_Tool"
 --tool_desc="$makeMode.tool_desc"
 --tool_version="$makeMode.tool_version"
---new_tool="$new_tool"
 --help_text="$helpme"
    #end if
    #if $ppass.parampass != '0':
@@ -132,14 +147,15 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
      #end for
    #end if
---output_dir="."
-   #if str($input_files) != '':
---input_files="$input_files~~~$input_CL~~~$input_formats~~~$input_label~~~$input_help"
-   #end if
-   #if $ppass.parampass != '0' and $ppass.additional_history_inputs:
-     #for $intab in $ppass.additional_history_inputs:
+   #if $ppass.history_inputs:
+     #for $intab in $ppass.history_inputs:
 --input_files="$intab.input_files~~~$intab.CL~~~$intab.input_formats~~~$intab.param_label~~~$intab.param_help"
      #end for
+   #end if
+   #if $ppass.history_outputs:
+       #for $otab in $ppass.history_outputs:
+--output_files "$otab.history_name~~~$otab.history_format~~~$otab.CL"
+       #end for
    #end if
 #end if 
 ]]></command>
@@ -172,48 +188,14 @@ ${interexe.dynScript}
   </configfiles>
   <inputs>
 
-   <param name="tool_name" type="text" value="new_tool"   label="New tool ID and title for outputs" size="60"
+   <param name="tool_name" type="text" value="tool1"   label="New tool ID and title for outputs" size="60"
          help="This will become the toolshed repository name so choose thoughtfully to avoid namespace clashes with other tool writers. lower case, digits and underscores only">
         <sanitizer invalid_char="">
             <valid initial="string.letters,string.digits">
                 <add value="_"/>
             </valid>
         </sanitizer>
-    </param>
-    <param name="input_files"  format="data" type="data" label="Select a small test input file" optional="true" size="120" multiple="false"
-       help="This will be used to test the new tool to generate a built in test for the generated tool"/>
-    <param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts for this input"
-      help="If not listed here, datatypes can be added in galaxy's datatypes_conf.xml." value="tabular">
-       <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-        <column name="value" index="0"/>
-       </options>
-     </param>
-    <param name="input_label" type="text" value="parameter_label" label="Data input user prompt on the generated tool form" size="60" 
-     help="Describe the input file so the user can understand how it will be used" >
-    <sanitizer invalid_char="">
-      <valid initial="string.printable"> <remove value='~~~'/> </valid>
-      <mapping initial="none"/>
-    </sanitizer>
-    </param>
-    <param name="input_help" type="text" value="parameter_help" label="Data input user help on the generated tool form"
-     help="Enter text to appear as help for the user on the generated tool form" size="60">
-    <sanitizer invalid_char="">
-      <valid initial="string.printable"> <remove value='~~~'/> </valid>
-      <mapping initial="none"/>
-    </sanitizer>
-    </param>
-    <param name="input_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Leave blank if your script reads from STDIN"
-      help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">         
-    </param>
-    <param name="output_format" type="select" multiple="false" label="Select the Galaxy datatype that your tool/script emits as output for the new history item"
-      help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
-     <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
-        <column name="value" index="0"/>
-     </options>
-    </param>
-    <param name="output_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--'. Leave blank if your script writes to stdout"
-      help="If you will pass positional parameters, enter the integer index for this parameter on the command line. If Argparse style, '--' will be prepended on the CL" value="">
-     </param>          
+    </param>    
     <conditional name="interexe">
         <param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
         help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
@@ -244,21 +226,25 @@ ${interexe.dynScript}
            <expand macro="builtin_dynpar" />
         </when>
     </conditional>
-    <conditional name="ppass">
+    <conditional name = "ppass">
+
         <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
             <option value="argparse" selected="true">Argparse style: on CL in the form of --inputbam="foo.bam" if label below is "inputbam"</option>
             <option value="positional">Positional: on CL in the order defined on this screen -> "... foo.bam bar.idx zot.xls"</option>
             <option value="0">No parameters needed because tool reads selected history file from STDIN and writes to STDOUT for history"</option>
         </param>
-        <when value="0">
-        </when>
         <when value = "argparse">
-            <expand macro="addpar" />
+            <expand macro="io" />
+            <expand macro="additparam" />
         </when>
         <when value = "positional">
-            <expand macro="addpar" />
+            <expand macro="io" />
+            <expand macro="additparam" />
         </when>
-    </conditional>
+        <when value = "0">
+             <expand macro="io"/>
+        </when>
+    </conditional>    
     <conditional name="makeMode">
         <param name="make_Tool" type="select" display="radio" label="Generate new tool as  a tar.gz file ready to upload to a toolshed repository" 
           help="Generate a toolshed archive - upload to a toolshed from where it can be auto-installed via the Galaxy admin functions" 
@@ -308,36 +294,30 @@ ${interexe.dynScript}
     </conditional> 
   </inputs>
   <outputs>
-    <data name="output1" label="${tool_name}.${output_format}" format="tabular" metadata_source="input_file">
-        <actions>
-          <action type="format">
-                <option type="from_param" name="output_format" />
-          </action>
-        </actions>
-    </data>
-    <data format="toolshed.gz" name="new_tool" label="${tool_name}.toolshed.gz">
+    <collection name="ToolFactory outputs" type="list" label="${tool_name} outputs">
+       <discover_datasets pattern="__designation_and_ext__" directory="tfout" />
+    </collection>
+   <data format="gz" name="new_tool" label="${tool_name}_toolshed.gz" from_work_directory = "tardir">
         <filter>makeMode['make_Tool'] == "yes"</filter>
-    </data>
+    </data>    
   </outputs>
 
 <tests>
 <test>
-    <param name='input_files' value='infile.tabular' ftype='tabular' />
+    <param name='input_files' value='infile.sample~~~infile.sample~~~txt' ftype='tabular' />
     <param name='script_path' value='runme.py' />
     <param name='tool_name' value='reverseargp2_test1' />
     <param name='make_Tool' value='yes' />
     <param name='tool_version' value='0.01' />
     <param name="tool_desc" value='testing_tf2' />
     <param name="help_text" value='help text goes here' />
-    <param name="output_format" value="tabular" />
-    <param name="input_formats" value="tabular" />
     <param name="interpreter" value='python' />
-    <output name='output1' file='reverseargp2_test1_output.xls' compare='diff' lines_diff = '10'/>
-    <output name='new_tool' file="reverseargp2.toolshed.gz" compare="sim_size" delta="600" />
+    <output name='output_files' file='reverseargp2_test1_output.xls' compare='diff' lines_diff = '10'/>
+    <output name='reverseargp2.toolshed.gz' file="reverseargp2.toolshed.gz.sample" compare="sim_size" delta="600" />
 </test>
 </tests>
 <help>
-    
+
 .. class:: warningmark
 
 **Details and attribution** 
