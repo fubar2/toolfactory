@@ -2,7 +2,7 @@
   <description>Scripts into tools</description>
   <macros>
      <xml name="io">
-        <repeat name="history_inputs" title="Current history data files to pass in to the script - Use the '+' button to add as many as needed"
+        <repeat name="history_inputs" title="Add a data file from your history to pass in to the script. Use the '+' button as needed"
              help="USE SMALL SAMPLES because these will be used for the new tool's test. The names will become a history item selector as input for users of the new tool you are making">
             <param name="input_files" type="data" format="data" label="Select an input file from your history" optional="true" size="120" multiple="false"
                help=""/>
@@ -30,7 +30,7 @@
               help="If you will pass positional parameters, enter the integer ordinal for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">          
             </param>
         </repeat>
-        <repeat name="history_outputs" title="Tool run output files to be added to the user's history - Use the '+' button to add as many as needed"
+        <repeat name="history_outputs" title="Add a tool run output file to the user's history from your tool - Use the '+' button to add as many as needed"
              help="The name will become a history item for users of the new tool you are making containing one of it's outputs">
             <param name="history_name" type="text" label="Name for this output to appear in new history" optional="false" size="120" 
                help=""/>
@@ -46,7 +46,7 @@
         </repeat>
      </xml>
      <xml name="additparam">
-        <param name="edit_params" type="select" display="radio" label="Add all additional parameters to the generated tool form so they are user editable?" 
+        <param name="edit_params" type="select" display="radio" label="Add any additional parameters to the generated tool form so they are user editable?" 
              help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
             <option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
             <option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
@@ -294,10 +294,13 @@ ${interexe.dynScript}
     </conditional> 
   </inputs>
   <outputs>
-    <collection name="ToolFactory outputs" type="list" label="${tool_name} outputs">
-       <discover_datasets pattern="__designation_and_ext__" directory="tfout" />
+    <collection name="ToolFactory outputs" type="list" label="Toolfactory ${tool_name} test run outputs">
+       <discover_datasets pattern="__name_and_ext__" directory="tfout" />
     </collection>
-   <data format="gz" name="new_tool" label="${tool_name}_toolshed.gz" from_work_directory = "tardir">
+    <collection name="Test data for new tool" type="list" label="Toolfactory ${tool_name} new tool test-data contents">
+       <discover_datasets pattern="__name_and_ext__" directory="tfout/test-data" />
+    </collection>
+   <data format="gz" name="new_tool_gz" label="Toolfactory ${tool_name} tool shed archive to upload - ${tool_name}_toolshed.gz" from_work_directory = "tardir">
         <filter>makeMode['make_Tool'] == "yes"</filter>
     </data>    
   </outputs>

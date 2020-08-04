@@ -401,11 +401,11 @@ class ScriptRunner:
             sys.stderr.write(
                 '## Run failed. Cannot build yet. Please fix and retry')
             sys.exit(1)
-        tdir = 'tdir_%s' % self.tool_name
+        tdir = 'tfout' 
         if not os.path.exists(tdir):
             os.mkdir(tdir)
         self.makeXML()
-        testdir = os.path.join(tdir, 'test-data')
+        testdir = os.path.join('test-data')
         if not os.path.exists(testdir):
             os.mkdir(testdir)  # make tests directory
         for p in self.infiles:
@@ -417,17 +417,19 @@ class ScriptRunner:
             pth = p[OCLPOS]
             dest = os.path.join(testdir, '%s.sample' % 
               p[OCLPOS])
-            shutil.copyfile(pth, dest)            
+            shutil.copyfile(pth, dest)  
+            dest = os.path.join(tdir, '%s.%s' % (p[OCLPOS],p[OFMTPOS]))
+            shutil.copyfile(pth, dest)              
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
             shutil.copyfile(self.tlog, os.path.join(
                 testdir, 'test1_log.txt'))
-        stname = os.path.join(tdir, self.sfile)
+        stname = os.path.join(tdir, '%s.txt' % (self.sfile))
         if not os.path.exists(stname):
             shutil.copyfile(self.sfile, stname)
-        xtname = os.path.join(tdir, self.xmlfile)
+        xtname = os.path.join(tdir, "%s.txt" % (self.xmlfile))
         if not os.path.exists(xtname):
             shutil.copyfile(self.xmlfile, xtname)
-        tarpath = "%s_toolshed_tar.gz" % self.tool_name
+        tarpath = "new_tool_gz"
         tar = tarfile.open(tarpath, "w:gz")
         tar.add(tdir, recursive=True, arcname='%s' % self.tool_name)
         tar.close()
@@ -448,7 +450,6 @@ class ScriptRunner:
         logging.debug('run cl=%s' % str(self.cl))
         scl = ' '.join(self.cl)
         err = None
-        os.chdir(self.args.tfout)
         if self.args.parampass != '0':
             ste = open(self.elog, 'wb')
             sto = open(self.tlog, 'wb')
