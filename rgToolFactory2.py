@@ -405,7 +405,7 @@ class ScriptRunner:
         if not os.path.exists(tdir):
             os.mkdir(tdir)
         self.makeXML()
-        testdir = os.path.join('test-data')
+        testdir = os.path.join(tdir,'test-data')
         if not os.path.exists(testdir):
             os.mkdir(testdir)  # make tests directory
         for p in self.infiles:
@@ -418,7 +418,7 @@ class ScriptRunner:
             dest = os.path.join(testdir, '%s.sample' % 
               p[OCLPOS])
             shutil.copyfile(pth, dest)  
-            dest = os.path.join(tdir, '%s.%s' % (p[OCLPOS],p[OFMTPOS]))
+            dest = os.path.join(tdir, p[OCLPOS])
             shutil.copyfile(pth, dest)              
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
             shutil.copyfile(self.tlog, os.path.join(
@@ -426,18 +426,17 @@ class ScriptRunner:
         stname = os.path.join(tdir, '%s.txt' % (self.sfile))
         if not os.path.exists(stname):
             shutil.copyfile(self.sfile, stname)
-        xtname = os.path.join(tdir, "%s.txt" % (self.xmlfile))
+        xtname = os.path.join(tdir,self.xmlfile)
         if not os.path.exists(xtname):
             shutil.copyfile(self.xmlfile, xtname)
-        tarpath = "new_tool_gz"
-        tar = tarfile.open(tarpath, "w:gz")
-        tar.add(tdir, recursive=True, arcname='%s' % self.tool_name)
-        tar.close()
-        tardir = 'tardir'
-        if not os.path.exists(tardir):
-            os.mkdir(tardir)
-        dest = os.path.join(tardir,tarpath)
-        shutil.copyfile(tarpath, dest)
+        tarpath = 'toolfactory_%s.tgz' % self.tool_name
+        tf = tarfile.open(tarpath,"w:gz")
+        tf.add(name=tdir,arcname=self.tool_name)
+        tf.close()
+        shutil.copyfile(tarpath, self.args.new_tool)
+        #dl = os.listdir(tdir)
+        #for f in dl:
+        #    shutil.copyfile(src=f,dst=os.path.basename(f))
         # shutil.rmtree(tdir)
         # TODO: replace with optional direct upload to local toolshed?
         return retval
@@ -517,6 +516,7 @@ def main():
     a('--edit_additional_parameters', action="store_true", default=False)
     a('--parampass', default="positional")
     a('--tfout', default="./tfout")
+    a('--new_tool',default="new_tool")
     args = parser.parse_args()
     assert not args.bad_user, 'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (
         args.bad_user, args.bad_user)

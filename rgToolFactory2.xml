@@ -138,6 +138,7 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
 --tool_desc="$makeMode.tool_desc"
 --tool_version="$makeMode.tool_version"
 --help_text="$helpme"
+--new_tool="$new_tool"
    #end if
    #if $ppass.parampass != '0':
      #if str($ppass.edit_params) == "yes":
@@ -294,15 +295,12 @@ ${interexe.dynScript}
     </conditional> 
   </inputs>
   <outputs>
-    <collection name="ToolFactory outputs" type="list" label="Toolfactory ${tool_name} test run outputs">
-       <discover_datasets pattern="__name_and_ext__" directory="tfout" />
+    <collection name="ToolFactory outputs" type="list" label="Toolfactory ${tool_name} test run outputs" format="txt">
+       <discover_datasets pattern="__name__" directory="tfout/test-data" format="txt"/>
     </collection>
-    <collection name="Test data for new tool" type="list" label="Toolfactory ${tool_name} new tool test-data contents">
-       <discover_datasets pattern="__name_and_ext__" directory="tfout/test-data" />
-    </collection>
-   <data format="gz" name="new_tool_gz" label="Toolfactory ${tool_name} tool shed archive to upload - ${tool_name}_toolshed.gz" from_work_directory = "tardir">
+    <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz">
         <filter>makeMode['make_Tool'] == "yes"</filter>
-    </data>    
+    </data>
   </outputs>
 
 <tests>
@@ -316,7 +314,7 @@ ${interexe.dynScript}
     <param name="help_text" value='help text goes here' />
     <param name="interpreter" value='python' />
     <output name='output_files' file='reverseargp2_test1_output.xls' compare='diff' lines_diff = '10'/>
-    <output name='reverseargp2.toolshed.gz' file="reverseargp2.toolshed.gz.sample" compare="sim_size" delta="600" />
+    <output name='new_tool' file="reverseargp2_toolshed.gz.sample" compare="sim_size" delta="600" />
 </test>
 </tests>
 <help>
