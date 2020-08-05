@@ -189,10 +189,8 @@ class ScriptRunner:
                 self.infiles[i][ICLPOS] = scl
         for i,p in enumerate(self.outfiles):  # trying to automagically gather using extensions
             if p[OCLPOS].isdigit() or p[OCLPOS].strip().upper() in ['STDOUT', 'STDIN']:
-                scl = 'output%s.%s' % (p[OCLPOS],p[OFMTPOS])
+                scl = 'output%s' % (p[OCLPOS])
                 self.outfiles[i][OCLPOS] = scl
-            if not p[ONAMEPOS].endswith(p[OFMTPOS]):
-                self.outfiles[i][ONAMEPOS] = '%s_%s' % (p[ONAMEPOS],p[OFMTPOS])
         for i,p in enumerate(self.addpar):
             if p[ACLPOS].isdigit() or p[ACLPOS].strip().upper() in ['STDOUT', 'STDIN']:
                 scl = 'param%s' % p[ACLPOS]
