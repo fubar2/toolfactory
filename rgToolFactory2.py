@@ -46,20 +46,21 @@ ICLPOS = 1
 IFMTPOS = 2
 ILABPOS = 3
 IHELPOS = 4
-
+IOCLPOS = 5
 # --output_files "$otab.history_name~~~$otab.history_format~~~$otab.CL
 ONAMEPOS = 0
 OFMTPOS = 1
 OCLPOS = 2
-
+OOCLPOS = 3
 
 #--additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
 ANAMEPOS = 0
 AVALPOS = 1
-ALABPOS = 1
-AHELPPOS = 1
-ATYPEPOS = 1
-ACLPOS = 1
+ALABPOS = 2
+AHELPPOS = 3
+ATYPEPOS = 4
+ACLPOS = 5
+AOCLPOS = 6
 
 def timenow():
     """return current time as a string
@@ -119,62 +120,76 @@ class ScriptRunner:
     uses galaxyxml
 
     """
-
+    
+    
     def __init__(self, args=None):
         """
         prepare command line cl for running the tool here
         and prepare elements needed for galaxyxml tool generation
         """
+
         self.infiles = [x.split(ourdelim) for x in args.input_files]
         self.outfiles = [x.split(ourdelim) for x in args.output_files]
         self.addpar = [x.split(ourdelim) for x in args.additional_parameters]
+        self.args = args
+        ### test kludge
+        if self.args.runmode == "specialtestcaseinterpreterpython":
+            self.args.interpreter_name = "python"
+            self.args.runmode = "python"
         self.cleanuppar()
         self.lastclredirect = None
         self.cl = []
         aCL = self.cl.append
-        self.args = args
         assert args.parampass in ['0','argparse','positional'],'Parameter passing in args.parampass must be "0","positional" or "argparse"'
         self.tool_name = re.sub('[^a-zA-Z0-9_]+', '', args.tool_name)
         self.tool_id = self.tool_name
         self.xmlfile = '%s.xml' % self.tool_name
-        if self.args.interpreter_name == "Executable":  # binary - no need
+        if self.args.runmode == "Executable" or self.args.runmode == "system":  # binary - no need
             aCL(self.args.exe_package)  # this little CL will just run
-        else:  # a script has been provided
+        else: 
             rx = open(self.args.script_path, 'r').readlines()
-            # remove pesky dos line endings if needed
-            rx = [x.rstrip() for x in rx]
+            rx = [x.rstrip() for x in rx ]
+            rxcheck = [x.strip() for x in rx if x.strip() > '']
+            assert len(rxcheck) > 0,"Supplied script is empty. Cannot run"
             self.script = '\n'.join(rx)
             fhandle, self.sfile = tempfile.mkstemp(
                 prefix=self.tool_name, suffix=".%s" % (args.interpreter_name))
-            # use self.sfile as script source for Popen
             tscript = open(self.sfile, 'w')
             tscript.write(self.script)
             tscript.close()
             self.indentedScript = "  %s" % '\n'.join(
-                [' %s' % html_escape(x) for x in rx])  # for restructured text in help
+                [' %s' % html_escape(x) for x in rx]) 
             self.escapedScript = "%s" % '\n'.join(
                 [' %s' % html_escape(x) for x in rx])
+            art = '%s.%s' % (self.tool_name, args.interpreter_name)
+            artifact = open(art, 'wb')
+            artifact.write(bytes(self.script, "utf8"))
+            artifact.close()            
             aCL(self.args.interpreter_name)
             aCL(self.sfile)
         self.elog = "%s_error_log.txt" % self.tool_name
         self.tlog = "%s_runner_log.txt" % self.tool_name
-        art = '%s.%s' % (self.tool_name, args.interpreter_name)
-        # use self.sfile as script source for Popen
-        artifact = open(art, 'wb')
-        artifact.write(bytes(self.script, "utf8"))
-        artifact.close()
+
         if self.args.parampass == '0':
             self.clsimple()
         else:
             clsuffix = []
             for i, p in enumerate(self.infiles):
-                # decorator is cl - sort for positional
-                clsuffix.append([p[ICLPOS], p[IPATHPOS]])
+                appendme = [p[ICLPOS], p[IPATHPOS],p[IOCLPOS]]
+                clsuffix.append(appendme)
+                #print('##infile i=%d, appendme=%s' % (i,appendme))
             for i, p in enumerate(self.outfiles):
-                # decorator is cl - sort for positional
-                clsuffix.append([p[OCLPOS], p[OCLPOS]])            
-            for p in self.args.additional_parameters: 
-                clsuffix.append([p[ACLPOS], p[AVALPOS]])  # cl,value
+                if p[OOCLPOS] == "STDOUT":
+                    self.lastclredirect = ['>',p[ONAMEPOS]]
+                    #print('##outfiles i=%d lastclredirect = %s' % (i,self.lastclredirect))
+                else:
+                    appendme = [p[OCLPOS], p[ONAMEPOS],p[OOCLPOS]]
+                    clsuffix.append(appendme)    
+                    #print('##outfiles i=%d' % i,'appendme',appendme)
+            for p in self.addpar: 
+                appendme = [p[ACLPOS], p[AVALPOS], '']
+                clsuffix.append(appendme)
+                #print('##adpar %d' % i,'appendme=',appendme)
             clsuffix.sort()
             if self.args.parampass == 'positional':
                 self.clpositional(clsuffix)
@@ -184,17 +199,23 @@ class ScriptRunner:
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i,p in enumerate(self.infiles):
-            if p[ICLPOS].isdigit() or p[ICLPOS].strip().upper() in ['STDOUT', 'STDIN']:
-                scl = 'input%s' % p[ICLPOS]
-                self.infiles[i][ICLPOS] = scl
+            p.append(p[ICLPOS])
+            if p[ICLPOS].isdigit() or self.args.parampass == "0":
+                scl = 'input%d' % (i+1)
+                p[ICLPOS] = scl
+            self.infiles[i] = p
         for i,p in enumerate(self.outfiles):  # trying to automagically gather using extensions
-            if p[OCLPOS].isdigit() or p[OCLPOS].strip().upper() in ['STDOUT', 'STDIN']:
-                scl = 'output%s' % (p[OCLPOS])
-                self.outfiles[i][OCLPOS] = scl
+            p.append(p[OCLPOS])
+            if p[OCLPOS].isdigit() or p[OCLPOS] == "STDOUT":
+                scl = p[ONAMEPOS]
+                p[OCLPOS] = scl
+            self.outfiles[i] = p
         for i,p in enumerate(self.addpar):
-            if p[ACLPOS].isdigit() or p[ACLPOS].strip().upper() in ['STDOUT', 'STDIN']:
+            p.append(p[ACLPOS])
+            if p[ACLPOS].isdigit():
                 scl = 'param%s' % p[ACLPOS]
-                self.addpar[i][ACLPOS] = scl
+                p[ACLPOS] = scl
+            self.addpar[i] = p
                 
  
             
@@ -205,27 +226,27 @@ class ScriptRunner:
         aCL('<')
         aCL('%s' % self.infiles[0][IPATHPOS])
         aCL('>')
-        ocl = self.outfiles[0][OCLPOS] # galaxy name
+        ocl = self.outfiles[0][OCLPOS] 
         aCL(ocl)
 
     def clpositional(self,clsuffix):
         # inputs in order then params
         aCL = self.cl.append
-        for (k, v) in clsuffix:
+        for (k, v, o_v) in clsuffix:
             if ' ' in v:
                 aCL("%s" % v)
             else:
                 aCL(v)
         if self.lastclredirect:
-            aCL(self.lastclredirect[0])  # add the stdout parameter last
+            aCL(self.lastclredirect[0]) 
             aCL(self.lastclredirect[1])
 
     def clargparse(self,clsuffix):
-        """ no parameters - uses < and > for i/o
+        """ argparse style
         """
         aCL = self.cl.append
         # inputs then params in argparse named form
-        for (k, v) in clsuffix:
+        for (k, v, o_v) in clsuffix:
             if ' ' in v:
                 aCL('--%s' % k)
                 aCL('"%s"' % v)
@@ -233,7 +254,7 @@ class ScriptRunner:
                 aCL('--%s' % k)
                 aCL('%s' % v)
         if self.lastclredirect:
-            aCL(self.lastclredirect[0])  # add the stdout parameter last
+            aCL(self.lastclredirect[0]) 
             aCL(self.lastclredirect[1])
 
 
@@ -242,9 +263,9 @@ class ScriptRunner:
         Create a Galaxy xml tool wrapper for the new script
         Uses galaxyhtml
         """
-        # need interp and executable (?script) or else executable only
+       
         if self.args.interpreter_name:
-            exe = "$runMe"  # our dynamic script from the tool builder
+            exe = "$runMe" 
             interp = self.args.interpreter_name
         else:
             interp = None
@@ -256,7 +277,6 @@ class ScriptRunner:
             tool.interpreter = interp
         if self.args.help_text:
             helptext = open(self.args.help_text, 'r').readlines()
-            # must html escape here too - thanks to Marius van den Beek
             helptext = [html_escape(x) for x in helptext]
             tool.help = ''.join([x for x in helptext])
         else:
@@ -269,18 +289,18 @@ class ScriptRunner:
         testparam = []
         is_positional = (self.args.parampass == 'positional')
         if self.args.interpreter_name:
-            if self.args.interpreter_name == 'python':  # always needed for this runner script
+            if self.args.interpreter_name == 'python':  
                 requirements.append(gxtp.Requirement(
                     'package', 'python', self.args.interpreter_version))
             elif self.args.interpreter_name not in ['bash', 'sh']:
                 requirements.append(gxtp.Requirement(
                     'package', self.args.interpreter_name, self.args.interpreter_version))
         else:
-            if self.args.exe_package:  # uses exe not interpreter
+            if self.args.exe_package and self.args.parampass != "system":
                 requirements.append(gxtp.Requirement(
                     'package', self.args.exe_package, self.args.exe_package_version))
         tool.requirements = requirements
-        if self.args.parampass == '0': # foo < input1.txt > output1.txt
+        if self.args.parampass == '0':
             alab = self.infiles[0][ILABPOS]
             if len(alab) == 0:
                 alab = self.infiles[0][ICLPOS]
@@ -291,7 +311,7 @@ class ScriptRunner:
                                     format=self.infiles[0][IFMTPOS], multiple=False, num_dashes=0)
             aninput.command_line_override = '< $%s' % newname
             tinputs.append(aninput)
-            tp = gxtp.TestParam(name=newname, value='%s.sample' % newname)
+            tp = gxtp.TestParam(name=newname, value='%s_sample' % newname)
             testparam.append(tp)
             newname = self.outfiles[0][OCLPOS]
             newfmt = self.outfiles[0][OFMTPOS]
@@ -299,11 +319,11 @@ class ScriptRunner:
             anout.command_line_override = '> $%s' % newname
             anout.positional = is_positional
             toutputs.append(anout)
-            tp = gxtp.TestOutput(name=newname, value='%s.sample' % newname,format=newfmt)
+            tp = gxtp.TestOutput(name=newname, value='%s_sample' % newname,format=newfmt)
             testparam.append(tp)
         else:
             for p in self.outfiles:
-                newname,newfmt,newcl = p
+                newname,newfmt,newcl,oldcl = p
                 if is_positional:
                     ndash = 0
                 else:
@@ -315,7 +335,7 @@ class ScriptRunner:
                 if is_positional:
                     aparm.command_line_override = '$%s' % newcl
                 toutputs.append(aparm)
-                tp = gxtp.TestOutput(name=newcl, value='%s.sample' % newcl ,format=newfmt)
+                tp = gxtp.TestOutput(name=newcl, value='%s_sample' % newcl ,format=newfmt)
                 testparam.append(tp)
             for p in self.infiles:
                 newname = p[ICLPOS]
@@ -335,10 +355,10 @@ class ScriptRunner:
                                          format=newfmt, multiple=False, num_dashes=ndash)
                 aninput.positional = is_positional
                 tinputs.append(aninput)
-                tparm = gxtp.TestParam(name=newname, value='%s.sample' % newname )
+                tparm = gxtp.TestParam(name=newname, value='%s_sample' % newname )
                 testparam.append(tparm)
             for p in self.addpar:
-                newname, newval, newlabel, newhelp, newtype, newcl = p
+                newname, newval, newlabel, newhelp, newtype, newcl, oldcl = p
                 if not len(newlabel) > 0:
                     newlabel = newname
                 if is_positional:
@@ -366,9 +386,10 @@ class ScriptRunner:
                 testparam.append(tparm)
         tool.outputs = toutputs
         tool.inputs = tinputs
-        configfiles = gxtp.Configfiles()
-        configfiles.append(gxtp.Configfile(name="runMe", text=self.script))
-        tool.configfiles = configfiles
+        if not self.args.runmode in ['Executable','system']:
+            configfiles = gxtp.Configfiles()
+            configfiles.append(gxtp.Configfile(name="runMe", text=self.script))
+            tool.configfiles = configfiles
         tests = gxtp.Tests()
         test_a = gxtp.Test()
         for tp in testparam:
@@ -408,22 +429,31 @@ class ScriptRunner:
             os.mkdir(testdir)  # make tests directory
         for p in self.infiles:
             pth = p[IPATHPOS]
-            dest = os.path.join(testdir, '%s.sample' % 
+            dest = os.path.join(testdir, '%s_sample' % 
               p[ICLPOS])
             shutil.copyfile(pth, dest)
         for p in self.outfiles:
             pth = p[OCLPOS]
-            dest = os.path.join(testdir, '%s.sample' % 
-              p[OCLPOS])
-            shutil.copyfile(pth, dest)  
-            dest = os.path.join(tdir, p[OCLPOS])
-            shutil.copyfile(pth, dest)              
+            if p[OOCLPOS] == 'STDOUT' or self.args.parampass == "0":
+                pth = p[ONAMEPOS]
+                dest = os.path.join(testdir,'%s_sample' % p[ONAMEPOS])
+                shutil.copyfile(pth, dest)
+                dest = os.path.join(tdir, p[ONAMEPOS])
+                shutil.copyfile(pth, dest)   
+            else:
+                pth = p[OCLPOS]
+                dest = os.path.join(testdir,'%s_sample' % p[OCLPOS])
+                shutil.copyfile(pth, dest)
+                dest = os.path.join(tdir, p[OCLPOS])
+                shutil.copyfile(pth, dest)   
+
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
             shutil.copyfile(self.tlog, os.path.join(
                 testdir, 'test1_log.txt'))
-        stname = os.path.join(tdir, '%s.txt' % (self.sfile))
-        if not os.path.exists(stname):
-            shutil.copyfile(self.sfile, stname)
+        if not self.args.runmode in ['Executable','system']:
+            stname = os.path.join(tdir, '%s' % (self.sfile))
+            if not os.path.exists(stname):
+                shutil.copyfile(self.sfile, stname)
         xtname = os.path.join(tdir,self.xmlfile)
         if not os.path.exists(xtname):
             shutil.copyfile(self.xmlfile, xtname)
@@ -432,11 +462,6 @@ class ScriptRunner:
         tf.add(name=tdir,arcname=self.tool_name)
         tf.close()
         shutil.copyfile(tarpath, self.args.new_tool)
-        #dl = os.listdir(tdir)
-        #for f in dl:
-        #    shutil.copyfile(src=f,dst=os.path.basename(f))
-        # shutil.rmtree(tdir)
-        # TODO: replace with optional direct upload to local toolshed?
         return retval
 
     def run(self):
@@ -444,14 +469,18 @@ class ScriptRunner:
         Some devteam tools have this defensive stderr read so I'm keeping with the faith
         Feel free to update.
         """
-        logging.debug('run cl=%s' % str(self.cl))
+        s = 'run cl=%s' % str(self.cl)
+        logging.debug(s)
         scl = ' '.join(self.cl)
         err = None
         if self.args.parampass != '0':
             ste = open(self.elog, 'wb')
-            sto = open(self.tlog, 'wb')
-            sto.write(
-                bytes('## Executing Toolfactory generated command line = %s\n' % scl, "utf8"))
+            if self.lastclredirect:
+                sto = open(self.lastclredirect[1],'wb') # is name of an output file
+            else:
+                sto = open(self.tlog, 'wb')
+                sto.write(
+                    bytes('## Executing Toolfactory generated command line = %s\n' % scl, "utf8"))
             sto.flush()
             p = subprocess.run(self.cl, shell=False, stdout=sto,
                                stderr=ste)
@@ -471,7 +500,7 @@ class ScriptRunner:
             retval = p.returncode
         else:  # work around special case of simple scripts that take stdin and write to stdout
             sti = open(self.infiles[0][IPATHPOS], 'rb')
-            sto = open(self.outfiles[0][OCLPOS], 'wb')
+            sto = open(self.outfiles[0][ONAMEPOS], 'wb')
             # must use shell to redirect
             p = subprocess.run(self.cl, shell=False, stdout=sto, stdin=sti)
             retval = p.returncode
@@ -515,6 +544,7 @@ def main():
     a('--parampass', default="positional")
     a('--tfout', default="./tfout")
     a('--new_tool',default="new_tool")
+    a('--runmode',default=None)
     args = parser.parse_args()
     assert not args.bad_user, 'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file' % (
         args.bad_user, args.bad_user)
@@ -528,7 +558,6 @@ def main():
     for i, x in enumerate(args.additional_parameters):
         args.additional_parameters[i] = args.additional_parameters[i].replace(
             '"', '')
-    os.makedirs(args.tfout, exist_ok=True)
     r = ScriptRunner(args)
     if args.make_Tool:
         retcode = r.makeTooltar()

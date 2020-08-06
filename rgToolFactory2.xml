@@ -12,21 +12,21 @@
                 <column name="value" index="0"/>
                </options>
             </param>
-            <param name="param_label" type="text" value="" label="This will become the user prompt for the form so please make it informative" size="60" 
+            <param name="input_label" type="text" value="" label="This will become the user prompt for the form so please make it informative" size="60" 
              help="Note that '~~~' is an internal delimiter so must not appear in this text field - please work around this technical limitation" >
             <sanitizer invalid_char="">
               <valid initial="string.printable"> <remove value='~~~'/> </valid>
               <mapping initial="none"/>
             </sanitizer>
             </param>
-            <param name="param_help" type="text" value="parameter_help" label="This will become help text on the form."
+            <param name="input_help" type="text" value="parameter_help" label="This will become help text on the form."
              help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation" size="60">
             <sanitizer invalid_char="">
               <valid initial="string.printable"> <remove value='~~~'/> </valid>
               <mapping initial="none"/>
             </sanitizer>
             </param>
-            <param name="CL" type="text" size="60" label="Positional: ordinal integer. Argparse: argument name."
+            <param name="input_CL" type="text" size="60" label="Positional: ordinal integer. Argparse: argument name."
               help="If you will pass positional parameters, enter the integer ordinal for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">          
             </param>
         </repeat>
@@ -40,7 +40,7 @@
                 <column name="value" index="0"/>
                </options>
             </param>
-            <param name="CL" type="text" size="60" label="Positional: ordinal integer. Argparse: argument name expected for this output parameter"
+            <param name="history_CL" type="text" size="60" label="Positional: ordinal integer. Argparse: argument name expected for this output parameter"
               help="If positional parameters, enter the integer ordinal expected for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">          
             </param>
         </repeat>
@@ -92,7 +92,11 @@
         </repeat>
      </xml>
      <xml name="builtin_dynpar">
-          <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="" area="True" size="20x120"  
+          <param name="interpreter_version" type="text" value="" 
+          label="Specific interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty"/>
+            <param name="exe_package_version" type="text" value=""
+              label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
+          <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="Script goes here" area="True"  
               help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
               <sanitizer>
                  <valid initial="string.printable">
@@ -102,8 +106,11 @@
           </param>
     </xml>
     <xml name="dynpar">
-          <param name="interpreter_version" type="text" value="" label="Specific script interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty" size="60"/>
-          <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="" area="True" size="20x120"  
+          <param name="interpreter_version" type="text" value=""
+          label="Specific interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty"/>
+            <param name="exe_package_version" type="text" value="" 
+              label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
+          <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="Script goes here" area="True" 
               help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
               <sanitizer>
                  <valid initial="string.printable">
@@ -123,12 +130,16 @@
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
  #else:
-$__tool_directory__/rgToolFactory2.py --script_path "$runme" 
-   #if str($interexe.interpreter)=="Executable":
---exe_package="$interexe.exe_package" --exe_package_version="$interexe.exe_package_version"
+$__tool_directory__/rgToolFactory2.py 
+--runmode "$interexe.interpreter"
+   #if str($interexe.interpreter)=="Executable" or str($interexe.interpreter)=="system":
+--exe_package="$interexe.exe_package" 
+    #if str($interexe.exe_package_version) != 'None' :  
+--exe_package_version="$interexe.exe_package_version" 
+    #end if
    #else:
---interpreter_name="$interexe.interpreter"
-     #if not str($interexe.interpreter) in ['bash','sh']:
+--interpreter_name="$interexe.interpreter" --script_path "$runme" 
+     #if str($interexe.interpreter_version) != 'None':
 --interpreter_version="$interexe.interpreter_version"
      #end if
    #end if
@@ -142,50 +153,63 @@ $__tool_directory__/rgToolFactory2.py --script_path "$runme"
    #end if
    #if $ppass.parampass != '0':
      #if str($ppass.edit_params) == "yes":
---edit_additional_parameters
+--edit_additional_parameters  
      #end if
-     #for i in $ppass.additional_parameters:
---additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
+     #for apar in $ppass.additional_parameters:
+--additional_parameters="$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.CL"
      #end for
    #end if
-   #if $ppass.history_inputs:
+
      #for $intab in $ppass.history_inputs:
---input_files="$intab.input_files~~~$intab.CL~~~$intab.input_formats~~~$intab.param_label~~~$intab.param_help"
+--input_files="$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
      #end for
-   #end if
-   #if $ppass.history_outputs:
-       #for $otab in $ppass.history_outputs:
---output_files "$otab.history_name~~~$otab.history_format~~~$otab.CL"
-       #end for
-   #end if
-#end if 
+
+
+     #for $otab in $ppass.history_outputs:
+--output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL"
+     #end for
+ #end if 
 ]]></command>
-  <configfiles>
-     <configfile name="runme">
-         #if $interexe.interpreter != "Executable":
+ <configfiles>
+  <configfile name="runme">
+#if $interexe.interpreter == "specialtestcaseinterpreterpython":
+import sys
+inp = sys.argv[1]
+outp = sys.argv[2]
+i = open(inp,'r').readlines()
+o = open(outp,'w')
+for row in i:
+   rs = row.rstrip()
+   rs = list(rs)
+   rs.reverse()
+   o.write(''.join(rs))
+o.close()
+#elif $interexe.interpreter != "Executable" and $interexe.interpreter != "system" :
 ${interexe.dynScript}
-         #else
-"Not used"
-         #end if
-         </configfile>
-         <configfile name="helpme">
-            #if $makeMode.make_Tool == "yes":
-             ${makeMode.help_text}
-            #end if
-         </configfile>
-         <configfile name="citeme">
-            #if $makeMode.make_Tool == "yes":
-                #for $citation in $makeMode.citations:
-                    #if $citation.citation_type.type == "bibtex":
-                        **ENTRY**bibtex
-                        ${citation.citation_type.bibtex}
-                    #else
-                        **ENTRY**doi
-                        ${citation.citation_type.doi}
-                    #end if
-                #end for
-            #end if
-         </configfile>
+#else:
+$tool_name
+#end if
+ </configfile>
+ <configfile name="helpme">
+    #if $makeMode.make_Tool == "yes":
+${makeMode.help_text}
+    #else
+$tool_name help goes here
+    #end if
+ </configfile>
+ <configfile name="citeme">
+#if $makeMode.make_Tool == "yes":
+    #for $citation in $makeMode.citations:
+        #if $citation.citation_type.type == "bibtex":
+            **ENTRY**bibtex
+            ${citation.citation_type.bibtex}
+        #else
+            **ENTRY**doi
+            ${citation.citation_type.doi}
+        #end if
+    #end for
+#end if
+ </configfile>
   </configfiles>
   <inputs>
 
@@ -206,10 +230,17 @@ ${interexe.dynScript}
             <option value="perl">perl</option>
             <option value="bash">bash</option>
             <option value="sh">sh</option>
+            <option value="system" >A system executable found on the path such as awk/sed</option>
+            <option value="specialtestcaseinterpreterpython" >for testing only - do not use me please</option>
         </param>
         <when value="Executable">
             <param name="exe_package" type="text" value="" label="Executable package name in dependency (Conda) repositories - e.g. 'bwa'" size="60" optional="false"/>
             <param name="exe_package_version" type="text" value="" label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" size="60"/>
+        </when>
+        <when value="system">
+            <param name="exe_package" type="text" value="" label="System executable to run" size="60" optional="false"/>
+            <param name="exe_package_version" type="text" value=""
+              label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
         </when>
         <when value = "python">
            <expand macro="dynpar" />
@@ -224,6 +255,9 @@ ${interexe.dynScript}
            <expand macro="builtin_dynpar" />
         </when>
         <when value = "sh">
+           <expand macro="builtin_dynpar" />
+        </when>
+         <when value = "specialtestcaseinterpreterpython">
            <expand macro="builtin_dynpar" />
         </when>
     </conditional>
@@ -295,26 +329,35 @@ ${interexe.dynScript}
     </conditional> 
   </inputs>
   <outputs>
-    <collection name="ToolFactory outputs" type="list" label="Toolfactory ${tool_name} test run outputs" format="txt">
+    <collection name="ToolFactory_Outputs" type="list" label="Toolfactory ${tool_name} test run outputs" >
        <discover_datasets pattern="__name__" directory="tfout/test-data" format="txt"/>
     </collection>
     <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz">
         <filter>makeMode['make_Tool'] == "yes"</filter>
     </data>
   </outputs>
-
 <tests>
 <test>
-    <param name='input_files' value='infile.sample~~~infile.sample~~~txt' ftype='tabular' />
-    <param name='script_path' value='runme.py' />
-    <param name='tool_name' value='reverseargp2_test1' />
-    <param name='make_Tool' value='yes' />
-    <param name='tool_version' value='0.01' />
-    <param name="tool_desc" value='testing_tf2' />
-    <param name="help_text" value='help text goes here' />
-    <param name="interpreter" value='python' />
-    <output name='output_files' file='reverseargp2_test1_output.xls' compare='diff' lines_diff = '10'/>
-    <output name='new_tool' file="reverseargp2_toolshed.gz.sample" compare="sim_size" delta="600" />
+    <param name="input_files" value="input1_sample" />
+    <param name="input_CL" value="1" />
+    <param name="input_formats" value="txt" />
+    <param name="input_label" value="input" />
+    <param name="input_help" value="help" />
+    <param name="tool_name" value="pyrevpos" />
+    <param name="parampass" value="positional" />
+    <param name="make_Tool" value="yes" />
+    <param name="tool_version" value="0.01" />
+    <param name="tool_desc" value="positional reverse" />
+    <param name="help_text" value="help text goes here" />
+    <param name="interpreter" value="specialtestcaseinterpreterpython"/>
+    <param name="history_name" value="output2_sample" />
+    <param name="history_format" value="txt" />
+    <param name="history_CL" value="2" />
+    <param name="dynScript" value=""/> 
+    <output_collection name="ToolFactory_Outputs" type="list">
+        <element name="output2_sample_sample" file="output2_sample" ftype="txt" compare="diff" lines_diff = "10" />
+    </output_collection>
+    <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />
 </test>
 </tests>
 <help>
