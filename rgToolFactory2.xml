@@ -65,7 +65,7 @@
             <option value="integer">integer</option>
             <option value="float">float</option>
           </param>
-          <param name="param_value" type="text" value="parameter_value" label="Enter this parameter's default value" size="60"
+          <param name="param_value" type="text" value="" label="Enter this parameter's default value" size="60"
             help="Note that '~~~' is an internal delimiter must not appear in this text field - please work around this technical limitation" >
             <sanitizer invalid_char="">
               <valid initial="string.printable"> <remove value='~~~'/> </valid>
@@ -86,7 +86,7 @@
               <mapping initial="none"/>
             </sanitizer>
           </param>
-          <param name="CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
+          <param name="param_CL" type="text" size="60" label="Positional order (must be integer > 1) or Argument name to be prefixed with '--' or '-' if single letter"
               help="Using positional parameters, enter the integer ordinal for this parameter on the command line. Using Argparse style, '--' will be prepended on the CL" value="">           
           </param>
         </repeat>
@@ -122,7 +122,6 @@
   </macros>
    <requirements>
       <requirement type="package">python</requirement>
-      <requirement type="package">galaxyxml</requirement>
   </requirements>
   <command interpreter="python"><![CDATA[
 #import os
@@ -156,7 +155,7 @@ $__tool_directory__/rgToolFactory2.py
 --edit_additional_parameters  
      #end if
      #for apar in $ppass.additional_parameters:
---additional_parameters="$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.CL"
+--additional_parameters="$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.param_CL"
      #end for
    #end if
 
@@ -172,19 +171,8 @@ $__tool_directory__/rgToolFactory2.py
 ]]></command>
  <configfiles>
   <configfile name="runme">
-#if $interexe.interpreter == "specialtestcaseinterpreterpython":
-import sys
-inp = sys.argv[1]
-outp = sys.argv[2]
-i = open(inp,'r').readlines()
-o = open(outp,'w')
-for row in i:
-   rs = row.rstrip()
-   rs = list(rs)
-   rs.reverse()
-   o.write(''.join(rs))
-o.close()
-#elif $interexe.interpreter != "Executable" and $interexe.interpreter != "system" :
+
+#if $interexe.interpreter != "Executable" and $interexe.interpreter != "system" :
 ${interexe.dynScript}
 #else:
 $tool_name
@@ -349,11 +337,11 @@ $tool_name help goes here
     <param name="tool_version" value="0.01" />
     <param name="tool_desc" value="positional reverse" />
     <param name="help_text" value="help text goes here" />
-    <param name="interpreter" value="specialtestcaseinterpreterpython"/>
+    <param name="interpreter" value="python"/>
     <param name="history_name" value="output2_sample" />
     <param name="history_format" value="txt" />
     <param name="history_CL" value="2" />
-    <param name="dynScript" value=""/> 
+    <param name="runme" value="pyrevpos.python"/> 
     <output_collection name="ToolFactory_Outputs" type="list">
         <element name="output2_sample_sample" file="output2_sample" ftype="txt" compare="diff" lines_diff = "10" />
     </output_collection>

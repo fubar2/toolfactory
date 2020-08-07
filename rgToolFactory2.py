@@ -132,13 +132,11 @@ class ScriptRunner:
         self.outfiles = [x.split(ourdelim) for x in args.output_files]
         self.addpar = [x.split(ourdelim) for x in args.additional_parameters]
         self.args = args
-        ### test kludge
-        if self.args.runmode == "specialtestcaseinterpreterpython":
-            self.args.interpreter_name = "python"
-            self.args.runmode = "python"
         self.cleanuppar()
         self.lastclredirect = None
+        self.lastxclredirect = None
         self.cl = []
+        self.xmlcl = []
         aCL = self.cl.append
         assert args.parampass in ['0','argparse','positional'],'Parameter passing in args.parampass must be "0","positional" or "argparse"'
         self.tool_name = re.sub('[^a-zA-Z0-9_]+', '', args.tool_name)
@@ -174,23 +172,30 @@ class ScriptRunner:
             self.clsimple()
         else:
             clsuffix = []
+            xclsuffix = []
             for i, p in enumerate(self.infiles):
-                appendme = [p[ICLPOS], p[IPATHPOS],p[IOCLPOS]]
+                appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS]]
                 clsuffix.append(appendme)
+                xclsuffix.append([p[IOCLPOS],p[ICLPOS],'$%s' % p[ICLPOS]])
                 #print('##infile i=%d, appendme=%s' % (i,appendme))
             for i, p in enumerate(self.outfiles):
                 if p[OOCLPOS] == "STDOUT":
                     self.lastclredirect = ['>',p[ONAMEPOS]]
+                    self.lastxclredirect = ['>','$%s' % p[OCLPOS]]
                     #print('##outfiles i=%d lastclredirect = %s' % (i,self.lastclredirect))
                 else:
-                    appendme = [p[OCLPOS], p[ONAMEPOS],p[OOCLPOS]]
+                    appendme = [p[OOCLPOS], p[OCLPOS],p[ONAMEPOS]]
                     clsuffix.append(appendme)    
+                    xclsuffix.append([p[OOCLPOS], p[OCLPOS],'$%s' % p[ONAMEPOS]])    
                     #print('##outfiles i=%d' % i,'appendme',appendme)
             for p in self.addpar: 
-                appendme = [p[ACLPOS], p[AVALPOS], '']
+                appendme = [p[AOCLPOS], p[ACLPOS], p[AVALPOS]]
                 clsuffix.append(appendme)
+                xclsuffix.append([p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS]])
                 #print('##adpar %d' % i,'appendme=',appendme)
             clsuffix.sort()
+            xclsuffix.sort()
+            self.xclsuffix = xclsuffix
             if self.args.parampass == 'positional':
                 self.clpositional(clsuffix)
             else:
@@ -199,21 +204,27 @@ class ScriptRunner:
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i,p in enumerate(self.infiles):
+            if self.args.parampass == 'positional':
+                assert p[ICLPOS].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (p[ICLPOS],p[ILABPOS]) 
             p.append(p[ICLPOS])
             if p[ICLPOS].isdigit() or self.args.parampass == "0":
                 scl = 'input%d' % (i+1)
                 p[ICLPOS] = scl
             self.infiles[i] = p
         for i,p in enumerate(self.outfiles):  # trying to automagically gather using extensions
+            if self.args.parampass == 'positional' and p[OCLPOS] != "STDOUT":
+                assert p[OCLPOS].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (p[OCLPOS],p[ONAMEPOS]) 
             p.append(p[OCLPOS])
             if p[OCLPOS].isdigit() or p[OCLPOS] == "STDOUT":
                 scl = p[ONAMEPOS]
                 p[OCLPOS] = scl
             self.outfiles[i] = p
         for i,p in enumerate(self.addpar):
+            if self.args.parampass == 'positional':
+                assert p[ACLPOS].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (p[ACLPOS],p[ANAMEPOS]) 
             p.append(p[ACLPOS])
             if p[ACLPOS].isdigit():
-                scl = 'param%s' % p[ACLPOS]
+                scl = 'input%s' % p[ACLPOS]
                 p[ACLPOS] = scl
             self.addpar[i] = p
                 
@@ -224,44 +235,59 @@ class ScriptRunner:
         """
         aCL = self.cl.append
         aCL('<')
-        aCL('%s' % self.infiles[0][IPATHPOS])
+        aCL(self.infiles[0][IPATHPOS])
         aCL('>')
-        ocl = self.outfiles[0][OCLPOS] 
-        aCL(ocl)
+        aCL(self.outfiles[0][OCLPOS])
+        aXCL = self.xmlcl.append
+        aXCL('<')
+        aXCL('$%s' % self.infiles[0][ICLPOS])
+        aXCL('>')
+        aXCL('$%s' % self.outfiles[0][ONAMEPOS])
+       
 
     def clpositional(self,clsuffix):
         # inputs in order then params
         aCL = self.cl.append
-        for (k, v, o_v) in clsuffix:
-            if ' ' in v:
+        for (o_v,k, v) in clsuffix:
+            if " " in v:
                 aCL("%s" % v)
             else:
                 aCL(v)
-        if self.lastclredirect:
-            aCL(self.lastclredirect[0]) 
-            aCL(self.lastclredirect[1])
+        aXCL = self.xmlcl.append
+        for (o_v,k, v) in self.xclsuffix:
+            aXCL(v)
+        if self.lastxclredirect:
+            aXCL(lastclredirect[0])
+            aXCL(lastclredirect[1])
+        
+
 
     def clargparse(self,clsuffix):
         """ argparse style
         """
         aCL = self.cl.append
+        aXCL = self.xmlcl.append
         # inputs then params in argparse named form
-        for (k, v, o_v) in clsuffix:
-            if ' ' in v:
-                aCL('--%s' % k)
-                aCL('"%s"' % v)
+        for (o_v,k, v) in xclsuffix:
+            aXCL(k)
+            aXCL(v)
+        for (o_v,k, v) in self.xclsuffix:
+            if len(k.strip()) == 1:
+                k = '-%s' % k
             else:
-                aCL('--%s' % k)
-                aCL('%s' % v)
-        if self.lastclredirect:
-            aCL(self.lastclredirect[0]) 
-            aCL(self.lastclredirect[1])
+                k = '--%s' % k
+            aCL(k)
+            aCL(v)
+
+                
+
 
 
     def makeXML(self):
         """
         Create a Galaxy xml tool wrapper for the new script
         Uses galaxyhtml
+        Hmmm. How to get the command line into correct order...
         """
        
         if self.args.interpreter_name:
@@ -271,8 +297,10 @@ class ScriptRunner:
             interp = None
             exe = self.args.exe_package
         assert exe is not None, 'No interpeter or executable passed in to makeXML'
-        tool = gxt.Tool(self.args.tool_name, self.tool_id,
+        tool = gxt.Tool(self.args.tool_name, self.tool_id, 
                         self.args.tool_version, self.args.tool_desc, exe)
+        tool.command_line_override = self.xmlcl
+        print('#### tool cl override=',self.xmlcl)
         if interp:
             tool.interpreter = interp
         if self.args.help_text:
@@ -310,6 +338,7 @@ class ScriptRunner:
             aninput = gxtp.DataParam(newname, optional=False, label=alab, help=self.infiles[0][IHELPOS],
                                     format=self.infiles[0][IFMTPOS], multiple=False, num_dashes=0)
             aninput.command_line_override = '< $%s' % newname
+            aninput.positional = is_positional
             tinputs.append(aninput)
             tp = gxtp.TestParam(name=newname, value='%s_sample' % newname)
             testparam.append(tp)
@@ -333,7 +362,12 @@ class ScriptRunner:
                 aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
                 aparm.positional = is_positional
                 if is_positional:
-                    aparm.command_line_override = '$%s' % newcl
+                    if oldcl == "STDOUT":
+                        aparm.positional = 9999999
+                        aparm.command_line_override = "> $%s" % newcl
+                    else:
+                        aparm.positional = int(oldcl)
+                        aparm.command_line_override = '$%s' % newcl
                 toutputs.append(aparm)
                 tp = gxtp.TestOutput(name=newcl, value='%s_sample' % newcl ,format=newfmt)
                 testparam.append(tp)
@@ -354,6 +388,8 @@ class ScriptRunner:
                 aninput = gxtp.DataParam(newname, optional=False, label=alab, help=p[IHELPOS],
                                          format=newfmt, multiple=False, num_dashes=ndash)
                 aninput.positional = is_positional
+                if is_positional:
+                    aninput.positional = is_positional
                 tinputs.append(aninput)
                 tparm = gxtp.TestParam(name=newname, value='%s_sample' % newname )
                 testparam.append(tparm)
@@ -381,6 +417,8 @@ class ScriptRunner:
                     raise ValueError('Unrecognised parameter type "%s" for\
                      additional parameter %s in makeXML' % (newtype, newname))
                 aparm.positional = is_positional
+                if is_positional:
+                    aninput.positional = int(oldcl)
                 tinputs.append(aparm)
                 tparm = gxtp.TestParam(newname, value=newval)
                 testparam.append(tparm)
@@ -470,6 +508,7 @@ class ScriptRunner:
         Feel free to update.
         """
         s = 'run cl=%s' % str(self.cl)
+        
         logging.debug(s)
         scl = ' '.join(self.cl)
         err = None
