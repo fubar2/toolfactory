@@ -1,4 +1,19 @@
-﻿*WARNING before you start*
+﻿Note as at August 8 2020
+
+Until a PR is accepted, galaxyxml requires a small tweak - you will need to install
+```
+https://github.com/fubar2/galaxyxml
+```
+instead into the virtualenv used to run galaxy and when using planemo, the
+
+```
+--skip_venv 
+```
+
+flag must be used.
+
+
+*WARNING before you start*
 
  Install this tool on a private Galaxy ONLY
  Please NEVER on a public or production instance
@@ -39,7 +54,7 @@ To use the ToolFactory, you should have prepared a script to paste into a
 text box, or have a package in mind and a small test input example ready to select from your history
 to test your new script.
 
-```planemo test rgToolFactory2.xml --galaxy_root ~/galaxy --test_data ~/galaxy/tools/tool_makers/toolfactory/test-data``` works for me
+```planemo test --no_cleanup --no_dependency_resolution --skip_venv --galaxy_root ~/galaxy ~/rossgit/toolfactory``` works for me
 
 There is an example in each scripting language on the Tool Factory form. You
 can just cut and paste these to try it out - remember to select the right
@@ -53,8 +68,14 @@ and execute again. Rinse, wash, repeat.
 Once the script runs sucessfully, a new Galaxy tool that runs your script
 can be generated. Select the "generate" option and supply some help text and
 names. The new tool will be generated in the form of a new Galaxy datatype
-*toolshed.gz* - as the name suggests, it's an archive ready to upload to a
+*tgz* - as the name suggests, it's an archive ready to upload to a
 Galaxy ToolShed as a new tool repository.
+
+Until tgz is added to the galaxy distribution datatypes you will need to add the following:
+    <datatype extension="tgz" type="galaxy.datatypes.binary:Binary" subclass="true" mimetype="multipart/x-gzip" display_in_upload="true" />
+
+to::
+ [galaxyroot]/config/datatypes_conf.xml
 
 Once it's in a ToolShed, it can be installed into any local Galaxy server
 from the server administrative interface.
