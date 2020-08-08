@@ -341,7 +341,7 @@ $tool_name help goes here
     <param name="history_name" value="output2_sample" />
     <param name="history_format" value="txt" />
     <param name="history_CL" value="2" />
-    <param name="runme" value="pyrevpos.python"/> 
+    <param name="dynScript" value="import sys; inp = sys.argv[1]; outp = sys.argv[2]; inlist = open(inp,'r').readlines(); o = open(outp,'w'); rs = [''.join(list(reversed(x.rstrip()))) for x in inlist]; o.write('\n'.join(rs)); o.close()"/> 
     <output_collection name="ToolFactory_Outputs" type="list">
         <element name="output2_sample_sample" file="output2_sample" ftype="txt" compare="diff" lines_diff = "10" />
     </output_collection>

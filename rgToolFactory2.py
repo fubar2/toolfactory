@@ -33,6 +33,7 @@ import galaxyxml.tool.parameters as gxtp
 import logging
 
 
+
 progname = os.path.split(sys.argv[0])[1]
 myversion = 'V2.1 July 2020'
 verbose = True
@@ -196,10 +197,11 @@ class ScriptRunner:
             clsuffix.sort()
             xclsuffix.sort()
             self.xclsuffix = xclsuffix
+            self.clsuffix = clsuffix
             if self.args.parampass == 'positional':
-                self.clpositional(clsuffix)
+                self.clpositional()
             else:
-                self.clargparse(clsuffix)
+                self.clargparse()
                 
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
@@ -245,10 +247,10 @@ class ScriptRunner:
         aXCL('$%s' % self.outfiles[0][ONAMEPOS])
        
 
-    def clpositional(self,clsuffix):
+    def clpositional(self):
         # inputs in order then params
         aCL = self.cl.append
-        for (o_v,k, v) in clsuffix:
+        for (o_v,k, v) in self.clsuffix:
             if " " in v:
                 aCL("%s" % v)
             else:
@@ -257,21 +259,21 @@ class ScriptRunner:
         for (o_v,k, v) in self.xclsuffix:
             aXCL(v)
         if self.lastxclredirect:
-            aXCL(lastclredirect[0])
-            aXCL(lastclredirect[1])
+            aXCL(self.lastxclredirect[0])
+            aXCL(self.lastxclredirect[1])
         
 
 
-    def clargparse(self,clsuffix):
+    def clargparse(self):
         """ argparse style
         """
         aCL = self.cl.append
         aXCL = self.xmlcl.append
         # inputs then params in argparse named form
-        for (o_v,k, v) in xclsuffix:
+        for (o_v,k, v) in self.xclsuffix:
             aXCL(k)
             aXCL(v)
-        for (o_v,k, v) in self.xclsuffix:
+        for (o_v,k, v) in self.clsuffix:
             if len(k.strip()) == 1:
                 k = '-%s' % k
             else:
@@ -280,7 +282,6 @@ class ScriptRunner:
             aCL(v)
 
                 
-
 
 
     def makeXML(self):
@@ -300,7 +301,6 @@ class ScriptRunner:
         tool = gxt.Tool(self.args.tool_name, self.tool_id, 
                         self.args.tool_version, self.args.tool_desc, exe)
         tool.command_line_override = self.xmlcl
-        print('#### tool cl override=',self.xmlcl)
         if interp:
             tool.interpreter = interp
         if self.args.help_text:
