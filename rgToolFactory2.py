@@ -271,6 +271,10 @@ class ScriptRunner:
         aXCL = self.xmlcl.append
         # inputs then params in argparse named form
         for (o_v,k, v) in self.xclsuffix:
+            if len(k.strip()) == 1:
+                k = '-%s' % k
+            else:
+                k = '--%s' % k
             aXCL(k)
             aXCL(v)
         for (o_v,k, v) in self.clsuffix:
