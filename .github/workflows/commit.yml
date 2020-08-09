@@ -39,7 +39,7 @@ jobs:
         pip install --upgrade pip
         pip install wheel
         pip install -r $GITHUB_WORKSPACE/galaxy/requirements.txt
-        # pip install galaxyxml
+        # pip install galaxyxml # currently includes a patched working version awaiting PR merge
     - name: Upgrade pip
       run: pip install --upgrade pip
     # Install the `wheel` package so that when installing other packages which
@@ -47,7 +47,8 @@ jobs:
     - name: Install wheel
       run: pip install wheel
     - name: Install Planemo and flake8
-      run: pip install planemo galaxyxml 
+      run: pip install planemo 
+    # galaxyxml temporarily removed until PR accepted
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
