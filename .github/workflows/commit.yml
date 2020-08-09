@@ -39,7 +39,7 @@ jobs:
         pip install --upgrade pip
         pip install wheel
         pip install -r $GITHUB_WORKSPACE/galaxy/requirements.txt
-        pip install galaxyxml
+        # pip install galaxyxml
     - name: Upgrade pip
       run: pip install --upgrade pip
     # Install the `wheel` package so that when installing other packages which
