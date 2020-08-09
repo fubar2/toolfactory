@@ -2,7 +2,7 @@ name: Galaxy Tool Linting and Tests for PR
 # run planemo on a git repository containing a single tool
 # as a github action. Does NOT run flake8. So, bite me.
 # ross lazarus august 2020
-on: [pull_request]
+on: [pull_request,push]
 env:
   GALAXY_REPO: https://github.com/galaxyproject/galaxy
   GALAXY_RELEASE: release_20.05
