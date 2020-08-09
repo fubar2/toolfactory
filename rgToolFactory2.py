@@ -28,6 +28,7 @@ import tempfile
 import argparse
 import tarfile
 import re
+import lxml
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
 import logging
