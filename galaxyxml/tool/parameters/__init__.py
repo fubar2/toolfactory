@@ -79,7 +79,9 @@ class RequestParam(XMLParam):
 class AppendParam(XMLParam):
     name = "append_param"
 
-    def __init__(self, separator="&amp;", first_separator="?", join="=", **kwargs):
+    def __init__(
+        self, separator="&amp;", first_separator="?", join="=", **kwargs
+    ):
         params = Util.clean_kwargs(locals().copy())
         super(AppendParam, self).__init__(**params)
 
@@ -327,7 +329,9 @@ class Section(InputParameter):
 class Repeat(InputParameter):
     name = "repeat"
 
-    def __init__(self, name, title, min=None, max=None, default=None, **kwargs):
+    def __init__(
+        self, name, title, min=None, max=None, default=None, **kwargs
+    ):
         params = Util.clean_kwargs(locals().copy())
         # Allow overriding
         self.command_line_before_override = "#for $i in $%s:" % name
@@ -409,7 +413,9 @@ class TextParam(Param):
             if self.positional:
                 return self.mako_name()
             else:
-                return f"{self.flag}{self.space_between_arg}'{self.mako_name()}'"
+                return (
+                    f"{self.flag}{self.space_between_arg}'{self.mako_name()}'"
+                )
 
 
 class _NumericParam(Param):
@@ -523,7 +529,9 @@ class SelectParam(Param):
                 self.append(SelectOption(k, v, selected=selected))
 
     def acceptable_child(self, child):
-        return issubclass(type(child), SelectOption) or issubclass(type(child), Options)
+        return issubclass(type(child), SelectOption) or issubclass(
+            type(child), Options
+        )
 
 
 class SelectOption(InputParameter):
@@ -556,7 +564,9 @@ class Options(InputParameter):
         super(Options, self).__init__(None, **params)
 
     def acceptable_child(self, child):
-        return issubclass(type(child), Column) or issubclass(type(child), Filter)
+        return issubclass(type(child), Column) or issubclass(
+            type(child), Filter
+        )
 
 
 class Column(InputParameter):
@@ -612,7 +622,9 @@ class Outputs(XMLParam):
     name = "outputs"
 
     def acceptable_child(self, child):
-        return isinstance(child, OutputData) or isinstance(child, OutputCollection)
+        return isinstance(child, OutputData) or isinstance(
+            child, OutputCollection
+        )
 
 
 class OutputData(XMLParam):
@@ -649,7 +661,11 @@ class OutputData(XMLParam):
         if hasattr(self, "command_line_override"):
             return self.command_line_override
         else:
-            return "%s%s%s" % (self.flag(), self.space_between_arg, self.mako_name())
+            return "%s%s%s" % (
+                self.flag(),
+                self.space_between_arg,
+                self.mako_name(),
+            )
 
     def mako_name(self):
         return "$" + self.mako_identifier
@@ -730,7 +746,13 @@ class DiscoverDatasets(XMLParam):
     name = "discover_datasets"
 
     def __init__(
-        self, pattern, directory=None, format=None, ext=None, visible=None, **kwargs
+        self,
+        pattern,
+        directory=None,
+        format=None,
+        ext=None,
+        visible=None,
+        **kwargs,
     ):
         params = Util.clean_kwargs(locals().copy())
         super(DiscoverDatasets, self).__init__(**params)
@@ -793,7 +815,10 @@ class Citations(XMLParam):
         :type value: STRING
         """
         for citation in self.children:
-            if citation.node.attrib["type"] == type and citation.node.text == value:
+            if (
+                citation.node.attrib["type"] == type
+                and citation.node.text == value
+            ):
                 return True
         return False
 

@@ -62,7 +62,8 @@ class Tool(GalaxyXML):
                         kwargs["URL_method"] = URL_method
                     else:
                         raise Exception(
-                            "URL_method must be one of %s" % ",".join(VALID_URL_METHODS)
+                            "URL_method must be one of %s"
+                            % ",".join(VALID_URL_METHODS)
                         )
 
         description_node = etree.SubElement(self.root, "description")
@@ -144,7 +145,9 @@ class Tool(GalaxyXML):
             command_kwargs["interpreter"] = export_xml.interpreter
 
         # Add command section
-        command_node = etree.SubElement(export_xml.root, "command", **command_kwargs)
+        command_node = etree.SubElement(
+            export_xml.root, "command", **command_kwargs
+        )
 
         if keep_old_command:
             if getattr(self, "command", None):

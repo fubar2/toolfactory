@@ -318,9 +318,12 @@ $tool_name help goes here
   </inputs>
   <outputs>
     <collection name="ToolFactory_Outputs" type="list" label="Toolfactory ${tool_name} test run outputs" >
-       <discover_datasets pattern="__name__" directory="tfout/test-data" format="txt"/>
+       <discover_datasets pattern="(?P&lt;designation&gt;.+)\.xml"  format="xml" visible="true"/>
     </collection>
-    <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz">
+    <collection name="ToolFactory_Test_Outputs" type="list" label="Toolfactory ${tool_name} test outputs" >
+       <discover_datasets pattern="__designation__"  format="txt" visible="true" directory="tfout/test-data" />
+    </collection>
+    <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz" >
         <filter>makeMode['make_Tool'] == "yes"</filter>
     </data>
   </outputs>

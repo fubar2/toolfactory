@@ -36,7 +36,9 @@ import galaxyxml.tool.parameters as gxtp
 
 import lxml
 
-foo = lxml.__name__   # fug you, flake8. Say my name! Please accept the PR, Helena!
+foo = (
+    lxml.__name__
+)  # fug you, flake8. Say my name! Please accept the PR, Helena!
 
 progname = os.path.split(sys.argv[0])[1]
 myversion = "V2.1 July 2020"
@@ -45,27 +47,30 @@ debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
 ourdelim = "~~~"
 
-# --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label~~~$input_help"
+# --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label
+#~~~$input_help"
 IPATHPOS = 0
 ICLPOS = 1
 IFMTPOS = 2
 ILABPOS = 3
 IHELPOS = 4
 IOCLPOS = 5
+
 # --output_files "$otab.history_name~~~$otab.history_format~~~$otab.CL
 ONAMEPOS = 0
 OFMTPOS = 1
 OCLPOS = 2
 OOCLPOS = 3
 
-# --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL~~~i$.param_CLoverride"
+# --additional_parameters="$i.param_name~~~$i.param_value~~~
+# $i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL~~~i$.param_CLoverride"
 ANAMEPOS = 0
 AVALPOS = 1
 ALABPOS = 2
 AHELPPOS = 3
 ATYPEPOS = 4
 ACLPOS = 5
-ACLOVERPOS = 6
+AOVERPOS = 6
 AOCLPOS = 7
 
 
@@ -110,9 +115,11 @@ def parse_citations(citations_text):
     citation_tuples = []
     for citation in citations:
         if citation.startswith("doi"):
-            citation_tuples.append(("doi", citation[len("doi"):].strip()))
+            citation_tuples.append(("doi", citation[len("doi") :].strip()))
         else:
-            citation_tuples.append(("bibtex", citation[len("bibtex"):].strip()))
+            citation_tuples.append(
+                ("bibtex", citation[len("bibtex") :].strip())
+            )
     return citation_tuples
 
 
@@ -146,7 +153,6 @@ class ScriptRunner:
         ], 'Parameter passing in args.parampass must be "0","positional" or "argparse"'
         self.tool_name = re.sub("[^a-zA-Z0-9_]+", "", args.tool_name)
         self.tool_id = self.tool_name
-        self.xmlfile = "%s.xml" % self.tool_name
         if self.args.interpreter_name:
             exe = "$runMe"
         else:
@@ -180,11 +186,21 @@ class ScriptRunner:
             xclsuffix = []
             for i, p in enumerate(self.infiles):
                 if p[IOCLPOS] == "STDIN":
-                    appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS],'< %s' % p[IPATHPOS]]
-                    xappendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS],'< $%s' % p[ICLPOS]]
+                    appendme = [
+                        p[IOCLPOS],
+                        p[ICLPOS],
+                        p[IPATHPOS],
+                        "< %s" % p[IPATHPOS],
+                    ]
+                    xappendme = [
+                        p[IOCLPOS],
+                        p[ICLPOS],
+                        p[IPATHPOS],
+                        "< $%s" % p[ICLPOS],
+                    ]
                 else:
-                    appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS], '']
-                    xappendme = [p[IOCLPOS], p[ICLPOS], "$%s" % p[ICLPOS], '']
+                    appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS], ""]
+                    xappendme = [p[IOCLPOS], p[ICLPOS], "$%s" % p[ICLPOS], ""]
                 clsuffix.append(appendme)
                 xclsuffix.append(xappendme)
                 # print('##infile i=%d, appendme=%s' % (i,appendme))
@@ -192,15 +208,18 @@ class ScriptRunner:
                 if p[OOCLPOS] == "STDOUT":
                     self.lastclredirect = [">", p[ONAMEPOS]]
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
-                    # print('##outfiles i=%d lastclredirect = %s' % (i,self.lastclredirect))
                 else:
-                    clsuffix.append([p[OOCLPOS], p[OCLPOS], p[ONAMEPOS], ''])
-                    xclsuffix.append([p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ''])
-                    # print('##outfiles i=%d' % i,'appendme',appendme)
+                    clsuffix.append([p[OOCLPOS], p[OCLPOS], p[ONAMEPOS], ""])
+                    xclsuffix.append(
+                        [p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ""]
+                    )
             for p in self.addpar:
-                clsuffix.append([p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]])
-                xclsuffix.append([p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]])
-                # print('##adpar %d' % i,'appendme=',appendme)
+                clsuffix.append(
+                    [p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]]
+                )
+                xclsuffix.append(
+                    [p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]]
+                )
             clsuffix.sort()
             xclsuffix.sort()
             self.xclsuffix = xclsuffix
@@ -223,8 +242,12 @@ class ScriptRunner:
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = "  %s" % "\n".join([" %s" % html_escape(x) for x in rx])
-        self.escapedScript = "%s" % "\n".join([" %s" % html_escape(x) for x in rx])
+        self.indentedScript = "  %s" % "\n".join(
+            [" %s" % html_escape(x) for x in rx]
+        )
+        self.escapedScript = "%s" % "\n".join(
+            [" %s" % html_escape(x) for x in rx]
+        )
         art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
         artifact = open(art, "wb")
         artifact.write(bytes(self.script, "utf8"))
@@ -306,7 +329,7 @@ class ScriptRunner:
         aXCL = self.xmlcl.append
         # inputs then params in argparse named form
         for (o_v, k, v, koverride) in self.xclsuffix:
-            if koverride > '':
+            if koverride > "":
                 k = koverride
             elif len(k.strip()) == 1:
                 k = "-%s" % k
@@ -315,7 +338,7 @@ class ScriptRunner:
             aXCL(k)
             aXCL(v)
         for (o_v, k, v, koverride) in self.clsuffix:
-            if koverride > '':
+            if koverride > "":
                 k = koverride
             elif len(k.strip()) == 1:
                 k = "-%s" % k
@@ -348,7 +371,9 @@ class ScriptRunner:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newcl
             self.toutputs.append(aparm)
-            tp = gxtp.TestOutput(name=newcl, value="%s_sample" % newcl, format=newfmt)
+            tp = gxtp.TestOutput(
+                name=newcl, value="%s_sample" % newcl, format=newfmt
+            )
             self.testparam.append(tp)
         for p in self.infiles:
             newname = p[ICLPOS]
@@ -443,7 +468,9 @@ class ScriptRunner:
         anout.command_line_override = "> $%s" % newname
         anout.positional = self.is_positional
         self.toutputs.append(anout)
-        tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname, format=newfmt)
+        tp = gxtp.TestOutput(
+            name=newname, value="%s_sample" % newname, format=newfmt
+        )
         self.testparam.append(tp)
 
     def makeXML(self):
@@ -471,7 +498,9 @@ class ScriptRunner:
         if self.args.interpreter_name:
             if self.args.interpreter_name == "python":
                 requirements.append(
-                    gxtp.Requirement("package", "python", self.args.interpreter_version)
+                    gxtp.Requirement(
+                        "package", "python", self.args.interpreter_version
+                    )
                 )
             elif self.args.interpreter_name not in ["bash", "sh"]:
                 requirements.append(
@@ -485,7 +514,9 @@ class ScriptRunner:
             if self.args.exe_package and self.args.parampass != "system":
                 requirements.append(
                     gxtp.Requirement(
-                        "package", self.args.exe_package, self.args.exe_package_version
+                        "package",
+                        self.args.exe_package,
+                        self.args.exe_package_version,
                     )
                 )
         self.tool.requirements = requirements
@@ -514,7 +545,7 @@ class ScriptRunner:
             "Cite: Creating re-usable tools from scripts doi: 10.1093/bioinformatics/bts573"
         )
         exml = self.tool.export()
-        xf = open(self.xmlfile, "w")
+        xf = open('%s.xml' % self.tool_name, "w")
         xf.write(exml)
         xf.write("\n")
         xf.close()
@@ -529,7 +560,9 @@ class ScriptRunner:
         """
         retval = self.run()
         if retval:
-            sys.stderr.write("## Run failed. Cannot build yet. Please fix and retry")
+            sys.stderr.write(
+                "## Run failed. Cannot build yet. Please fix and retry"
+            )
             sys.exit(1)
         tdir = "tfout"
         if not os.path.exists(tdir):
@@ -563,13 +596,15 @@ class ScriptRunner:
             stname = os.path.join(tdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
-        xtname = os.path.join(tdir, self.xmlfile)
+        xout = '%s.xml' % self.tool_name
+        xtname = os.path.join(tdir,xout)
         if not os.path.exists(xtname):
-            shutil.copyfile(self.xmlfile, xtname)
+            shutil.copyfile(xout, xtname)
         tarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(tarpath, "w:gz")
         tf.add(name=tdir, arcname=self.tool_name)
         tf.close()
+        
         shutil.copyfile(tarpath, self.args.new_tool)
         return retval
 
@@ -586,12 +621,15 @@ class ScriptRunner:
         if self.args.parampass != "0":
             ste = open(self.elog, "wb")
             if self.lastclredirect:
-                sto = open(self.lastclredirect[1], "wb")  # is name of an output file
+                sto = open(
+                    self.lastclredirect[1], "wb"
+                )  # is name of an output file
             else:
                 sto = open(self.tlog, "wb")
                 sto.write(
                     bytes(
-                        "## Executing Toolfactory generated command line = %s\n" % scl,
+                        "## Executing Toolfactory generated command line = %s\n"
+                        % scl,
                         "utf8",
                     )
                 )
@@ -663,17 +701,23 @@ def main():
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
         % (args.bad_user, args.bad_user)
     )
-    assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"
+    assert (
+        args.tool_name
+    ), "## Tool Factory expects a tool name - eg --tool_name=DESeq"
     assert (
         args.interpreter_name or args.exe_package
     ), "## Tool Factory wrapper expects an interpreter or an executable package"
     assert args.exe_package or (
         len(args.script_path) > 0 and os.path.isfile(args.script_path)
     ), "## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable"
-    args.input_files = [x.replace('"', "").replace("'", "") for x in args.input_files]
+    args.input_files = [
+        x.replace('"', "").replace("'", "") for x in args.input_files
+    ]
     # remove quotes we need to deal with spaces in CL params
     for i, x in enumerate(args.additional_parameters):
-        args.additional_parameters[i] = args.additional_parameters[i].replace('"', "")
+        args.additional_parameters[i] = args.additional_parameters[i].replace(
+            '"', ""
+        )
     r = ScriptRunner(args)
     if args.make_Tool:
         retcode = r.makeTooltar()
