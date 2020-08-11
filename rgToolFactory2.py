@@ -19,21 +19,24 @@
 # TODO: add option to run that code as a post execution hook
 # TODO: add additional history input parameters - currently only one
 
+
+import argparse
+import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
-import argparse
+import tarfile
 import tempfile
 import time
-import re
-import tarfile
-import lxml
-import logging
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
 
+import lxml
+
+foo = lxml.__name__   # fug you, flake8. Say my name! Please accept the PR, Helena!
 
 progname = os.path.split(sys.argv[0])[1]
 myversion = "V2.1 July 2020"
@@ -55,14 +58,15 @@ OFMTPOS = 1
 OCLPOS = 2
 OOCLPOS = 3
 
-# --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL"
+# --additional_parameters="$i.param_name~~~$i.param_value~~~$i.param_label~~~$i.param_help~~~$i.param_type~~~$i.CL~~~i$.param_CLoverride"
 ANAMEPOS = 0
 AVALPOS = 1
 ALABPOS = 2
 AHELPPOS = 3
 ATYPEPOS = 4
 ACLPOS = 5
-AOCLPOS = 6
+ACLOVERPOS = 6
+AOCLPOS = 7
 
 
 def timenow():
@@ -106,9 +110,9 @@ def parse_citations(citations_text):
     citation_tuples = []
     for citation in citations:
         if citation.startswith("doi"):
-            citation_tuples.append(("doi", citation[len("doi"): ].strip()))
+            citation_tuples.append(("doi", citation[len("doi"):].strip()))
         else:
-            citation_tuples.append(("bibtex", citation[len("bibtex"): ].strip()))
+            citation_tuples.append(("bibtex", citation[len("bibtex"):].strip()))
     return citation_tuples
 
 
@@ -175,9 +179,14 @@ class ScriptRunner:
             clsuffix = []
             xclsuffix = []
             for i, p in enumerate(self.infiles):
-                appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS]]
+                if p[IOCLPOS] == "STDIN":
+                    appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS],'< %s' % p[IPATHPOS]]
+                    xappendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS],'< $%s' % p[ICLPOS]]
+                else:
+                    appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS], '']
+                    xappendme = [p[IOCLPOS], p[ICLPOS], "$%s" % p[ICLPOS], '']
                 clsuffix.append(appendme)
-                xclsuffix.append([p[IOCLPOS], p[ICLPOS], "$%s" % p[ICLPOS]])
+                xclsuffix.append(xappendme)
                 # print('##infile i=%d, appendme=%s' % (i,appendme))
             for i, p in enumerate(self.outfiles):
                 if p[OOCLPOS] == "STDOUT":
@@ -185,14 +194,12 @@ class ScriptRunner:
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
                     # print('##outfiles i=%d lastclredirect = %s' % (i,self.lastclredirect))
                 else:
-                    appendme = [p[OOCLPOS], p[OCLPOS], p[ONAMEPOS]]
-                    clsuffix.append(appendme)
-                    xclsuffix.append([p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS]])
+                    clsuffix.append([p[OOCLPOS], p[OCLPOS], p[ONAMEPOS], ''])
+                    xclsuffix.append([p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ''])
                     # print('##outfiles i=%d' % i,'appendme',appendme)
             for p in self.addpar:
-                appendme = [p[AOCLPOS], p[ACLPOS], p[AVALPOS]]
-                clsuffix.append(appendme)
-                xclsuffix.append([p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS]])
+                clsuffix.append([p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]])
+                xclsuffix.append([p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]])
                 # print('##adpar %d' % i,'appendme=',appendme)
             clsuffix.sort()
             xclsuffix.sort()
@@ -280,13 +287,13 @@ class ScriptRunner:
     def clpositional(self):
         # inputs in order then params
         aCL = self.cl.append
-        for (o_v, k, v) in self.clsuffix:
+        for (o_v, k, v, koverride) in self.clsuffix:
             if " " in v:
                 aCL("%s" % v)
             else:
                 aCL(v)
         aXCL = self.xmlcl.append
-        for (o_v, k, v) in self.xclsuffix:
+        for (o_v, k, v, koverride) in self.xclsuffix:
             aXCL(v)
         if self.lastxclredirect:
             aXCL(self.lastxclredirect[0])
@@ -298,31 +305,39 @@ class ScriptRunner:
         aCL = self.cl.append
         aXCL = self.xmlcl.append
         # inputs then params in argparse named form
-        for (o_v, k, v) in self.xclsuffix:
-            if len(k.strip()) == 1:
+        for (o_v, k, v, koverride) in self.xclsuffix:
+            if koverride > '':
+                k = koverride
+            elif len(k.strip()) == 1:
                 k = "-%s" % k
             else:
                 k = "--%s" % k
             aXCL(k)
             aXCL(v)
-        for (o_v, k, v) in self.clsuffix:
-            if len(k.strip()) == 1:
+        for (o_v, k, v, koverride) in self.clsuffix:
+            if koverride > '':
+                k = koverride
+            elif len(k.strip()) == 1:
                 k = "-%s" % k
             else:
                 k = "--%s" % k
             aCL(k)
             aCL(v)
 
-    def doXMLparam(self):
+    def getNdash(self, newname):
+        if self.is_positional:
+            ndash = 0
+        else:
+            ndash = 2
+            if len(newname) < 2:
+                ndash = 1
+        return ndash
 
+    def doXMLparam(self):
+        """flake8 made me do this..."""
         for p in self.outfiles:
             newname, newfmt, newcl, oldcl = p
-            if self.is_positional:
-                ndash = 0
-            else:
-                ndash = 2
-                if len(newcl) < 2:
-                    ndash = 1
+            ndash = self.getNdash(newcl)
             aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
             aparm.positional = self.is_positional
             if self.is_positional:
@@ -338,13 +353,7 @@ class ScriptRunner:
         for p in self.infiles:
             newname = p[ICLPOS]
             newfmt = p[IFMTPOS]
-            if self.is_positional:
-                ndash = 0
-            else:
-                if len(newname) > 1:
-                    ndash = 2
-                else:
-                    ndash = 1
+            ndash = self.getNdash(newname)
             if not len(p[ILABPOS]) > 0:
                 alab = p[ICLPOS]
             else:
@@ -366,13 +375,7 @@ class ScriptRunner:
             newname, newval, newlabel, newhelp, newtype, newcl, oldcl = p
             if not len(newlabel) > 0:
                 newlabel = newname
-            if self.is_positional:
-                ndash = 0
-            else:
-                if len(newname) > 1:
-                    ndash = 2
-                else:
-                    ndash = 1
+            ndash = self.getNdash(newname)
             if newtype == "text":
                 aparm = gxtp.TextParam(
                     newname,
@@ -451,7 +454,7 @@ class ScriptRunner:
         """
         self.tool.command_line_override = self.xmlcl
         if self.args.interpreter_name:
-            self.tool.interpreter = self.interp
+            self.tool.interpreter = self.args.interpreter_name
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             helptext = [html_escape(x) for x in helptext]
@@ -487,9 +490,9 @@ class ScriptRunner:
                 )
         self.tool.requirements = requirements
         if self.args.parampass == "0":
-            self.doXMLNoparam()
+            self.doNoXMLparam()
         else:
-            self.doXMLParam()
+            self.doXMLparam()
         self.tool.outputs = self.toutputs
         self.tool.inputs = self.tinputs
         if self.args.runmode not in ["Executable", "system"]:
@@ -663,7 +666,7 @@ def main():
     assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"
     assert (
         args.interpreter_name or args.exe_package
-    ), "## Tool Factory wrapper expects an interpreter - eg --interpreter_name=Rscript or an executable package findable by the dependency management package"
+    ), "## Tool Factory wrapper expects an interpreter or an executable package"
     assert args.exe_package or (
         len(args.script_path) > 0 and os.path.isfile(args.script_path)
     ), "## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable"
