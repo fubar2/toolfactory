@@ -591,7 +591,7 @@ class ScriptRunner:
                 shutil.copyfile(pth, dest)
 
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
-            shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log_txt"))
+            shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log_outfiletxt"))
         if self.args.runmode not in ["Executable", "system"]:
             stname = os.path.join(tdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
@@ -604,7 +604,7 @@ class ScriptRunner:
         tf.add(name=tdir, arcname=self.tool_name)
         tf.close()
         shutil.copyfile(tarpath, self.args.new_tool)
-        
+
         return retval
 
     def run(self):
