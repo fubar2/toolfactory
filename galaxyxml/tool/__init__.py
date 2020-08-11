@@ -1,8 +1,10 @@
 import copy
 import logging
-from lxml import etree
-from galaxyxml import Util, GalaxyXML
+
+from galaxyxml import GalaxyXML, Util
 from galaxyxml.tool.parameters import XMLParam
+
+from lxml import etree
 
 VALID_TOOL_TYPES = ("data_source", "data_source_async")
 VALID_URL_METHODS = ("get", "post")
@@ -12,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class Tool(GalaxyXML):
+
     def __init__(
         self,
         name,
@@ -51,9 +54,7 @@ class Tool(GalaxyXML):
 
         if tool_type is not None:
             if tool_type not in VALID_TOOL_TYPES:
-                raise Exception(
-                    "Tool type must be one of %s" % ",".join(VALID_TOOL_TYPES)
-                )
+                raise Exception("Tool type must be one of %s" % ",".join(VALID_TOOL_TYPES))
             else:
                 kwargs["tool_type"] = tool_type
 
@@ -61,10 +62,7 @@ class Tool(GalaxyXML):
                     if URL_method in VALID_URL_METHODS:
                         kwargs["URL_method"] = URL_method
                     else:
-                        raise Exception(
-                            "URL_method must be one of %s"
-                            % ",".join(VALID_URL_METHODS)
-                        )
+                        raise Exception("URL_method must be one of %s" % ",".join(VALID_URL_METHODS))
 
         description_node = etree.SubElement(self.root, "description")
         description_node.text = description
@@ -145,24 +143,16 @@ class Tool(GalaxyXML):
             command_kwargs["interpreter"] = export_xml.interpreter
 
         # Add command section
-        command_node = etree.SubElement(
-            export_xml.root, "command", **command_kwargs
-        )
+        command_node = etree.SubElement(export_xml.root, "command", **command_kwargs)
 
         if keep_old_command:
             if getattr(self, "command", None):
                 command_node.text = etree.CDATA(export_xml.command)
             else:
-                logger.warning(
-                    "The tool does not have any old command stored. "
-                    + "Only the command line is written."
-                )
+                logger.warning("The tool does not have any old command stored. " + "Only the command line is written.")
                 command_node.text = export_xml.executable
         else:
-            actual_cli = "%s %s" % (
-                export_xml.executable,
-                export_xml.clean_command_string(command_line),
-            )
+            actual_cli = "%s %s" % (export_xml.executable, export_xml.clean_command_string(command_line))
             command_node.text = etree.CDATA(actual_cli.strip())
 
         try:

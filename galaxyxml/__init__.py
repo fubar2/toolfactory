@@ -1,5 +1,6 @@
-from builtins import str
 from builtins import object
+from builtins import str
+
 from lxml import etree
 
 
@@ -17,11 +18,7 @@ class Util(object):
         """Recursive data sanitisation
         """
         if isinstance(data, dict):
-            return {
-                k: cls.coerce(v, kill_lists=kill_lists)
-                for k, v in list(data.items())
-                if v is not None
-            }
+            return {k: cls.coerce(v, kill_lists=kill_lists) for k, v in list(data.items()) if v is not None}
         elif isinstance(data, list):
             if kill_lists:
                 return cls.coerce(data[0])
