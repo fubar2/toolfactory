@@ -106,9 +106,9 @@ def parse_citations(citations_text):
     citation_tuples = []
     for citation in citations:
         if citation.startswith("doi"):
-            citation_tuples.append(("doi", citation[len("doi") :].strip()))
+            citation_tuples.append(("doi", citation[len("doi"): ].strip()))
         else:
-            citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
+            citation_tuples.append(("bibtex", citation[len("bibtex"): ].strip()))
     return citation_tuples
 
 
@@ -133,6 +133,7 @@ class ScriptRunner:
         self.lastxclredirect = None
         self.cl = []
         self.xmlcl = []
+        self.is_positional = self.args.parampass == "positional"
         aCL = self.cl.append
         assert args.parampass in [
             "0",
@@ -142,32 +143,29 @@ class ScriptRunner:
         self.tool_name = re.sub("[^a-zA-Z0-9_]+", "", args.tool_name)
         self.tool_id = self.tool_name
         self.xmlfile = "%s.xml" % self.tool_name
+        if self.args.interpreter_name:
+            exe = "$runMe"
+        else:
+            exe = self.args.exe_package
+        assert (
+            exe is not None
+        ), "No interpeter or executable passed in - nothing to run so cannot build"
+        self.tool = gxt.Tool(
+            self.args.tool_name,
+            self.tool_id,
+            self.args.tool_version,
+            self.args.tool_desc,
+            exe,
+        )
+        self.tinputs = gxtp.Inputs()
+        self.toutputs = gxtp.Outputs()
+        self.testparam = []
         if (
             self.args.runmode == "Executable" or self.args.runmode == "system"
         ):  # binary - no need
             aCL(self.args.exe_package)  # this little CL will just run
         else:
-            rx = open(self.args.script_path, "r").readlines()
-            rx = [x.rstrip() for x in rx]
-            rxcheck = [x.strip() for x in rx if x.strip() > ""]
-            assert len(rxcheck) > 0, "Supplied script is empty. Cannot run"
-            self.script = "\n".join(rx)
-            fhandle, self.sfile = tempfile.mkstemp(
-                prefix=self.tool_name, suffix=".%s" % (args.interpreter_name)
-            )
-            tscript = open(self.sfile, "w")
-            tscript.write(self.script)
-            tscript.close()
-            self.indentedScript = "  %s" % "\n".join(
-                [" %s" % html_escape(x) for x in rx]
-            )
-            self.escapedScript = "%s" % "\n".join([" %s" % html_escape(x) for x in rx])
-            art = "%s.%s" % (self.tool_name, args.interpreter_name)
-            artifact = open(art, "wb")
-            artifact.write(bytes(self.script, "utf8"))
-            artifact.close()
-            aCL(self.args.interpreter_name)
-            aCL(self.sfile)
+            self.prepScript()
         self.elog = "%s_error_log.txt" % self.tool_name
         self.tlog = "%s_runner_log.txt" % self.tool_name
 
@@ -204,6 +202,28 @@ class ScriptRunner:
                 self.clpositional()
             else:
                 self.clargparse()
+
+    def prepScript(self):
+        aCL = self.cl.append
+        rx = open(self.args.script_path, "r").readlines()
+        rx = [x.rstrip() for x in rx]
+        rxcheck = [x.strip() for x in rx if x.strip() > ""]
+        assert len(rxcheck) > 0, "Supplied script is empty. Cannot run"
+        self.script = "\n".join(rx)
+        fhandle, self.sfile = tempfile.mkstemp(
+            prefix=self.tool_name, suffix=".%s" % (self.args.interpreter_name)
+        )
+        tscript = open(self.sfile, "w")
+        tscript.write(self.script)
+        tscript.close()
+        self.indentedScript = "  %s" % "\n".join([" %s" % html_escape(x) for x in rx])
+        self.escapedScript = "%s" % "\n".join([" %s" % html_escape(x) for x in rx])
+        art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
+        artifact = open(art, "wb")
+        artifact.write(bytes(self.script, "utf8"))
+        artifact.close()
+        aCL(self.args.interpreter_name)
+        aCL(self.sfile)
 
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
@@ -293,46 +313,158 @@ class ScriptRunner:
             aCL(k)
             aCL(v)
 
+    def doXMLparam(self):
+
+        for p in self.outfiles:
+            newname, newfmt, newcl, oldcl = p
+            if self.is_positional:
+                ndash = 0
+            else:
+                ndash = 2
+                if len(newcl) < 2:
+                    ndash = 1
+            aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
+            aparm.positional = self.is_positional
+            if self.is_positional:
+                if oldcl == "STDOUT":
+                    aparm.positional = 9999999
+                    aparm.command_line_override = "> $%s" % newcl
+                else:
+                    aparm.positional = int(oldcl)
+                    aparm.command_line_override = "$%s" % newcl
+            self.toutputs.append(aparm)
+            tp = gxtp.TestOutput(name=newcl, value="%s_sample" % newcl, format=newfmt)
+            self.testparam.append(tp)
+        for p in self.infiles:
+            newname = p[ICLPOS]
+            newfmt = p[IFMTPOS]
+            if self.is_positional:
+                ndash = 0
+            else:
+                if len(newname) > 1:
+                    ndash = 2
+                else:
+                    ndash = 1
+            if not len(p[ILABPOS]) > 0:
+                alab = p[ICLPOS]
+            else:
+                alab = p[ILABPOS]
+            aninput = gxtp.DataParam(
+                newname,
+                optional=False,
+                label=alab,
+                help=p[IHELPOS],
+                format=newfmt,
+                multiple=False,
+                num_dashes=ndash,
+            )
+            aninput.positional = self.is_positional
+            self.tinputs.append(aninput)
+            tparm = gxtp.TestParam(name=newname, value="%s_sample" % newname)
+            self.testparam.append(tparm)
+        for p in self.addpar:
+            newname, newval, newlabel, newhelp, newtype, newcl, oldcl = p
+            if not len(newlabel) > 0:
+                newlabel = newname
+            if self.is_positional:
+                ndash = 0
+            else:
+                if len(newname) > 1:
+                    ndash = 2
+                else:
+                    ndash = 1
+            if newtype == "text":
+                aparm = gxtp.TextParam(
+                    newname,
+                    label=newlabel,
+                    help=newhelp,
+                    value=newval,
+                    num_dashes=ndash,
+                )
+            elif newtype == "integer":
+                aparm = gxtp.IntegerParam(
+                    newname,
+                    label=newname,
+                    help=newhelp,
+                    value=newval,
+                    num_dashes=ndash,
+                )
+            elif newtype == "float":
+                aparm = gxtp.FloatParam(
+                    newname,
+                    label=newname,
+                    help=newhelp,
+                    value=newval,
+                    num_dashes=ndash,
+                )
+            else:
+                raise ValueError(
+                    'Unrecognised parameter type "%s" for\
+                 additional parameter %s in makeXML'
+                    % (newtype, newname)
+                )
+            aparm.positional = self.is_positional
+            if self.is_positional:
+                aninput.positional = int(oldcl)
+            self.tinputs.append(aparm)
+            self.tparm = gxtp.TestParam(newname, value=newval)
+            self.testparam.append(tparm)
+
+    def doNoXMLparam(self):
+        alab = self.infiles[0][ILABPOS]
+        if len(alab) == 0:
+            alab = self.infiles[0][ICLPOS]
+        max1s = (
+            "Maximum one input if parampass is 0 - more than one input files supplied - %s"
+            % str(self.infiles)
+        )
+        assert len(self.infiles) == 1, max1s
+        newname = self.infiles[0][ICLPOS]
+        aninput = gxtp.DataParam(
+            newname,
+            optional=False,
+            label=alab,
+            help=self.infiles[0][IHELPOS],
+            format=self.infiles[0][IFMTPOS],
+            multiple=False,
+            num_dashes=0,
+        )
+        aninput.command_line_override = "< $%s" % newname
+        aninput.positional = self.is_positional
+        self.tinputs.append(aninput)
+        tp = gxtp.TestParam(name=newname, value="%s_sample" % newname)
+        self.testparam.append(tp)
+        newname = self.outfiles[0][OCLPOS]
+        newfmt = self.outfiles[0][OFMTPOS]
+        anout = gxtp.OutputData(newname, format=newfmt, num_dashes=0)
+        anout.command_line_override = "> $%s" % newname
+        anout.positional = self.is_positional
+        self.toutputs.append(anout)
+        tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname, format=newfmt)
+        self.testparam.append(tp)
+
     def makeXML(self):
         """
         Create a Galaxy xml tool wrapper for the new script
         Uses galaxyhtml
         Hmmm. How to get the command line into correct order...
         """
-
+        self.tool.command_line_override = self.xmlcl
         if self.args.interpreter_name:
-            exe = "$runMe"
-            interp = self.args.interpreter_name
-        else:
-            interp = None
-            exe = self.args.exe_package
-        assert exe is not None, "No interpeter or executable passed in to makeXML"
-        tool = gxt.Tool(
-            self.args.tool_name,
-            self.tool_id,
-            self.args.tool_version,
-            self.args.tool_desc,
-            exe,
-        )
-        tool.command_line_override = self.xmlcl
-        if interp:
-            tool.interpreter = interp
+            self.tool.interpreter = self.interp
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             helptext = [html_escape(x) for x in helptext]
-            tool.help = "".join([x for x in helptext])
+            self.tool.help = "".join([x for x in helptext])
         else:
-            tool.help = (
+            self.tool.help = (
                 "Please ask the tool author (%s) for help \
               as none was supplied at tool generation\n"
                 % (self.args.user_email)
             )
-        tool.version_command = None  # do not want
-        tinputs = gxtp.Inputs()
-        toutputs = gxtp.Outputs()
+        self.tool.version_command = None  # do not want
         requirements = gxtp.Requirements()
-        testparam = []
-        is_positional = self.args.parampass == "positional"
+
         if self.args.interpreter_name:
             if self.args.interpreter_name == "python":
                 requirements.append(
@@ -353,161 +485,32 @@ class ScriptRunner:
                         "package", self.args.exe_package, self.args.exe_package_version
                     )
                 )
-        tool.requirements = requirements
+        self.tool.requirements = requirements
         if self.args.parampass == "0":
-            alab = self.infiles[0][ILABPOS]
-            if len(alab) == 0:
-                alab = self.infiles[0][ICLPOS]
-            max1s = (
-                "Maximum one input if parampass is 0 - more than one input files supplied - %s"
-                % str(self.infiles)
-            )
-            assert len(self.infiles) == 1, max1s
-            newname = self.infiles[0][ICLPOS]
-            aninput = gxtp.DataParam(
-                newname,
-                optional=False,
-                label=alab,
-                help=self.infiles[0][IHELPOS],
-                format=self.infiles[0][IFMTPOS],
-                multiple=False,
-                num_dashes=0,
-            )
-            aninput.command_line_override = "< $%s" % newname
-            aninput.positional = is_positional
-            tinputs.append(aninput)
-            tp = gxtp.TestParam(name=newname, value="%s_sample" % newname)
-            testparam.append(tp)
-            newname = self.outfiles[0][OCLPOS]
-            newfmt = self.outfiles[0][OFMTPOS]
-            anout = gxtp.OutputData(newname, format=newfmt, num_dashes=0)
-            anout.command_line_override = "> $%s" % newname
-            anout.positional = is_positional
-            toutputs.append(anout)
-            tp = gxtp.TestOutput(
-                name=newname, value="%s_sample" % newname, format=newfmt
-            )
-            testparam.append(tp)
+            self.doXMLNoparam()
         else:
-            for p in self.outfiles:
-                newname, newfmt, newcl, oldcl = p
-                if is_positional:
-                    ndash = 0
-                else:
-                    ndash = 2
-                    if len(newcl) < 2:
-                        ndash = 1
-                aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
-                aparm.positional = is_positional
-                if is_positional:
-                    if oldcl == "STDOUT":
-                        aparm.positional = 9999999
-                        aparm.command_line_override = "> $%s" % newcl
-                    else:
-                        aparm.positional = int(oldcl)
-                        aparm.command_line_override = "$%s" % newcl
-                toutputs.append(aparm)
-                tp = gxtp.TestOutput(
-                    name=newcl, value="%s_sample" % newcl, format=newfmt
-                )
-                testparam.append(tp)
-            for p in self.infiles:
-                newname = p[ICLPOS]
-                newfmt = p[IFMTPOS]
-                if is_positional:
-                    ndash = 0
-                else:
-                    if len(newname) > 1:
-                        ndash = 2
-                    else:
-                        ndash = 1
-                if not len(p[ILABPOS]) > 0:
-                    alab = p[ICLPOS]
-                else:
-                    alab = p[ILABPOS]
-                aninput = gxtp.DataParam(
-                    newname,
-                    optional=False,
-                    label=alab,
-                    help=p[IHELPOS],
-                    format=newfmt,
-                    multiple=False,
-                    num_dashes=ndash,
-                )
-                aninput.positional = is_positional
-                if is_positional:
-                    aninput.positional = is_positional
-                tinputs.append(aninput)
-                tparm = gxtp.TestParam(name=newname, value="%s_sample" % newname)
-                testparam.append(tparm)
-            for p in self.addpar:
-                newname, newval, newlabel, newhelp, newtype, newcl, oldcl = p
-                if not len(newlabel) > 0:
-                    newlabel = newname
-                if is_positional:
-                    ndash = 0
-                else:
-                    if len(newname) > 1:
-                        ndash = 2
-                    else:
-                        ndash = 1
-                if newtype == "text":
-                    aparm = gxtp.TextParam(
-                        newname,
-                        label=newlabel,
-                        help=newhelp,
-                        value=newval,
-                        num_dashes=ndash,
-                    )
-                elif newtype == "integer":
-                    aparm = gxtp.IntegerParam(
-                        newname,
-                        label=newname,
-                        help=newhelp,
-                        value=newval,
-                        num_dashes=ndash,
-                    )
-                elif newtype == "float":
-                    aparm = gxtp.FloatParam(
-                        newname,
-                        label=newname,
-                        help=newhelp,
-                        value=newval,
-                        num_dashes=ndash,
-                    )
-                else:
-                    raise ValueError(
-                        'Unrecognised parameter type "%s" for\
-                     additional parameter %s in makeXML'
-                        % (newtype, newname)
-                    )
-                aparm.positional = is_positional
-                if is_positional:
-                    aninput.positional = int(oldcl)
-                tinputs.append(aparm)
-                tparm = gxtp.TestParam(newname, value=newval)
-                testparam.append(tparm)
-        tool.outputs = toutputs
-        tool.inputs = tinputs
-        if not self.args.runmode in ["Executable", "system"]:
+            self.doXMLParam()
+        self.tool.outputs = self.toutputs
+        self.tool.inputs = self.tinputs
+        if self.args.runmode not in ["Executable", "system"]:
             configfiles = gxtp.Configfiles()
             configfiles.append(gxtp.Configfile(name="runMe", text=self.script))
-            tool.configfiles = configfiles
+            self.tool.configfiles = configfiles
         tests = gxtp.Tests()
         test_a = gxtp.Test()
-        for tp in testparam:
+        for tp in self.testparam:
             test_a.append(tp)
         tests.append(test_a)
-        tool.tests = tests
-        tool.add_comment(
+        self.tool.tests = tests
+        self.tool.add_comment(
             "Created by %s at %s using the Galaxy Tool Factory."
             % (self.args.user_email, timenow())
         )
-        tool.add_comment("Source in git at: %s" % (toolFactoryURL))
-        tool.add_comment(
+        self.tool.add_comment("Source in git at: %s" % (toolFactoryURL))
+        self.tool.add_comment(
             "Cite: Creating re-usable tools from scripts doi: 10.1093/bioinformatics/bts573"
         )
-        exml = tool.export()
+        exml = self.tool.export()
         xf = open(self.xmlfile, "w")
         xf.write(exml)
         xf.write("\n")
@@ -553,7 +556,7 @@ class ScriptRunner:
 
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
             shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log.txt"))
-        if not self.args.runmode in ["Executable", "system"]:
+        if self.args.runmode not in ["Executable", "system"]:
             stname = os.path.join(tdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)

@@ -117,7 +117,7 @@ class Tool(GalaxyXML):
         except Exception:
             pass
 
-        if self.command_line_override != None:
+        if self.command_line_override:
             command_line = self.command_line_override
         else:
             command_line = []
