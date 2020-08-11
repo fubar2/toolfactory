@@ -1,4 +1,5 @@
-<tool id="rgTF2" name="toolfactory" version="2.00">
+<tool id="rgTF2" name="toolfactory" version="2.00" >
+<tool profile="20.04"/>
   <description>Scripts into tools</description>
   <macros>
      <xml name="io">
@@ -228,7 +229,7 @@ $tool_name help goes here
         </when>
         <when value="system">
             <param name="exe_package" type="text" value="" label="System executable to run"  optional="false"/>
-            <param name="exe_package_version" type="text" value=""
+            <param name="exe_package_version" type="text" value="" hidden = "true"
               label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
         </when>
         <when value = "python">
@@ -317,15 +318,13 @@ $tool_name help goes here
     </conditional> 
   </inputs>
   <outputs>
-    <collection name="ToolFactory_Outputs" type="list" label="Toolfactory ${tool_name} test run outputs" >
-       <discover_datasets pattern="(?P&lt;designation&gt;.+)\.xml"  format="xml" visible="true"/>
-    </collection>
-    <collection name="ToolFactory_Test_Outputs" type="list" label="Toolfactory ${tool_name} test outputs" >
-       <discover_datasets pattern="__designation__"  format="txt" visible="true" directory="tfout/test-data" />
-    </collection>
     <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz" >
         <filter>makeMode['make_Tool'] == "yes"</filter>
     </data>
+   <collection type="list" label="Toolfactory ${tool_name} outputs" name="tfout1" >
+     <discover_datasets pattern="(?P&lt;name&gt;.+)" directory="tdir" visible="true"/>
+     <discover_datasets pattern="(?P&lt;name&gt;_.+)" directory="tdir/test-data" visible="true" />
+   </collection>
   </outputs>
 <tests>
 <test>
@@ -345,7 +344,7 @@ $tool_name help goes here
     <param name="history_format" value="txt" />
     <param name="history_CL" value="2" />
     <param name="dynScript" value="import sys; inp = sys.argv[1]; outp = sys.argv[2]; inlist = open(inp,'r').readlines(); o = open(outp,'w'); rs = [''.join(list(reversed(x.rstrip()))) for x in inlist]; o.write('\n'.join(rs)); o.close()"/> 
-    <output_collection name="ToolFactory_Outputs" type="list">
+    <output_collection name="tfout2" type="list">
         <element name="output2_sample_sample" file="output2_sample" ftype="txt" compare="diff" lines_diff = "10" />
     </output_collection>
     <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />

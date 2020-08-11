@@ -237,7 +237,7 @@ class ScriptRunner:
         assert len(rxcheck) > 0, "Supplied script is empty. Cannot run"
         self.script = "\n".join(rx)
         fhandle, self.sfile = tempfile.mkstemp(
-            prefix=self.tool_name, suffix=".%s" % (self.args.interpreter_name)
+            prefix=self.tool_name, suffix="_%s" % (self.args.interpreter_name)
         )
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
@@ -397,7 +397,7 @@ class ScriptRunner:
             tparm = gxtp.TestParam(name=newname, value="%s_sample" % newname)
             self.testparam.append(tparm)
         for p in self.addpar:
-            newname, newval, newlabel, newhelp, newtype, newcl, oldcl = p
+            newname, newval, newlabel, newhelp, newtype, newcl, override, oldcl = p
             if not len(newlabel) > 0:
                 newlabel = newname
             ndash = self.getNdash(newname)
@@ -591,21 +591,20 @@ class ScriptRunner:
                 shutil.copyfile(pth, dest)
 
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
-            shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log.txt"))
+            shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log_txt"))
         if self.args.runmode not in ["Executable", "system"]:
             stname = os.path.join(tdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
-        xout = '%s.xml' % self.tool_name
-        xtname = os.path.join(tdir,xout)
-        if not os.path.exists(xtname):
-            shutil.copyfile(xout, xtname)
+        xreal = '%s.xml' % self.tool_name
+        xout = os.path.join(tdir,'%s_xml' % self.tool_name)
+        shutil.copyfile(xreal, xout)
         tarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(tarpath, "w:gz")
         tf.add(name=tdir, arcname=self.tool_name)
         tf.close()
-        
         shutil.copyfile(tarpath, self.args.new_tool)
+        
         return retval
 
     def run(self):
