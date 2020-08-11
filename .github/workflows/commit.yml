@@ -47,12 +47,13 @@ jobs:
     - name: Install wheel
       run: pip install wheel
     - name: Install Planemo and flake8
-      run: pip install planemo flake8-import-order, flake8
+      run: pip install planemo flake8 flake8-import-order
     # galaxyxml temporarily removed until PR accepted
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-    - flake8
+    - name: flake8
+      run: flake8
     - name: Planemo lint
       run: planemo lint .
     - name: Planemo test tool
