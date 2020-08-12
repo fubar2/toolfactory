@@ -251,7 +251,7 @@ class ScriptRunner:
         )
         art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
         artifact = open(art, "wb")
-        if self.args.interpreter == "python":
+        if self.args.interpreter_name == "python":
             artifact.write(bytes("#!/usr/bin/env python\n", "utf8"))
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
@@ -545,7 +545,8 @@ class ScriptRunner:
         )
         self.tool.add_comment("Source in git at: %s" % (toolFactoryURL))
         self.tool.add_comment(
-            "Cite: Creating re-usable tools from scripts doi: 10.1093/bioinformatics/bts573"
+            "Cite: Creating re-usable tools from scripts doi: \
+            10.1093/bioinformatics/bts573"
         )
         exml = self.tool.export()
         xf = open('%s.xml' % self.tool_name, "w")
