@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 #
@@ -36,11 +37,6 @@ import galaxyxml.tool.parameters as gxtp
 
 import lxml
 
-foo = (
-    lxml.__name__
-)  # fug you, flake8. Say my name! Please accept the PR, Helena!
-
-progname = os.path.split(sys.argv[0])[1]
 myversion = "V2.1 July 2020"
 verbose = True
 debug = True
@@ -48,7 +44,7 @@ toolFactoryURL = "https://github.com/fubar2/toolfactory"
 ourdelim = "~~~"
 
 # --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label
-#~~~$input_help"
+# ~~~$input_help"
 IPATHPOS = 0
 ICLPOS = 1
 IFMTPOS = 2
@@ -73,6 +69,9 @@ ACLPOS = 5
 AOVERPOS = 6
 AOCLPOS = 7
 
+
+foo = len(lxml.__version__)  
+# fug you, flake8. Say my name! 
 
 def timenow():
     """return current time as a string
@@ -597,28 +596,26 @@ class ScriptRunner:
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
         xreal = '%s.xml' % self.tool_name
-        xout = os.path.join(tdir,'%s_xml' % self.tool_name)
+        xout = os.path.join(tdir,xreal)
         shutil.copyfile(xreal, xout)
         tarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(tarpath, "w:gz")
         tf.add(name=tdir, arcname=self.tool_name)
         tf.close()
         shutil.copyfile(tarpath, self.args.new_tool)
-        repdir = "report"
+        shutil.copyfile(xreal,"tool_xml.txt")
+        repdir = "TF_run_report_tempdir"
         if not os.path.exists(repdir):
-            os.mkdir(repdir)  
+            os.mkdir(repdir)
+        repoutnames = [x[OCLPOS] for x in self.outfiles]
         with os.scandir('.') as outs:
             for entry in outs:
                 if entry.name.endswith('.tgz') or not entry.is_file():
                     continue
-                if '.' in entry.name:
-                    newname = entry.name
-                    if not newname.endswith('.txt'):
-                        newname = '%s.txt' % entry.name(replace('.','_'))
-                    shutil.copyfile(entry.name,os.path.join(repdir,newname))
-                else:
-                    shutil.copyfile(entry.name,os.path.join(repdir,'%s.txt' % entry.name))
-        #shutil.rmtree(tdir, ignore_errors=True, onerror=None)
+                if entry.name in repoutnames:
+                    shutil.copyfile(entry.name,os.path.join(repdir,entry.name))
+                elif entry.name == "%s.xml" % self.tool_name:
+                    shutil.copyfile(entry.name,os.path.join(repdir,"new_tool_xml"))
         return retval
 
     def run(self):
