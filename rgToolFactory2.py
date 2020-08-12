@@ -252,7 +252,7 @@ class ScriptRunner:
         art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
         artifact = open(art, "wb")
         if self.args.interpreter == "python":
-            artifact.write(bytes("#!/usr/bin/env python\n", "utf8")
+            artifact.write(bytes("#!/usr/bin/env python\n", "utf8"))
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
         aCL(self.args.interpreter_name)
