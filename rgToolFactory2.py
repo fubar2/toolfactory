@@ -17,8 +17,10 @@
 # removed all the old complications including making the new tool use this same script
 # galaxyxml now generates the tool xml https://github.com/hexylena/galaxyxml
 # No support for automatic HTML file creation from arbitrary outputs
-# TODO: add option to run that code as a post execution hook
-# TODO: add additional history input parameters - currently only one
+# essential problem is to create two command lines - one for the tool xml and a different
+# one to run the executable with the supplied test data and settings
+# Be simpler to write the tool, then run it with planemo and soak up the test outputs.
+
 
 
 import argparse
@@ -249,6 +251,8 @@ class ScriptRunner:
         )
         art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
         artifact = open(art, "wb")
+        if self.args.interpreter == "python":
+            artifact.write(bytes("#!/usr/bin/env python\n", "utf8")
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
         aCL(self.args.interpreter_name)
