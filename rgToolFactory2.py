@@ -70,8 +70,8 @@ AOVERPOS = 6
 AOCLPOS = 7
 
 
-foo = len(lxml.__version__)  
-# fug you, flake8. Say my name! 
+foo = len(lxml.__version__)
+# fug you, flake8. Say my name!
 
 def timenow():
     """return current time as a string
