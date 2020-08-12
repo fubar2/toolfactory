@@ -1,5 +1,4 @@
-<tool id="rgTF2" name="toolfactory" version="2.00" >
-<tool profile="20.04"/>
+<tool id="rgTF2" name="toolfactory" version="2.00" profile="20.04" >
   <description>Scripts into tools</description>
   <macros>
      <xml name="io">
@@ -321,10 +320,9 @@ $tool_name help goes here
     <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz" >
         <filter>makeMode['make_Tool'] == "yes"</filter>
     </data>
-   <collection type="list" label="Toolfactory ${tool_name} outputs" name="tfout1" >
-     <discover_datasets pattern="(?P&lt;name&gt;.+)" directory="tdir" visible="true"/>
-     <discover_datasets pattern="(?P&lt;name&gt;_.+)" directory="tdir/test-data" visible="true" />
-   </collection>
+    <collection name="report" type="list" label="${tool_name}_report">   
+     <discover_datasets pattern="__name_and_ext__" visible="true" format="txt" directory="report" />
+     </collection>
   </outputs>
 <tests>
 <test>

@@ -604,7 +604,21 @@ class ScriptRunner:
         tf.add(name=tdir, arcname=self.tool_name)
         tf.close()
         shutil.copyfile(tarpath, self.args.new_tool)
-
+        repdir = "report"
+        if not os.path.exists(repdir):
+            os.mkdir(repdir)  
+        with os.scandir('.') as outs:
+            for entry in outs:
+                if entry.name.endswith('.tgz') or not entry.is_file():
+                    continue
+                if '.' in entry.name:
+                    newname = entry.name
+                    if not newname.endswith('.txt'):
+                        newname = '%s.txt' % entry.name(replace('.','_'))
+                    shutil.copyfile(entry.name,os.path.join(repdir,newname))
+                else:
+                    shutil.copyfile(entry.name,os.path.join(repdir,'%s.txt' % entry.name))
+        #shutil.rmtree(tdir, ignore_errors=True, onerror=None)
         return retval
 
     def run(self):
