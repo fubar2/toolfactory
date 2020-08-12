@@ -122,7 +122,7 @@
   </macros>
    <requirements>
       <requirement type="package">python</requirement>
-      <requirement type="package">lxml</requirement>
+      <requirement type="package">galaxyxml</requirement>
   </requirements>
   <command interpreter="python"><![CDATA[
 #import os
