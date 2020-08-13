@@ -1,8 +1,8 @@
-api_key: <Admin user API key from galaxy_instance>
-galaxy_instance: <Galaxy instance IP>
+api_key: HSNiugRFvgT574F43jZ7N9F3
+galaxy_instance: http://localhost:80
 tools:
 - name: tool_factory_2
   owner: fubar
-  tool_panel_section_id: Tool Makers
+  tool_panel_section_label: Tool Makers
   tool_shed_url: https://toolshed.g2.bx.psu.edu
  
