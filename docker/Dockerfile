@@ -15,7 +15,7 @@ RUN add-tool-shed --url 'http://testtoolshed.g2.bx.psu.edu/' --name 'Test Tool S
 ADD my_tool_list.yml $GALAXY_ROOT/tf_tool_list.yml
 
 RUN install-tools $GALAXY_ROOT/tf_tool_list.yml && \
-    /tool_deps/_conda/bin/conda clean --tarballs --yes
+    /tool_deps/_conda/bin/conda clean --tarballs --yes \
      > /dev/null && \
     rm /export/galaxy-central/ -rf
 

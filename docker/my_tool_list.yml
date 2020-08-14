@@ -3,10 +3,9 @@ galaxy_instance: http://localhost:8080
 install_resolver_dependencies: true
 install_tool_dependencies: false
 tools:
-- name: tool_factory_2
-   owner: fubar
-   tool_panel_section_label: "Tool Makers"
-   tool_shed_url: https://toolshed.g2.bx.psu.edu
- 
+- name: "tool_factory_2"
+  owner: "fubar"
+  tool_panel_section_label: "Tool Makers"
+  tool_shed_url: "https://toolshed.g2.bx.psu.edu"
  
  
