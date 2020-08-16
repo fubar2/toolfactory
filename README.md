@@ -1,27 +1,11 @@
 ﻿Note as at August 8 2020
 
-Until a PR is accepted, galaxyxml requires a small tweak - you will need to install
-```
-https://github.com/fubar2/galaxyxml
-```
-instead into the virtualenv used to run galaxy and when using planemo, the
-
-```
---skip_venv 
-```
-
-flag must be used.
-
 
 *WARNING before you start*
 
  Install this tool on a private Galaxy ONLY
  Please NEVER on a public or production instance
  
-Updated august 2014 by John Chilton adding citation support
-
-Updated august 8 2014 to fix bugs reported by Marius van den Beek
-
 Please cite the resource at
 http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&keytype=ref
 if you use this tool in your published work.
@@ -37,7 +21,6 @@ writing a single new data set as output.
 *You have a working r/python/perl/bash script or any executable with positional or argparse style parameters*
 
 It can be turned into an ordinary Galaxy tool in minutes, using a Galaxy tool.
-
 
 **Automated generation of new Galaxy tools for installation into any Galaxy**
 
@@ -71,11 +54,6 @@ names. The new tool will be generated in the form of a new Galaxy datatype
 *tgz* - as the name suggests, it's an archive ready to upload to a
 Galaxy ToolShed as a new tool repository.
 
-Until tgz is added to the galaxy distribution datatypes you will need to add the following:
-    <datatype extension="tgz" type="galaxy.datatypes.binary:Binary" subclass="true" mimetype="multipart/x-gzip" display_in_upload="true" />
-
-to::
- [galaxyroot]/config/datatypes_conf.xml
 
 Once it's in a ToolShed, it can be installed into any local Galaxy server
 from the server administrative interface.
@@ -129,7 +107,7 @@ be lack of appropriate technical skills.
 **What it does** 
 
 This is a tool factory for simple scripts in python, R and
-perl currently. Functional tests are automatically generated. How cool is that.
+perl currently. Functional tests are automatically generated. 
 
 LIMITED to simple scripts that read one input from the history. Optionally can
 write one new history dataset, and optionally collect any number of outputs

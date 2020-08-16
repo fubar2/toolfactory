@@ -1,3 +1,4 @@
+#!/bin/bash
 # hook to install tf demo workflow
-workflow-install -w $GALAXY_HOME/workflows -g http://localhost:$PORT \
-        -u $GALAXY_DEFAULT_ADMIN_USER -p $GALAXY_DEFAULT_ADMIN_PASSWORD --add_to_menu
+echo "#### post start actions.sh hook happening"
+workflow-install -w $GALAXY_ROOT/workflows/TF_example_wf.ga -g http://localhost:80 -a fakekey --publish_workflows
