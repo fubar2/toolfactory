@@ -22,9 +22,9 @@ ENV GALAXY_AUTO_UPDATE_TOOLS=$GALAXY_ROOT/config/toolfactory_tools.yaml
 # Add workflows to the Docker image
 RUN mkdir -p $GALAXY_ROOT/workflows
 ADD TF_example_wf.ga $GALAXY_ROOT/workflows/TF_example_wf.ga
-
+RUN chown $GALAXY_USER $GALAXY_ROOT/workflows/TF_example_wf.ga
 ADD post-start-actions.sh /export/post-start-actions.sh
-RUN chmod a+x /export/post-start-actions.sh
+RUN chown /export/post-start-actions.sh $GALAXY_USER && chmod a+x /export/post-start-actions.sh
 
 # Add Galaxy interactive tours
 # ADD ./rna-workbench-tours/* $GALAXY_ROOT/config/plugins/tours/
