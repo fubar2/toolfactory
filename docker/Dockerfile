@@ -9,7 +9,7 @@ MAINTAINER Ross Lazarus ross.lazarus@gmail.com
 ENV GALAXY_CONFIG_BRAND=ToolFactory
 ENV GALAXY_LOGGING="full"
 
-RUN apt-get update -y && apt-get install -y build-essential gcc apt-utils
+# RUN apt-get update -y && apt-get install -y build-essential gcc apt-utils
 # needed for planemo build
 
 RUN /galaxy_venv/bin/python -m pip install --upgrade pip
@@ -22,9 +22,9 @@ ENV GALAXY_AUTO_UPDATE_TOOLS=$GALAXY_ROOT/config/toolfactory_tools.yaml
 # Add workflows to the Docker image
 RUN mkdir -p $GALAXY_ROOT/workflows
 ADD TF_example_wf.ga $GALAXY_ROOT/workflows/TF_example_wf.ga
-RUN chown $GALAXY_USER $GALAXY_ROOT/workflows/TF_example_wf.ga
 ADD post-start-actions.sh /export/post-start-actions.sh
-RUN chown /export/post-start-actions.sh $GALAXY_USER && chmod a+x /export/post-start-actions.sh
+RUN chmod a+xr /export/post-start-actions.sh \
+ && chmod a+xr $GALAXY_ROOT/workflows/TF_example_wf.ga 
 
 # Add Galaxy interactive tours
 # ADD ./rna-workbench-tours/* $GALAXY_ROOT/config/plugins/tours/
@@ -37,10 +37,10 @@ RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
     && find /var/log/ -name '*.log' -delete | true \
     && find $GALAXY_VIRTUAL_ENV -name '*.pyc' -delete | true \
     && rm -rf /tmp/* /root/.cache/ /var/cache/* $GALAXY_ROOT/client/node_modules/ $GALAXY_VIRTUAL_ENV/src/ /home/galaxy/.cache/ /home/galaxy/.npm
-
-VOLUME ["/export/", "/data/", "/var/lib/docker"]
+ENV GALAXY_DEFAULT_ADMIN_USER=''
+VOLUME ["/export/"]
 EXPOSE :80
 EXPOSE :21
 EXPOSE :8800
-CMD ["/usr/bin/startup.sh"]
+CMD ["/usr/bin/startup"]
 
