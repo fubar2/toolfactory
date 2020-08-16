@@ -16,12 +16,9 @@ RUN /galaxy_venv/bin/python -m pip install --upgrade pip
 # RUN /galaxy_venv/bin/python -m pip install planemo
 
 # RUN add-tool-shed --url 'http://testtoolshed.g2.bx.psu.edu/' --name 'Test Tool Shed'
-ADD my_tool_list.yml $GALAXY_ROOT/tools.yaml
-RUN install-tools $GALAXY_ROOT/tools.yaml && \
-    /tool_deps/_conda/bin/conda clean --tarballs && \
-    rm /export/galaxy-central/ -rf
-# ENV GALAXY_AUTO_UPDATE_TOOLS=/export/tools.yaml
-# Space or line separated - doesn't seem to work.
+ADD my_tool_list.yml $GALAXY_ROOT/config/toolfactory_tools.yaml
+ENV GALAXY_AUTO_UPDATE_TOOLS=$GALAXY_ROOT/config/toolfactory_tools.yaml
+
 # Add workflows to the Docker image
 RUN mkdir -p $GALAXY_ROOT/workflows
 ADD TF_example_wf.ga $GALAXY_ROOT/workflows/TF_example_wf.ga
