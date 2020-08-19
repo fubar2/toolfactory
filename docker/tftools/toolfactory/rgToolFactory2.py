@@ -173,17 +173,10 @@ class ScriptRunner:
         self.testparam = []
         if (
             self.args.runmode == "Executable" or self.args.runmode == "system"
-        ): 
-            if len(self.args.cl_override) > 0:
-                for x in self.args.cl_override.split(' '):
-                    aCL(x)
-            else:
-                aCL(self.args.exe_package)  # this little CL will just run
+        ):  # binary - no need
+            aCL(self.args.exe_package)  # this little CL will just run
         else:
             self.prepScript()
-            aCL(self.args.interpreter_name)
-            aCL(self.sfile)
-
         self.elog = "%s_error_log.txt" % self.tool_name
         self.tlog = "%s_runner_log.txt" % self.tool_name
 
@@ -238,6 +231,7 @@ class ScriptRunner:
                 self.clargparse()
 
     def prepScript(self):
+        aCL = self.cl.append
         rx = open(self.args.script_path, "r").readlines()
         rx = [x.rstrip() for x in rx]
         rxcheck = [x.strip() for x in rx if x.strip() > ""]
@@ -261,9 +255,9 @@ class ScriptRunner:
             artifact.write(bytes("#!/usr/bin/env python\n", "utf8"))
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
-        
-        
-        
+        aCL(self.args.interpreter_name)
+        aCL(self.sfile)
+
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i, p in enumerate(self.infiles):
@@ -488,10 +482,7 @@ class ScriptRunner:
         Uses galaxyhtml
         Hmmm. How to get the command line into correct order...
         """
-        if self.args.cl_override:
-            self.tool.command_line_override = self.args.cl_override.split(' ') + self.xmlcl
-        else:
-            self.tool.command_line_override = self.xmlcl
+        self.tool.command_line_override = self.xmlcl
         if self.args.interpreter_name:
             self.tool.interpreter = self.args.interpreter_name
         if self.args.help_text:
@@ -508,13 +499,6 @@ class ScriptRunner:
         requirements = gxtp.Requirements()
 
         if self.args.interpreter_name:
-            if self.args.dependencies:
-                for d in self.args.dependencies.split(','):
-                    requirements.append(
-                        gxtp.Requirement(
-                         "package", d, ""
-                        )
-                    )
             if self.args.interpreter_name == "python":
                 requirements.append(
                     gxtp.Requirement(
@@ -707,8 +691,6 @@ def main():
     parser = argparse.ArgumentParser()
     a = parser.add_argument
     a("--script_path", default="")
-    a("--dependencies", default="")
-    a("--cl_override", default="")
     a("--tool_name", default=None)
     a("--interpreter_name", default=None)
     a("--interpreter_version", default=None)

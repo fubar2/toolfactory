@@ -2,7 +2,7 @@
     "a_galaxy_workflow": "true",
     "annotation": "",
     "format-version": "0.1",
-    "name": "TF examples",
+    "name": "TF examples (imported from uploaded file)",
     "steps": {
         "0": {
             "annotation": "a fasta file - gc ratio will be estimated",
@@ -82,7 +82,7 @@
         },
         "2": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 2,
             "input_connections": {
@@ -115,7 +115,13 @@
                 "y": 170
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"perl\", \"__current_case__\": 4, \"interpreter_version\": \"\", \"exe_package_version\": \"\", \"dynScript\": \"\\n# usage : perl toolExample.pl <FASTA file> <output file>\\n\\nopen (IN, \\\"<$ARGV[0]\\\");\\nopen (OUT, \\\">$ARGV[1]\\\");\\nwhile (<IN>) {\\n    chop;\\n    if (m/^>/) {\\n        s/^>//;\\n        if ($. > 1) {\\n            print OUT sprintf(\\\"%.3f\\\", $gc/$length) . \\\"\\\\n\\\";\\n        }\\n        $gc = 0;\\n        $length = 0;\\n    } else {\\n        ++$gc while m/[gc]/ig;\\n        $length += length $_;\\n    }\\n}\\nprint OUT sprintf(\\\"%.3f\\\", $gc/$length) . \\\"\\\\n\\\";\\nclose( IN );\\nclose( OUT );\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"perl version of gc counter from planemo example\", \"help_text\": \"**What it Does**\\ncounts gc using, ugh, perl...\\n\", \"citations\": []}, \"ppass\": {\"parampass\": \"positional\", \"__current_case__\": 1, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"fasta\"], \"input_label\": \"input fasta file\", \"input_help\": \"parameter_help\", \"input_CL\": \"1\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"output\", \"history_format\": \"tsv\", \"history_CL\": \"2\"}], \"edit_params\": \"no\", \"additional_parameters\": []}, \"tool_name\": \"perlgc\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -123,19 +129,19 @@
             "workflow_outputs": [
                 {
                     "label": null,
-                    "output_name": "TF_run_report",
-                    "uuid": "7aea56bd-4f39-4d3b-8254-a6675161d059"
+                    "output_name": "new_tool",
+                    "uuid": "f964e779-2f92-4c81-9819-3e1ebc156664"
                 },
                 {
                     "label": null,
-                    "output_name": "new_tool",
-                    "uuid": "f964e779-2f92-4c81-9819-3e1ebc156664"
+                    "output_name": "TF_run_report",
+                    "uuid": "7aea56bd-4f39-4d3b-8254-a6675161d059"
                 }
             ]
         },
         "3": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 3,
             "input_connections": {
@@ -168,7 +174,13 @@
                 "y": 290
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"system\", \"__current_case__\": 1, \"exe_package\": \"sed\", \"exe_package_version\": \"\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"sed runner\", \"help_text\": \"sed '/old/new/g input.txt\", \"citations\": []}, \"ppass\": {\"parampass\": \"positional\", \"__current_case__\": 1, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"txt\"], \"input_label\": \"input text\", \"input_help\": \"parameter_help\", \"input_CL\": \"3\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"output\", \"history_format\": \"txt\", \"history_CL\": \"STDOUT\"}], \"edit_params\": \"yes\", \"additional_parameters\": [{\"__index__\": 0, \"param_name\": \"sedstring\", \"param_type\": \"text\", \"param_value\": \"s/def/bjork!bjorkdef/g\", \"param_label\": \"parameter_label\", \"param_help\": \"parameter_help\", \"param_CL\": \"1\", \"param_CLprefixed\": \"\"}]}, \"tool_name\": \"sedtest\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -188,7 +200,7 @@
         },
         "4": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 4,
             "input_connections": {
@@ -221,7 +233,13 @@
                 "y": 410
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"python\", \"__current_case__\": 2, \"interpreter_version\": \"\", \"exe_package_version\": \"\", \"dynScript\": \"# reverse order of text by row\\nimport sys\\ninp = sys.argv[1]\\noutp = sys.argv[2]\\nappendme = sys.argv[3]\\ni = open(inp,'r').readlines()\\no = open(outp,'w')\\nfor row in i:\\n  rs = row.rstrip()\\n  rs = list(rs)\\n  rs.reverse()\\n  o.write(''.join(rs))\\n  o.write(appendme)\\n  o.write('\\\\n')\\no.close()\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"pyrevpos\", \"help_text\": \"**What it Does**\", \"citations\": []}, \"ppass\": {\"parampass\": \"positional\", \"__current_case__\": 1, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"txt\"], \"input_label\": \"inputfile\", \"input_help\": \"parameter_help\", \"input_CL\": \"1\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"output\", \"history_format\": \"txt\", \"history_CL\": \"2\"}], \"edit_params\": \"yes\", \"additional_parameters\": [{\"__index__\": 0, \"param_name\": \"appendme\", \"param_type\": \"text\", \"param_value\": \"added at the end\", \"param_label\": \"append string\", \"param_help\": \"parameter_help\", \"param_CL\": \"3\", \"param_CLprefixed\": \"\"}]}, \"tool_name\": \"pyrevaddpos\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -241,7 +259,7 @@
         },
         "5": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 5,
             "input_connections": {
@@ -274,7 +292,13 @@
                 "y": 530
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"python\", \"__current_case__\": 2, \"interpreter_version\": \"\", \"exe_package_version\": \"\", \"dynScript\": \"# reverse order of text by row\\nimport sys\\nimport argparse\\nparser = argparse.ArgumentParser()\\na = parser.add_argument\\na('--infile',default='')\\na('--outfile',default=None)\\nargs = parser.parse_args()\\ninp = args.infile\\noutp = args.outfile\\ni = open(inp,'r').readlines()\\no = open(outp,'w')\\nfor row in i:\\n  rs = row.rstrip()\\n  rs = list(rs)\\n  rs.reverse()\\n  o.write(''.join(rs))\\n  o.write('\\\\n')\\no.close()\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"reverse argparse\", \"help_text\": \"**What it Does**\", \"citations\": []}, \"ppass\": {\"parampass\": \"argparse\", \"__current_case__\": 0, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"txt\"], \"input_label\": \"infile\", \"input_help\": \"parameter_help\", \"input_CL\": \"infile\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"outfile\", \"history_format\": \"txt\", \"history_CL\": \"outfile\"}], \"edit_params\": \"yes\", \"additional_parameters\": []}, \"tool_name\": \"pyrevargparse\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -294,7 +318,7 @@
         },
         "6": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 6,
             "input_connections": {
@@ -327,7 +351,13 @@
                 "y": 650
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"bash\", \"__current_case__\": 5, \"interpreter_version\": \"\", \"exe_package_version\": \"\", \"dynScript\": \"rev | tac\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"tacrev\", \"help_text\": \"**What it Does**\", \"citations\": []}, \"ppass\": {\"parampass\": \"0\", \"__current_case__\": 2, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"txt\"], \"input_label\": \"input file\", \"input_help\": \"parameter_help\", \"input_CL\": \"1\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"outfile\", \"history_format\": \"txt\", \"history_CL\": \"2\"}]}, \"tool_name\": \"tacrev\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -347,7 +377,7 @@
         },
         "7": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 7,
             "input_connections": {
@@ -380,7 +410,13 @@
                 "y": 770
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"python\", \"__current_case__\": 2, \"interpreter_version\": \"\", \"exe_package_version\": \"\", \"dynScript\": \"# reverse order of text by row\\nimport sys\\ninp = sys.argv[1]\\noutp = sys.argv[2]\\ni = open(inp,'r').readlines()\\no = open(outp,'w')\\nfor row in i:\\n  rs = row.rstrip()\\n  rs = list(rs)\\n  rs.reverse()\\n  o.write(''.join(rs))\\n  o.write('\\\\n')\\no.close()\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"pyrevpos\", \"help_text\": \"**What it Does**\", \"citations\": []}, \"ppass\": {\"parampass\": \"positional\", \"__current_case__\": 1, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"txt\"], \"input_label\": \"inputfile\", \"input_help\": \"parameter_help\", \"input_CL\": \"1\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"output\", \"history_format\": \"txt\", \"history_CL\": \"2\"}], \"edit_params\": \"yes\", \"additional_parameters\": []}, \"tool_name\": \"pyrevpos\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -388,19 +424,19 @@
             "workflow_outputs": [
                 {
                     "label": null,
-                    "output_name": "TF_run_report",
-                    "uuid": "b5bd73bb-1ddc-4161-be2e-370bab9aebbe"
+                    "output_name": "new_tool",
+                    "uuid": "e96ae086-a92a-4018-8f07-ebf4974807e6"
                 },
                 {
                     "label": null,
-                    "output_name": "new_tool",
-                    "uuid": "e96ae086-a92a-4018-8f07-ebf4974807e6"
+                    "output_name": "TF_run_report",
+                    "uuid": "b5bd73bb-1ddc-4161-be2e-370bab9aebbe"
                 }
             ]
         },
         "8": {
             "annotation": "",
-            "content_id": "rgTF2",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
             "errors": null,
             "id": 8,
             "input_connections": {
@@ -433,7 +469,13 @@
                 "y": 170
             },
             "post_job_actions": {},
-            "tool_id": "rgTF2",
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/fubar/tool_factory_2/rgTF2/2.00",
+            "tool_shed_repository": {
+                "changeset_revision": "51fa77152988",
+                "name": "tool_factory_2",
+                "owner": "fubar",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
             "tool_state": "{\"__input_ext\": \"input\", \"chromInfo\": \"/home/ross/galaxy/tool-data/shared/ucsc/chrom/?.len\", \"interexe\": {\"interpreter\": \"python\", \"__current_case__\": 2, \"interpreter_version\": \"\", \"exe_package_version\": \"\", \"dynScript\": \"import argparse\\nimport tarfile\\nimport os\\nimport tempfile\\nimport subprocess\\n\\n\\\"\\\"\\\"\\nplanemo test --no_cleanup --no_dependency_resolution --skip_venv --galaxy_root ~/galaxy ~/galaxy/tools/tool_makers/pyrevargparse/ &> pyrevargparse\\n\\\"\\\"\\\"\\n\\nparser = argparse.ArgumentParser()\\na = parser.add_argument\\na('--tooltgz',default='')\\na('--report',default=None)\\na('--toolout',default=None)\\na('--galaxy_root',default=None)\\nargs = parser.parse_args()\\ntoolname = args.toolout.split(os.sep)[-1]\\ntoolpath = os.path.join(args.galaxy_root,args.toolout)\\ntf = tarfile.open(args.tooltgz,\\\"r:gz\\\")\\ntf.extractall(toolpath)\\ncl = \\\"planemo test --skip_venv --galaxy_root %s %s\\\" % (args.galaxy_root,toolpath)\\ncll = cl.split(' ')\\nsto = open(args.report, 'w')\\np = subprocess.run(cll, shell=False, stdout=sto)\\nretval = p.returncode\\nsto.close()\\n\"}, \"makeMode\": {\"make_Tool\": \"yes\", \"__current_case__\": 0, \"tool_version\": \"0.01\", \"tool_desc\": \"Tool to test toolshed tool archives generated by the tool factory.\", \"help_text\": \"**What it Does**\\n\\nGiven a toolshed tgz file generated by a tool factory run, this will unpack it and run planemo test, returning the planemo stdout as a report\\nIt was generated using the tool factory.\", \"citations\": []}, \"ppass\": {\"parampass\": \"argparse\", \"__current_case__\": 0, \"history_inputs\": [{\"__index__\": 0, \"input_files\": {\"__class__\": \"ConnectedValue\"}, \"input_formats\": [\"tgz\"], \"input_label\": \"tool toolshed tgz archive from history\", \"input_help\": \"Run planemo test on a tool shed tool archive tgz format file generated by the ToolFactory or Planemo\", \"input_CL\": \"tooltgz\"}], \"history_outputs\": [{\"__index__\": 0, \"history_name\": \"report\", \"history_format\": \"txt\", \"history_CL\": \"report\"}], \"edit_params\": \"yes\", \"additional_parameters\": [{\"__index__\": 0, \"param_name\": \"toolout\", \"param_type\": \"text\", \"param_value\": \"tools/toolmakers/planemotest\", \"param_label\": \"output path under galaxy root\", \"param_help\": \"This is where the tgz file will be extracted and tested by planemo\", \"param_CL\": \"toolout\", \"param_CLprefixed\": \"\"}, {\"__index__\": 1, \"param_name\": \"galaxy_root\", \"param_type\": \"text\", \"param_value\": \"/home/ross/galaxy\", \"param_label\": \"Galaxy source root directory to use for running planemo\", \"param_help\": \"This will form the galaxy_root parameter for rnning planemo using an existing Galaxy source tree, and the tgz will be extracted at a path relative to that rootu\", \"param_CL\": \"galaxy_root\", \"param_CLprefixed\": \"\"}]}, \"tool_name\": \"planemotest\", \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "2.00",
             "type": "tool",
@@ -454,5 +496,5 @@
     },
     "tags": [],
     "uuid": "321a7f9f-c287-453c-807a-43afd948770e",
-    "version": 1
+    "version": 0
 }

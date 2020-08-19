@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<toolbox monitor="true">
+  <section id="tf" name="Make Galaxy Tools">
+    <tool file="/tftools/toolfactory/rgToolFactory2.xml" />
+    <tool file="/tftools/planemo/planemo_tool_test.xml" />
+  </section>
+</toolbox>

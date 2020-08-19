@@ -92,11 +92,10 @@
         </repeat>
      </xml>
      <xml name="builtin_dynpar">
-            <param name="exe_package" type="hidden" value="" />
-            <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_override" type="hidden" value="" />
-            <param name="interpreter_version" type="hidden" value=""/>
-            <param name="dependencies" type="hidden" value="" />
+          <param name="interpreter_version" type="text" value=""
+          label="Specific interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty"/>
+            <param name="exe_package_version" type="text" value=""
+              label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
           <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="Script goes here" area="True"
               help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
               <sanitizer>
@@ -107,12 +106,10 @@
           </param>
     </xml>
     <xml name="dynpar">
-            <param name="exe_package" type="hidden" value="" />
-            <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_override" type="hidden" value="" />
-            <param name="dependencies" type="text" value="" label="List additional dependencies - e.g. 'planemo, ephemeris'" help="These will be managed by Conda" />
           <param name="interpreter_version" type="text" value=""
           label="Specific interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty"/>
+            <param name="exe_package_version" type="text" value=""
+              label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
           <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="Script goes here" area="True"
               help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
               <sanitizer>
@@ -134,14 +131,10 @@
 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
  #else:
 $__tool_directory__/rgToolFactory2.py
---dependencies "$interexe.dependencies"
 --runmode "$interexe.interpreter"
-   #if len(str($interexe.cl_override)) > 0:
---cl_override "$interexe.cl_override"
-   #end if
    #if str($interexe.interpreter)=="Executable" or str($interexe.interpreter)=="system":
 --exe_package="$interexe.exe_package"
-    #if $interexe.exe_package_version:
+    #if str($interexe.exe_package_version) != 'None' :
 --exe_package_version="$interexe.exe_package_version"
     #end if
    #else:
@@ -166,9 +159,12 @@ $__tool_directory__/rgToolFactory2.py
 --additional_parameters="$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.param_CL~~~$apar.param_CLprefixed"
      #end for
    #end if
+
      #for $intab in $ppass.history_inputs:
 --input_files="$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
      #end for
+
+
      #for $otab in $ppass.history_outputs:
 --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL"
      #end for
@@ -224,19 +220,16 @@ $tool_name help goes here
             <option value="bash">bash</option>
             <option value="sh">sh</option>
             <option value="system" >A system executable found on the path such as awk/sed</option>
+            <option value="specialtestcaseinterpreterpython" >for testing only - do not use me please</option>
         </param>
         <when value="Executable">
             <param name="exe_package" type="text" value="" label="Executable package name in dependency (Conda) repositories - e.g. 'bwa'" optional="false"/>
             <param name="exe_package_version" type="text" value="" label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" />
-            <param name="cl_override" type="text" value="" label="Command line override prefix - e.g. for ephemeris prepend the specific function such as 'workflow_install'" 
-             help="Some packages like ephemerisand planemo require a sub-command - eg planemo test - before parameters are passed. Supply that here"/>
-            <param name="dependencies" type="hidden" value="" />
         </when>
         <when value="system">
-            <param name="dependencies" type="hidden" value="" />
-            <param name="exe_package" type="text" value="" label="System executable to run - e.g. awk"/>
-            <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_override" type="hidden" value="" />
+            <param name="exe_package" type="text" value="" label="System executable to run"  optional="false"/>
+            <param name="exe_package_version" type="text" value=""
+              label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty"/>
         </when>
         <when value = "python">
            <expand macro="dynpar" />
@@ -251,6 +244,9 @@ $tool_name help goes here
            <expand macro="builtin_dynpar" />
         </when>
         <when value = "sh">
+           <expand macro="builtin_dynpar" />
+        </when>
+         <when value = "specialtestcaseinterpreterpython">
            <expand macro="builtin_dynpar" />
         </when>
     </conditional>

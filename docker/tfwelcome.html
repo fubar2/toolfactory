@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="/static/style/base.css" type="text/css" />
+</head>
+<body style="margin: 0">
+
+    <div class="jumbotron">
+        <div class="container">
+            <table><tr><td>
+            <h2>Hello, your <strong>Galaxy ToolFactory Docker</strong> container is running!</h2>
+            <strong>If you have not already done so, </strong>
+            From a handy linux console, please use <br>
+            <code>docker ps</code><br>
+            to find this container's name then use<br>
+            <code>docker exec *thiscontainername* config/post-start-actions.sh</code>
+            <br>
+            to load the sample tool generators to fully populate this container.
+            until the Dockerfile for this container figures out how to load a workflow during the build correctly.<br>
+            To run the workflow you need two small datasets until I get them loaded<br>
+            PhiX.fasta from the Galaxy test-sample directory, and any smallish text file you want such as a readme or script.
+            When you run the workflow, feed the fasta where it says, and the text file where you see rgToolFactory.py<br>
+            Send it to the same history and let it run.<br>
+            With any luck, you will have a history of examples to play with - use the rerun button to repopulate the ToolFactory form to illustrate</br>
+            positional and argparse style parameter passing for python, a simple bash script using STDIN/STDOUT and the perl (ugh) example from planemo</br>
+            <a target="_blank" href="https://wiki.galaxyproject.org/Admin/Config" class="btn btn-primary btn-lg">Configuring Galaxy »</a>
+            <a target="_blank" href="https://wiki.galaxyproject.org/Admin/Tools/AddToolFromToolShedTutorial" class="btn btn-primary btn-lg">Installing Tools »</a>
+            <a target="_parent" href="/tours/core.galaxy_ui" class="btn btn-primary btn-lg">Guided Tour »</a>
+            </td><td>
+                <div align=center>
+                    <img src="./welcome_image.png" width="90%" height="90%" />
+                </div>
+
+        </td></tr></table>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <p class="lead">
+            <a target="_blank" class="reference" href="http://galaxyproject.org/">
+            Galaxy</a> is an open platform for supporting data intensive
+            research. Galaxy is developed by <a target="_blank" class="reference" href="http://wiki.galaxyproject.org/GalaxyTeam">The Galaxy Team</a>
+            with the support of  <a target="_blank" class="reference" href="https://github.com/galaxyproject/galaxy/blob/dev/CONTRIBUTORS.md">many contributors</a>.
+            The Galaxy Docker project is supported by the University of Freiburg, part of de.NBI.
+        </p>
+
+        <footer>
+            The <a target="_blank" class="reference" href="http://galaxyproject.org/">Galaxy Project</a>
+            is supported in part by <a target="_blank" class="reference" href="http://www.genome.gov">NHGRI</a>,
+            <a target="_blank" class="reference" href="http://www.nsf.gov">NSF</a>,
+            <a target="_blank" class="reference" href="http://www.huck.psu.edu">The Huck Institutes of the Life Sciences</a>,
+            <a target="_blank" class="reference" href="http://www.ics.psu.edu">The Institute for CyberScience at Penn State</a>,
+            and <a target="_blank" class="reference" href="http://www.jhu.edu/">Johns Hopkins University</a>.
+        </footer>
+
+    </div>
+
+</body>
+</html>
+
