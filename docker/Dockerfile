@@ -19,8 +19,6 @@ RUN mkdir -p /tftools \
   && mkdir -p /tftools/planemo_test
 
 # things needed for post-install 
-RUN rm -rf $GALAXY_ROOT/requirements.txt
-ADD galreq.txt $GALAXY_ROOT/requirements.txt
 COPY ./tfsamplehistory.tar.gz /tftools/tfsamplehistory.tar.gz
 # focker untarred this into a folder structure with ADD ..Urrrrggggh.
 ADD ./tfwelcome.html /export/welcome.html

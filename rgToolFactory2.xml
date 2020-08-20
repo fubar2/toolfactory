@@ -126,6 +126,7 @@
    <requirements>
       <requirement type="package">python</requirement>
       <requirement type="package">galaxyxml</requirement>
+      <requirement type="package">planemo</requirement>
   </requirements>
   <command interpreter="python"><![CDATA[
 #import os
@@ -236,7 +237,8 @@ $tool_name help goes here
             <param name="dependencies" type="hidden" value="" />
             <param name="exe_package" type="text" value="" label="System executable to run - e.g. awk"/>
             <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_override" type="hidden" value="" />
+            <param name="cl_override" type="text" value="" label="Command line override prefix - e.g. for ephemeris prepend the specific function such as 'workflow_install'" 
+             help="Some packages like ephemerisand planemo require a sub-command - eg planemo test - before parameters are passed. Supply that here"/>
         </when>
         <when value = "python">
            <expand macro="dynpar" />
