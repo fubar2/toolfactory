@@ -427,7 +427,7 @@ if [[ ! -z $GALAXY_DEFAULT_ADMIN_USER ]]
            # uses ephemeris, present in docker-galaxy-stable, to wait for the local instance
            /tool_deps/_conda/bin/galaxy-wait -g http://127.0.0.1 -v --timeout 120 > $GALAXY_LOGS_DIR/post-start-actions.log &&
            echo "$GALAXY_ROOT/config/post-start-actions starting" >> $GALAXY_LOGS_DIR/post-start-actions.log &&
-           $GALAXY_ROOT/config/post-start-actions.sh >> $GALAXY_LOGS_DIR/post-start-actions.log &&
+           $GALAXY_ROOT/config/post-start-actions.sh >> $GALAXY_LOGS_DIR/post-start-actions.log
    fi
 
 fi
@@ -462,4 +462,4 @@ if [ `echo ${GALAXY_LOGGING:-'no'} | tr [:upper:] [:lower:]` = "full" ]
 fi
 
 # at this point, for some reason, we need to restart 
-supervisorctl restart galaxy:
+
