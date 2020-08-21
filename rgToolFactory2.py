@@ -510,7 +510,7 @@ class ScriptRunner:
                 for d in self.args.dependencies.split(','):
                     requirements.append(
                         gxtp.Requirement(
-                         "package", d, ""
+                            "package", d, ""
                         )
                     )
             if self.args.interpreter_name == "python":
