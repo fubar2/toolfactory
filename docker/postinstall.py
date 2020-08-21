@@ -12,6 +12,6 @@ x = gi.workflows.import_workflow_from_local_path(wfpath, publish=True)
 print('Import workflow = %s' % str(x))
 tools = gi.tools.get_tools(tool_id=None, name=None, trackster=None)
 for tool_id in tools:
-    install_dependencies(tool_id)
+    gi.tools.install_dependencies(tool_id)
     print('Installed dependencies for tool_id %s' % tool_id)
 

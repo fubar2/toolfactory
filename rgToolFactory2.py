@@ -173,7 +173,7 @@ class ScriptRunner:
         self.testparam = []
         if (
             self.args.runmode == "Executable" or self.args.runmode == "system"
-        ): 
+        ):
             if len(self.args.cl_override) > 0:
                 for x in self.args.cl_override.split(' '):
                     aCL(x)
@@ -261,9 +261,7 @@ class ScriptRunner:
             artifact.write(bytes("#!/usr/bin/env python\n", "utf8"))
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
-        
-        
-        
+
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i, p in enumerate(self.infiles):

@@ -1,7 +1,27 @@
-﻿Note as at August 8 2020
+﻿# Note as at August 8 2020
+
+The updated ToolFactory is available from the main toolshed. 
+However, the Docker container version is highly recommended for isolation.
+
+That container was built from 
+
+The runclean.sh script run from the docker subdirectory of your local clone of this repository
+should create a container (eventually) and serve it at localhost:8080.
+
+The Dockerfile will clone a recent Galaxy dev with an updated set of requirements 
+because some things needed don't work well with that old bioblend.
+
+Once it's up, please restart Galaxy in the container with 
+using `docker exec [container name] supervisorctl restart galaxy: ` or the
+next steps won't work!
+
+The generated container includes a workflow and 2 sample data sets for the workflow
+
+Run the workflow included after changing the input for the perlgc example to phiX.fasta
+This should fill the history with some sample tools you can rerun and play with.
 
 
-*WARNING before you start*
+#WARNING before you start 
 
  Install this tool on a private Galaxy ONLY
  Please NEVER on a public or production instance
@@ -10,7 +30,7 @@ Please cite the resource at
 http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&keytype=ref
 if you use this tool in your published work.
 
-**Short Story**
+#Short Story
 
 This is an unusual Galaxy tool capable of generating new Galaxy tools.
 It works by exposing *unrestricted* and therefore extremely dangerous scripting
@@ -31,7 +51,7 @@ into a new, ordinary Galaxy tool, fully workflow compatible out of the box.
 Generated tools are installed via a tool shed by an administrator
 and work exactly like all other Galaxy tools for your users.
 
-**More Detail**
+#More Detail
 
 To use the ToolFactory, you should have prepared a script to paste into a
 text box, or have a package in mind and a small test input example ready to select from your history
