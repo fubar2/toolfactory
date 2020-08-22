@@ -1,0 +1,13 @@
+# reverse order of text by row
+import sys
+inp = sys.argv[1]
+outp = sys.argv[2]
+i = open(inp,'r').readlines()
+o = open(outp,'w')
+for row in i:
+   rs = row.rstrip()
+   rs = list(rs)
+   rs.reverse()
+   o.write(''.join(rs))
+o.close() 
+

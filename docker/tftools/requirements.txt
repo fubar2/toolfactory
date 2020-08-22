@@ -23,7 +23,7 @@ bagit==1.7.0
 bcrypt==3.1.7
 bdbag==1.5.6
 beaker==1.11.0
-bioblend==0.14.0
+bioblend>=0.14.0
 bleach==3.1.5
 boltons==20.2.0
 boto3==1.9.114
@@ -52,6 +52,7 @@ dictobj==0.4
 docopt==0.6.2
 docutils==0.15.2
 dogpile.cache==0.9.2
+ephemeris
 ecdsa==0.15
 fabric3==1.14.post1
 future==0.18.2
@@ -116,7 +117,6 @@ pastedeploy==2.1.0
 pastescript==3.2.0
 pathlib2==2.3.5 ; python_version < '3.6'
 pbr==5.4.5
-planemo
 prettytable==0.7.2
 prov==1.5.1
 psutil==5.7.0
