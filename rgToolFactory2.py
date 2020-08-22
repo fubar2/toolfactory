@@ -39,6 +39,8 @@ import galaxyxml.tool.parameters as gxtp
 
 import lxml
 
+import yaml
+
 myversion = "V2.1 July 2020"
 verbose = True
 debug = True
@@ -168,6 +170,15 @@ class ScriptRunner:
             self.args.tool_desc,
             exe,
         )
+        self.tooloutdir = "tfout"
+        self.repdir = "TF_run_report_tempdir"
+        self.testdir = os.path.join(self.tooloutdir, "test-data")
+        if not os.path.exists(self.tooloutdir):
+            os.mkdir(self.tooloutdir)
+        if not os.path.exists(self.testdir):
+            os.mkdir(self.testdir)  # make tests directory
+        if not os.path.exists(self.repdir):
+            os.mkdir(self.repdir)
         self.tinputs = gxtp.Inputs()
         self.toutputs = gxtp.Outputs()
         self.testparam = []
@@ -582,65 +593,59 @@ class ScriptRunner:
                 "## Run failed. Cannot build yet. Please fix and retry"
             )
             sys.exit(1)
-        tdir = "tfout"
-        if not os.path.exists(tdir):
-            os.mkdir(tdir)
         self.makeXML()
-        testdir = os.path.join(tdir, "test-data")
-        if not os.path.exists(testdir):
-            os.mkdir(testdir)  # make tests directory
         for p in self.infiles:
             pth = p[IPATHPOS]
-            dest = os.path.join(testdir, "%s_sample" % p[ICLPOS])
+            dest = os.path.join(self.testdir, "%s_sample" % p[ICLPOS])
             shutil.copyfile(pth, dest)
         for p in self.outfiles:
             pth = p[OCLPOS]
             if p[OOCLPOS] == "STDOUT" or self.args.parampass == "0":
                 pth = p[ONAMEPOS]
-                dest = os.path.join(testdir, "%s_sample" % p[ONAMEPOS])
+                dest = os.path.join(self.testdir, "%s_sample" % p[ONAMEPOS])
                 shutil.copyfile(pth, dest)
-                dest = os.path.join(tdir, p[ONAMEPOS])
+                dest = os.path.join(self.tooloutdir, p[ONAMEPOS])
                 shutil.copyfile(pth, dest)
             else:
                 pth = p[OCLPOS]
-                dest = os.path.join(testdir, "%s_sample" % p[OCLPOS])
+                dest = os.path.join(self.testdir, "%s_sample" % p[OCLPOS])
                 shutil.copyfile(pth, dest)
-                dest = os.path.join(tdir, p[OCLPOS])
+                dest = os.path.join(self.tooloutdir, p[OCLPOS])
                 shutil.copyfile(pth, dest)
-
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
-            shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log_outfiletxt"))
+            shutil.copyfile(self.tlog, os.path.join(self.tooloutdir, "test1_log_outfiletxt"))
         if self.args.runmode not in ["Executable", "system"]:
-            stname = os.path.join(tdir, "%s" % (self.sfile))
+            stname = os.path.join(self.tooloutdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
         xreal = '%s.xml' % self.tool_name
-        xout = os.path.join(tdir,xreal)
+        xout = os.path.join(self.tooloutdir,xreal)
         shutil.copyfile(xreal, xout)
         tarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(tarpath, "w:gz")
-        tf.add(name=tdir, arcname=self.tool_name)
+        tf.add(name=self.tooloutdir, arcname=self.tool_name)
         tf.close()
         shutil.copyfile(tarpath, self.args.new_tool)
         shutil.copyfile(xreal,"tool_xml.txt")
-        repdir = "TF_run_report_tempdir"
-        if not os.path.exists(repdir):
-            os.mkdir(repdir)
         repoutnames = [x[OCLPOS] for x in self.outfiles]
         with os.scandir('.') as outs:
             for entry in outs:
                 if entry.name.endswith('.tgz') or not entry.is_file():
                     continue
                 if entry.name in repoutnames:
-                    shutil.copyfile(entry.name,os.path.join(repdir,entry.name))
+                    if '.' in entry.name:
+                        ofne = os.path.splitext(entry.name)[1]
+                    else:
+                        ofne = '.txt'
+                    ofn = '%s%s' % (entry.name.replace('.','_'),ofne)
+                    shutil.copyfile(entry.name,os.path.join(self.repdir,ofn))
                 elif entry.name == "%s.xml" % self.tool_name:
-                    shutil.copyfile(entry.name,os.path.join(repdir,"new_tool_xml"))
+                    shutil.copyfile(entry.name,os.path.join(self.repdir,"new_tool_xml.xml"))
         return retval
 
     def run(self):
         """
-        Some devteam tools have this defensive stderr read so I'm keeping with the faith
-        Feel free to update.
+        
         """
         s = "run cl=%s" % str(self.cl)
 
@@ -690,12 +695,47 @@ class ScriptRunner:
             os.unlink(self.tlog)
         if os.path.isfile(self.elog) and os.stat(self.elog).st_size == 0:
             os.unlink(self.elog)
-        if p.returncode != 0 and err:  # problem
+        if retval != 0 and err:  # problem
             sys.stderr.write(err)
         logging.debug("run done")
         return retval
 
-
+    def planemo_test(self):
+        """planemo is a requirement so should be available
+        """
+        xreal = '%s.xml' % self.tool_name
+        xout = os.path.join(self.tooloutdir,xreal)
+        cll = ['planemo', 'test', '--galaxy_root', os.environ.get('GALAXY_ROOT','/galaxy-central'), 
+           '--skip_venv', '--job_output_files',self.repdir,xout]
+        scl = ' '.join(cll)
+        ste = open(self.elog, "a")
+        sto = open(self.tlog, "a")
+        sto.write(
+                "## Executing Toolfactory generated command line = %s\n"
+                    % scl,
+            )
+        sto.flush()  
+        p = subprocess.run(cll, shell=False, stdout=sto, stderr=ste)
+        sto.close()
+        ste.close() 
+        ols = os.listdir('.')
+        for fn in ols:
+            if fn.endswith('log.txt') or fn.startswith('tool_test_output'):
+                if '.' in fn:
+                    ofne = os.path.splitext(fn)[1]
+                else:
+                    ofne = '.txt'
+                ofn = '%s%s' % (fn.replace('.','_'),ofne)
+                shutil.copyfile(fn,os.path.join(self.repdir,ofn))
+        retval = p.returncode
+        
+    def writeShedyml(self):
+        yfname = os.path.join(self.tooloutdir,'.shed.yml')
+        yamlf = open(yfname, 'w')
+        odict = {'name':self.tool_name,'owner':self.args.user_email,'type':'unrestricted','description':self.args.tool_desc}
+        yaml.dump(odict, yamlf, allow_unicode=True)
+        yamlf.close()
+        
 def main():
     """
     This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml as:
@@ -705,6 +745,7 @@ def main():
     parser = argparse.ArgumentParser()
     a = parser.add_argument
     a("--script_path", default="")
+    a("--planemo_test", default="")
     a("--dependencies", default="")
     a("--cl_override", default="")
     a("--tool_name", default=None)
@@ -751,12 +792,16 @@ def main():
         )
     r = ScriptRunner(args)
     if args.make_Tool:
+        r.writeShedyml()
         retcode = r.makeTooltar()
+        if retcode == 0:
+            if args.planemo_test == "yes":
+                r.planemo_test()
     else:
         retcode = r.run()
-    if retcode:
-        sys.exit(retcode)  # indicate failure to job runner
-
+    # if retcode:
+        # sys.exit(retcode)  # indicate failure to job runner
+   
 
 if __name__ == "__main__":
     main()

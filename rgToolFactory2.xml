@@ -153,6 +153,7 @@ $__tool_directory__/rgToolFactory2.py
    #end if
 --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
    #if str($makeMode.make_Tool)=="yes":
+--planemo_test "$makeMode.planemo_test"
 --make_Tool="$makeMode.make_Tool"
 --tool_desc="$makeMode.tool_desc"
 --tool_version="$makeMode.tool_version"
@@ -216,19 +217,19 @@ $tool_name help goes here
         </sanitizer>
     </param>
     <conditional name="interexe">
-        <param name="interpreter" type="select" label="For binaries, choose 'Executable'. Otherwise choose the interpreter for your code"
+        <param name="interpreter" type="select" label="Tool model: For a managed external dependency, choose 'Executable', or choose an interpreter for a script"
         help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name - conda is the default.">
             <option value="Executable" selected="true">An executable binary to be provided and managed by the Conda dependency management subsystem</option>
-            <option value="python">python</option>
-            <option value="r-base">Rscript</option>
-            <option value="perl">perl</option>
-            <option value="bash">bash</option>
-            <option value="sh">sh</option>
-            <option value="system" >A system executable found on the path such as awk/sed</option>
+            <option value="python">Use Python to run the script pasted below</option>
+            <option value="r-base">Use R (Rscript) to run the script pasted below</option>
+            <option value="perl">Use a depency managed Perl to run the script pasted below</option>
+            <option value="bash">Use the system bash to run the script pasted below</option>
+            <option value="sh">Use sh to run the script pasted below</option>
+            <option value="system" >Use a different system executable such as sed</option>
         </param>
         <when value="Executable">
-            <param name="exe_package" type="text" value="" label="Executable package name in dependency (Conda) repositories - e.g. 'bwa'" optional="false"/>
-            <param name="exe_package_version" type="text" value="" label="Executable package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" />
+            <param name="exe_package" type="text" value="" label="Executable/package name for Ddependency manager - e.g. 'bwa'" optional="false"/>
+            <param name="exe_package_version" type="text" value="" label="Executable/package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" />
             <param name="cl_override" type="text" value="" label="Command line override prefix - e.g. for ephemeris prepend the specific function such as 'workflow_install'" 
              help="Some packages like ephemerisand planemo require a sub-command - eg planemo test - before parameters are passed. Supply that here"/>
             <param name="dependencies" type="hidden" value="" />
@@ -237,8 +238,8 @@ $tool_name help goes here
             <param name="dependencies" type="hidden" value="" />
             <param name="exe_package" type="text" value="" label="System executable to run - e.g. awk"/>
             <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_override" type="text" value="" label="Command line override prefix - e.g. for ephemeris prepend the specific function such as 'workflow_install'" 
-             help="Some packages like ephemerisand planemo require a sub-command - eg planemo test - before parameters are passed. Supply that here"/>
+            <param name="cl_override" type="text" value="" label="Command line override prefix - e.g. for sed or awk, prepend this before the i/o parameters" 
+             help="This may help finesse a command line - inputs and output will be passed as you specify below"/>
         </when>
         <when value = "python">
            <expand macro="dynpar" />
@@ -282,6 +283,11 @@ $tool_name help goes here
         <option value="" selected="true">No. Just run the script please</option>
         </param>
         <when value = "yes">
+            <param name="planemo_test" type="select" display="radio" label="Use planemo test on the new tool (takes a while..)"
+              help="Planemo can test your tool in a new, clean Galaxy instance. This takes some time but is always recommended" >
+            <option value="yes" selected="true">Test with planemo</option>
+            <option value="">No test. I like to live dangerously and trust the fools who wrote this</option>
+            </param>
             <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
             help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
             <param name="tool_desc" label="Tool Description" type="text" value=""
@@ -329,7 +335,7 @@ $tool_name help goes here
     </data>
 
   <collection name="TF_run_report" type="list" label="${tool_name} outputs">
-      <discover_datasets pattern="__name__" directory="TF_run_report_tempdir" format="txt"/>
+      <discover_datasets pattern="__name_and_ext__" directory="TF_run_report_tempdir" />
   </collection>
 
 
