@@ -1,29 +1,34 @@
 ﻿# Note as at August 8 2020
 
 The updated ToolFactory is available from the main toolshed. 
-However, the Docker container version is highly recommended for isolation.
+However, the Docker version is highly recommended for isolation.
 
-That container was built from 
+That container was built from quay.io/bgruening/galaxy:20.05 but updates the
+Galaxy code to the dev branch - it seems to work fine with updated bioblend>=0.14
+with planemo and the right version of gxformat2 so workflow and history can be added
+to the container to make a useful environment with sample tools
 
 The runclean.sh script run from the docker subdirectory of your local clone of this repository
-should create a container (eventually) and serve it at localhost:8080.
+should create a container (eventually) and serve it at localhost:8080 with a toolshed at
+localhost:9009.
 
 The Dockerfile will clone a recent Galaxy dev with an updated set of requirements 
 because some things needed don't work well with that old bioblend.
 
 Once it's up, please restart Galaxy in the container with 
-using `docker exec [container name] supervisorctl restart galaxy: ` or the
-next steps won't work!
+```docker exec [container name] supervisorctl restart galaxy: ```
+Jobs just do not seem to run properly otherwise and the next steps won't work!
 
 The generated container includes a workflow and 2 sample data sets for the workflow
 
-Run the workflow included after changing the input for the perlgc example to phiX.fasta
-This should fill the history with some sample tools you can rerun and play with.
+Load the workflow. Adjust the input for the perlgc example to phiX.fasta and run it. Leave
+the others to use rgToolFactory2.py as their input - any text file will work but I like the
+recursion. This should fill the history with some sample tools you can rerun and play with.
 
 
 #WARNING before you start 
 
- Install this tool on a private Galaxy ONLY
+ Install this tool on a throw-away private Galaxy or Docker container ONLY
  Please NEVER on a public or production instance
  
 Please cite the resource at
@@ -46,7 +51,9 @@ It can be turned into an ordinary Galaxy tool in minutes, using a Galaxy tool.
 
 A test is generated using small sample test data inputs and parameter settings you supply.
 Once the test case outputs have been produced, they can be used to build a
-new Galaxy tool. The supplied script or executable is baked as a requirement
+new Galaxy tool and optionally test it with planemo.
+
+The supplied script or executable is baked as a requirement
 into a new, ordinary Galaxy tool, fully workflow compatible out of the box.
 Generated tools are installed via a tool shed by an administrator
 and work exactly like all other Galaxy tools for your users.
@@ -54,10 +61,11 @@ and work exactly like all other Galaxy tools for your users.
 #More Detail
 
 To use the ToolFactory, you should have prepared a script to paste into a
-text box, or have a package in mind and a small test input example ready to select from your history
+text box, or have a package in mind and a small test case with minimal input files ready to select from your history
 to test your new script.
 
-```planemo test --no_cleanup --no_dependency_resolution --skip_venv --galaxy_root ~/galaxy ~/rossgit/toolfactory``` works for me
+```planemo test --no_cleanup --no_dependency_resolution --skip_venv --galaxy_root ~/galaxy ~/rossgit/toolfactory``` works for me on
+a command line but now the ToolFactory will run it for you.
 
 There is an example in each scripting language on the Tool Factory form. You
 can just cut and paste these to try it out - remember to select the right

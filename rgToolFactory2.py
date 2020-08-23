@@ -701,7 +701,7 @@ class ScriptRunner:
         return retval
 
     def planemo_test(self):
-        """planemo is a requirement so should be available
+        """planemo is a requirement so is available
         """
         xreal = '%s.xml' % self.tool_name
         xout = os.path.join(self.tooloutdir,xreal)
@@ -730,9 +730,10 @@ class ScriptRunner:
         retval = p.returncode
         
     def writeShedyml(self):
+        yuser = self.args.user_email.split('@')[0]
         yfname = os.path.join(self.tooloutdir,'.shed.yml')
         yamlf = open(yfname, 'w')
-        odict = {'name':self.tool_name,'owner':self.args.user_email,'type':'unrestricted','description':self.args.tool_desc}
+        odict = {'name':self.tool_name,'owner':yuser,'type':'unrestricted','description':self.args.tool_desc}
         yaml.dump(odict, yamlf, allow_unicode=True)
         yamlf.close()
         
