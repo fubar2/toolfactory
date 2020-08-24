@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 
-from bioblend import galaxy
 
 REPDIR = "TF_run_report_tempdir"
 TAROUTDIR = "taroutdir"
@@ -48,18 +47,6 @@ def planemo_test(args):
 
 def eph_galaxy_load(args):
     """
-    shed-tools install [-h] [-v] [--log_file LOG_FILE] [-g GALAXY] [-u USER]
-                   [-p PASSWORD] [-a API_KEY] [-t TOOL_LIST_FILE]
-                   [-y TOOL_YAML] [--name NAME] [--owner OWNER]
-                   [--revisions [REVISIONS [REVISIONS ...]]]
-                   [--toolshed TOOL_SHED_URL] [--install_tool_dependencies]
-                   [--skip_install_resolver_dependencies]
-                   [--skip_install_repository_dependencies] [--test]
-                   [--test_existing] [--test_json TEST_JSON]
-                   [--test_user_api_key TEST_USER] [--test_user TEST_USER]
-                   [--parallel_tests PARALLEL_TESTS]
-                   [--section TOOL_PANEL_SECTION_ID]
-                   [--section_label TOOL_PANEL_SECTION_LABEL] [--latest]
     """
     cll = ['shed-tools', 'install', '-g', args.galaxy_url, '--latest', 
        '-a', args.galaxy_api_key , '--name', args.tool_name, '--owner','fubar',
@@ -91,7 +78,6 @@ if os.path.isdir(TAROUTDIR):
 os.mkdir(TAROUTDIR)
 tf.extractall(path=TAROUTDIR)
 tf.close()
-planemodir = TAROUTDIR
 if True or planemo_test(args):
     if args.install_here == "yes":
         planemo_shedload(args)

@@ -621,11 +621,11 @@ class ScriptRunner:
         xreal = '%s.xml' % self.tool_name
         xout = os.path.join(self.tooloutdir,xreal)
         shutil.copyfile(xreal, xout)
-        tarpath = "toolfactory_%s.tgz" % self.tool_name
-        tf = tarfile.open(tarpath, "w:gz")
+        self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
+        tf = tarfile.open(self.newtarpath, "w:gz")
         tf.add(name=self.tooloutdir, arcname=self.tool_name)
         tf.close()
-        shutil.copyfile(tarpath, self.args.new_tool)
+        shutil.copyfile(self.newtarpath, self.args.new_tool)
         shutil.copyfile(xreal,"tool_xml.txt")
         repoutnames = [x[OCLPOS] for x in self.outfiles]
         with os.scandir('.') as outs:
@@ -645,7 +645,7 @@ class ScriptRunner:
 
     def run(self):
         """
-        
+
         """
         s = "run cl=%s" % str(self.cl)
 
@@ -700,35 +700,65 @@ class ScriptRunner:
         logging.debug("run done")
         return retval
 
+    def install_load(self):
+        testres = self.planemo_test()
+        if testres == 0:
+            self.planemo_shedload()
+            self,eph_galaxy_load()
+        else:
+            stderr.write('Planemo test failed - tool %s was not installed' % self.args.tool_name)
+        
+
+    def planemo_shedload(self):
+        """
+        planemo shed_create --shed_target testtoolshed
+        planemo shed_update --check_diff --shed_target testtoolshed
+        """
+        cll = ['planemo', 'shed_create', '--shed_target','local']
+        p = subprocess.run(cll, shell=False,cwd=self.tooloutdir )
+        if p.returncode != 0:
+            print('Repository %s exists' % self.args.tool_name)
+        else:
+            print('initiated %s' % self.args.tool_name)
+        cll = ['planemo', 'shed_upload', '--shed_target','local','-r','--owner','fubar',
+            '--name',self.args.tool_name,'--shed_key',self.args.toolshed_api_key,'--tar',self.newtarpath]
+        p = subprocess.run(cll, shell=False,cwd=self.tooloutdir)
+        print('Ran',' '.join(cll),'got',p.returncode)
+        return p.returncode
+
+
     def planemo_test(self):
         """planemo is a requirement so is available
         """
-        xreal = '%s.xml' % self.tool_name
-        xout = os.path.join(self.tooloutdir,xreal)
-        cll = ['planemo', 'test', '--galaxy_root', os.environ.get('GALAXY_ROOT','/galaxy-central'), 
-           '--skip_venv', '--job_output_files',self.repdir,xout]
-        scl = ' '.join(cll)
-        ste = open(self.elog, "a")
-        sto = open(self.tlog, "a")
-        sto.write(
-                "## Executing Toolfactory generated command line = %s\n"
-                    % scl,
-            )
-        sto.flush()  
-        p = subprocess.run(cll, shell=False, stdout=sto, stderr=ste)
-        sto.close()
-        ste.close() 
+        cll = ['planemo', 'test', '--galaxy_root', self.args.galaxy_root,
+            self.args.tool_name]
+        p = subprocess.run(cll, shell=False)
         ols = os.listdir('.')
         for fn in ols:
-            if fn.endswith('log.txt') or fn.startswith('tool_test_output'):
-                if '.' in fn:
-                    ofne = os.path.splitext(fn)[1]
-                else:
-                    ofne = '.txt'
-                ofn = '%s%s' % (fn.replace('.','_'),ofne)
-                shutil.copyfile(fn,os.path.join(self.repdir,ofn))
-        retval = p.returncode
-        
+            if '.' in fn:
+                ofne = os.path.splitext(fn)[1]
+            else:
+                ofne = '.txt'
+            ofn = '%s%s' % (fn.replace('.','_'),ofne)
+            shutil.copyfile(fn,os.path.join(self.repdir,ofn))
+        return p.returncode
+
+
+    def eph_galaxy_load(self):
+        """
+        """
+        cll = ['shed-tools', 'install', '-g', self.args.galaxy_url, '--latest',
+           '-a', self.args.galaxy_api_key , '--name', self.args.tool_name, '--owner','fubar',
+           '--toolshed', self.args.toolshed_url,
+           '--section_label','Generated Tools','--install_tool_dependencies',]
+        print('running\n',' '.join(cll))
+        p = subprocess.run(cll, shell=False)
+        if p.returncode != 0:
+            print('Repository %s installation returned %d' % (self.args.tool_name,p.retcode))
+        else:
+            print('installed %s' % self.args.tool_name)
+        return p.returncode
+
     def writeShedyml(self):
         yuser = self.args.user_email.split('@')[0]
         yfname = os.path.join(self.tooloutdir,'.shed.yml')
@@ -736,7 +766,7 @@ class ScriptRunner:
         odict = {'name':self.tool_name,'owner':yuser,'type':'unrestricted','description':self.args.tool_desc}
         yaml.dump(odict, yamlf, allow_unicode=True)
         yamlf.close()
-        
+
 def main():
     """
     This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml as:
@@ -746,7 +776,6 @@ def main():
     parser = argparse.ArgumentParser()
     a = parser.add_argument
     a("--script_path", default="")
-    a("--planemo_test", default="")
     a("--dependencies", default="")
     a("--cl_override", default="")
     a("--tool_name", default=None)
@@ -769,6 +798,12 @@ def main():
     a("--tfout", default="./tfout")
     a("--new_tool", default="new_tool")
     a("--runmode", default=None)
+    a("--galaxy_url", default="http://localhost")
+    a("--galaxy_api_key", default='fakekey')
+    a("--toolshed_url", default="http://localhost:9009")
+    a("--toolshed_api_key", default=None)
+    a("--planemo_test", default="yes")
+
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
@@ -797,12 +832,12 @@ def main():
         retcode = r.makeTooltar()
         if retcode == 0:
             if args.planemo_test == "yes":
-                r.planemo_test()
+                r.install_load()
     else:
         retcode = r.run()
     # if retcode:
         # sys.exit(retcode)  # indicate failure to job runner
-   
+
 
 if __name__ == "__main__":
     main()

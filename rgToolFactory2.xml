@@ -127,6 +127,8 @@
       <requirement type="package">python</requirement>
       <requirement type="package">galaxyxml</requirement>
       <requirement type="package">planemo</requirement>
+      <requirement type="package">yaml</requirement>
+      <requirement type="package">lxml</requirement>
   </requirements>
   <command interpreter="python"><![CDATA[
 #import os
@@ -283,10 +285,10 @@ $tool_name help goes here
         <option value="" selected="true">No. Just run the script please</option>
         </param>
         <when value = "yes">
-            <param name="planemo_test" type="select" display="radio" label="Use planemo test on the new tool (takes a while..)"
-              help="Planemo can test your tool in a new, clean Galaxy instance. This takes some time but is always recommended" >
-            <option value="yes" selected="true">Test with planemo</option>
-            <option value="">No test. I like to live dangerously and trust the fools who wrote this</option>
+            <param name="planemo_test" type="select" display="radio" label="Use planemo to test the new tool (takes a while..)"
+              help="Planemo will test the tool, upload it to the local toolshed and install to this Galaxy for additional testing" >
+            <option value="yes" selected="true">Test with planemo and install to this Galaxy if passes</option>
+            <option value="">No test/install</option>
             </param>
             <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
             help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
