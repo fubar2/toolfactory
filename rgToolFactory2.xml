@@ -237,14 +237,34 @@ $tool_name help goes here
             <option value="system" >Use a non-dependency managed system executable like bash or awk</option>
         </param>
         <when value="managed">
-            <param name="packages" type="text" value="" label="Package name(,name...) for Conda. First will be called on generated command line" optional="false"
-             help="For specific version, use : e.g. 'bwa:0.17.0'. Default is latest if no version. Will be used every time the tool is (re)run." /> 
+            <param name="packages" type="text" value="" label="Package name[:version, name:version...] for Conda. First will be called on generated command line" optional="false"
+             help="Use colon to append specific versiion like 'bwa:0.17.0'. Default is latest if no version. Will be used every time the tool is (re)run." /> 
             <param name="sysexe" type="hidden" value="" />
         </when>
        <when value="system">
-            <param name="sysexe" type="text" value="" label="System executable to run" optional="false"
+            <param name="sysexe" type="text" value="" label="System executable to run. Supplied/managed by the operating system - not Conda" optional="false"
             help=".e.g bash, awk or other standard and relatively invariant unix utilities"/>
             <param name="packages" type="hidden" value="" />
+        </when>
+    </conditional>
+    <conditional name="usescript">
+        <param name="choosescript" type="select" display="radio" label="Choose whether to run a supplied script - useful only if the dependency can use them"
+        help = "Useful for script interpreters like Python or bash. All i/o and parameters must be passed. Choose No unless script is needed.">
+            <option value="no" selected="true">No script required for the first dependency above - just parameters on the command line</option>
+            <option value="yes">A script is ready to be pasted below.</option>
+        </param> 
+        <when value="no">
+            <param name="dynScript" type="hidden"  value="" />
+        </when>
+        <when value="yes">
+            <param name="dynScript" type="text" area="True" value="" label="Script for first dependency to interpret. "
+             help="Script must handle all i/o and parameters as specified below using the parameter passing method chosen above">
+              <sanitizer>
+                 <valid initial="string.printable">
+                 </valid>
+                 <mapping initial="none"/>
+              </sanitizer>
+             </param>
         </when>
     </conditional>
     <conditional name="ppass">
@@ -265,33 +285,13 @@ $tool_name help goes here
              <expand macro="io"/>
         </when>
     </conditional>
-    <param name="cl_prefix" type="text" value="" label="Prefix for generated command line . Prepends generated CL - does not replaces like command override below"
-            help="If any preamble is required before user supplied parameters in the generated command line, supply it here." />
-    <conditional name="usescript">
-        <param name="choosescript" type="select" label="Supply (paste below) code to run if the tool dependency reads scripts"
-        help = "All i/o and parameters must be passed. Choose No unless script is needed.">
-            <option value="no" selected="true">No script required for the first dependency above - just parameters on the command line</option>
-            <option value="yes">A script is ready to be pasted below.</option>
-        </param> 
-        <when value="no">
-            <param name="dynScript" type="hidden"  value="" />
-        </when>
-        <when value="yes">
-            <param name="dynScript" type="text" area="True" value="" label="Script for first dependency to interpret. "
-             help="Script must handle all i/o and parameters as specified below using the parameter passing method chosen above">
-              <sanitizer>
-                 <valid initial="string.printable">
-                 </valid>
-                 <mapping initial="none"/>
-              </sanitizer>
-             </param>
-        </when>
-    </conditional>
+    <param name="cl_prefix" type="text" value="" label="Prefix for generated command line. Prepends generated i/o and parameter CL. Use override below to replace completely"
+            help="Text will replace generated executable/script elements. Sometimes required before i/o and parameters in the generated command line." />
     <conditional name="cover">
-        <param name="commover" type="select" label="Add Human wrought code to override the generated XML command and/or test section - DIY"
+        <param name="commover" type="select" display="radio" label="Add Human wrought code to override the generated XML command and/or test section - DIY"
         help = "For arbitrary and artfull command lines. All i/o and parameters must be passed. Choose No unless needed. Not for the faint of heart">
-            <option value="no" selected="true">Use automatically generated command section </option>
-            <option value="yes">A DIY Command section is required and will be pasted</option>
+            <option value="no" selected="true">Use automatically generated command/test XML </option>
+            <option value="yes">DIY XML needed to replace autogenerated command and/or test segments will be pasted below</option>
         </param> 
         <when value="no">
             <param name="command_override" type="hidden"  value="" />

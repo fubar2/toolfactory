@@ -204,7 +204,7 @@ class ScriptRunner:
                     aCL(self.executeme)
                     aCL(self.sfile)
                     aXCL(self.executeme)
-                    aXCL(self.sfile)
+                    aXCL('$runme')
                 else:
                     aCL(self.executeme)  # this little CL will just run
                     aXCL(self.executeme)
@@ -214,7 +214,7 @@ class ScriptRunner:
                     aCL(self.executeme)
                     aCL(self.sfile)
                     aXCL(self.executeme)
-                    aXCL(self.sfile)
+                    aXCL('$runme')
                 else:
                     aCL(self.executeme)  # this little CL will just run
                     aXCL(self.executeme)
@@ -527,7 +527,11 @@ class ScriptRunner:
         requirements = gxtp.Requirements()
         if self.args.packages:
             for d in self.args.packages.split(","):
-                packg,ver = d.split(':')
+                if ':' in d:
+                    packg,ver = d.split(':')
+                else:
+                    packg = d
+                    ver = ''
                 requirements.append(gxtp.Requirement("package", packg, ver))
         self.tool.requirements = requirements
         if self.args.parampass == "0":

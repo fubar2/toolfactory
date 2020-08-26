@@ -1,19 +1,16 @@
-﻿# Note as at August 8 2020
+﻿#Breaking news! Docker container is recommended as at August 2020
 
-The updated ToolFactory is available from the main toolshed. 
-However, the Docker version is highly recommended for isolation.
+A Docker container can be built - see the docker directory.
+It is highly recommended for isolation. It also has an integrated toolshed to allow installation of new tools back 
+into the Galaxy being used to generate them. 
 
-That container was built from quay.io/bgruening/galaxy:20.05 but updates the
+Built from quay.io/bgruening/galaxy:20.05 but updates the
 Galaxy code to the dev branch - it seems to work fine with updated bioblend>=0.14
-with planemo and the right version of gxformat2 so workflow and history can be added
-to the container to make a useful environment with sample tools
+with planemo and the right version of gxformat2 needed by the ToolFactory (TF).
 
 The runclean.sh script run from the docker subdirectory of your local clone of this repository
 should create a container (eventually) and serve it at localhost:8080 with a toolshed at
 localhost:9009.
-
-The Dockerfile will clone a recent Galaxy dev with an updated set of requirements 
-because some things needed don't work well with that old bioblend.
 
 Once it's up, please restart Galaxy in the container with 
 ```docker exec [container name] supervisorctl restart galaxy: ```
@@ -21,10 +18,12 @@ Jobs just do not seem to run properly otherwise and the next steps won't work!
 
 The generated container includes a workflow and 2 sample data sets for the workflow
 
-Load the workflow. Adjust the input for the perlgc example to phiX.fasta and run it. Leave
-the others to use rgToolFactory2.py as their input - any text file will work but I like the
-recursion. This should fill the history with some sample tools you can rerun and play with.
-
+Load the workflow. Adjust the inputs for each as labelled. The perl example counts GC in phiX.fasta. 
+The python scripts use the rgToolFactory.py as their input - any text file will work but I like the
+recursion. The BWA example has some mitochondrial reads and reference. Run the workflow and watch.
+This should fill the history with some sample tools you can rerun and play with.
+Note that each new tool will have been tested using Planemo. In the workflow, in Galaxy.
+Extremely cool to watch.
 
 #WARNING before you start 
 
@@ -37,16 +36,20 @@ if you use this tool in your published work.
 
 #Short Story
 
-Galaxy is easily extended by adding a new tool. Each new scientific computational package added as
-a tool to Galaxy requires some special instructions to be written, so Galaxy can make the package 
-readily available to users. Most tool instructions are manually prepared by a skilled programmer, 
-most of whom use Planemo because it automates much of the basic boilerplate and makes the process 
-much easier. The ToolFactory (TF) uses Planemo under the hood for many functions, but hides the command
-line from the TF user.
+Galaxy is easily extended to new applications by adding a new tool. Each new scientific computational package added as
+a tool to Galaxy requires some special instructions to be written. This is sometimes termed "wrapping" an application
+because the wrapper code instructs Galaxy how to make the third party package readily available to all Galaxy users. 
+Most Galaxy tools have been manually prepared by skilled programmers, many using Planemo because it 
+automates much of the basic boilerplate and makes the process much easier. The ToolFactory (TF) 
+uses Planemo under the hood for many functions, but hides the command
+line complexities from the TF user. 
+
+#More Explanation
 
 The TF is an unusual Galaxy tool, designed to allow a skilled user to make new Galaxy tools. 
-It appears in Galaxy just like any other tool but it's outputs include new Galaxy tools generated
-using instructions provided by the user.
+It appears in Galaxy just like any other tool but outputs include new Galaxy tools generated
+using instructions provided by the user and the results of Planemo lint and tool testing using
+small sample inputs provided by the TF user. The small samples become tests built in to the new tool.
 
 It offers a familiar Galaxy form driven way to define how the user of the new tool will 
 choose input data from their history, and what parameters the new tool user will be able to adjust.
@@ -56,16 +59,19 @@ the new Galaxy interface and the ToolFactory offers little guidance on that othe
 Tools always depend on other things. Most tools in Galaxy depend on third party
 scientific packages, so TF tools usually have one or more dependencies. These can be
 scientific packages such as BWA or scripting languages such as Python and are
-usually managed by Conda. If the new tool 
-relies on a system utility such as bash or awk where the importance of version control 
-on reproducibility is low, these can be used without Conda management.
+usually managed by Conda. If the new tool relies on a system utility such as bash or awk 
+where the importance of version control on reproducibility is low, these can be used without 
+Conda management - but remember the potential risks of unmanaged dependencies on computational
+reproducibility.
 
 The TF user can optionally supply a working script where scripting is
-required and the chosen dependency is a scripting language such as Python. 
-That script must correctly parse the command line
+required and the chosen dependency is a scripting language such as Python or a system
+scripting executable such as bash. Whatever the language, the script must correctly parse the command line
 arguments it receives at tool execution, as they are defined by the TF user. The
 text of that script is "baked in" to the new tool and will be executed each time
-the new tool is run.
+the new tool is run. It is highly recommended that scripts and their command lines be developed
+and tested until proven to work before the TF is invoked. Galaxy as a software development
+environment is actually possible, but not recommended being somewhat clumsy and inefficient.
 
 Tools nearly always take one or more data sets from the user's history as input. TF tools
 allow the TF user to define what Galaxy datatypes the tool end user will be able to choose and what 
@@ -78,8 +84,8 @@ simple text and number fields. Pull requests for other kinds of parameters are w
 
 Best practice Galaxy tools have one or more automated tests. These should use small sample data sets and
 specific parameter settings so when the tool is tested, the outputs can be compared with their expected
-values. The TF will automatically create a test for the new tool. It will use the sample data sets chosen by the TF user
-when they built the new tool.
+values. The TF will automatically create a test for the new tool. It will use the sample data sets 
+chosen by the TF user when they built the new tool.
 
 The TF works by exposing *unrestricted* and therefore extremely dangerous scripting
 to all designated administrators of the host Galaxy server, allowing them to
@@ -112,7 +118,16 @@ ToolFactory run just like any other Galaxy tool,but run your script every time.
 Tool factory tools are perfect for workflow components. One input, one output,
 no variables.
 
+
+#Limitations
+
+The TF is flexible enough to generate wrappers for many common scientific packages
+but the inbuilt automation will not cope with all possible situations. Users can
+supply overrides for two tool XML segments - tests and command and the BWA
+example in the supplied samples workflow illustrates their use.  
+
 **Installation**
+
 The Docker container is the best way to use the TF because it is preconfigured
 to automate new tool testing and has a built in local toolshed where each new tool
 is uploaded. It is easy to install without Docker, but you will need to make some 
@@ -121,7 +136,7 @@ administrative "Search and browse tool sheds" link. Find the Galaxy Main
 toolshed at https://toolshed.g2.bx.psu.edu/ and search for the toolfactory
 repository in the Tool Maker section. Open it and review the code and select the option to install it.
 
-If not already there,
+Otherwise, if not already there pending an accepted PR,
 please add:
 <datatype extension="tgz" type="galaxy.datatypes.binary:Binary"
 mimetype="multipart/x-gzip" subclass="True" />
@@ -131,7 +146,7 @@ to your local data_types_conf.xml.
 **Restricted execution**
 
 The tool factory tool itself will then be usable ONLY by admin users -
-people with IDs in admin_users in universe_wsgi.ini **Yes, that's right. ONLY
+people with IDs in admin_users. **Yes, that's right. ONLY
 admin_users can run this tool** Think about it for a moment. If allowed to
 run any arbitrary script on your Galaxy server, the only thing that would
 impede a miscreant bent on destroying all your Galaxy data would probably
