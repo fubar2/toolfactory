@@ -22,7 +22,6 @@
 # Be simpler to write the tool, then run it with planemo and soak up the test outputs.
 
 
-
 import argparse
 import logging
 import os
@@ -75,6 +74,7 @@ AOCLPOS = 7
 foo = len(lxml.__version__)
 # fug you, flake8. Say my name!
 
+
 def timenow():
     """return current time as a string
     """
@@ -118,9 +118,7 @@ def parse_citations(citations_text):
         if citation.startswith("doi"):
             citation_tuples.append(("doi", citation[len("doi") :].strip()))
         else:
-            citation_tuples.append(
-                ("bibtex", citation[len("bibtex") :].strip())
-            )
+            citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
 
@@ -171,11 +169,9 @@ class ScriptRunner:
         self.tinputs = gxtp.Inputs()
         self.toutputs = gxtp.Outputs()
         self.testparam = []
-        if (
-            self.args.runmode == "Executable" or self.args.runmode == "system"
-        ): 
+        if self.args.runmode == "Executable" or self.args.runmode == "system":
             if len(self.args.cl_override) > 0:
-                for x in self.args.cl_override.split(' '):
+                for x in self.args.cl_override.split(" "):
                     aCL(x)
             else:
                 aCL(self.args.exe_package)  # this little CL will just run
@@ -218,13 +214,9 @@ class ScriptRunner:
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
                 else:
                     clsuffix.append([p[OOCLPOS], p[OCLPOS], p[ONAMEPOS], ""])
-                    xclsuffix.append(
-                        [p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ""]
-                    )
+                    xclsuffix.append([p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ""])
             for p in self.addpar:
-                clsuffix.append(
-                    [p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]]
-                )
+                clsuffix.append([p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]])
                 xclsuffix.append(
                     [p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]]
                 )
@@ -249,21 +241,15 @@ class ScriptRunner:
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = "  %s" % "\n".join(
-            [" %s" % html_escape(x) for x in rx]
-        )
-        self.escapedScript = "%s" % "\n".join(
-            [" %s" % html_escape(x) for x in rx]
-        )
+        self.indentedScript = "  %s" % "\n".join([" %s" % html_escape(x) for x in rx])
+        self.escapedScript = "%s" % "\n".join([" %s" % html_escape(x) for x in rx])
         art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
         artifact = open(art, "wb")
         if self.args.interpreter_name == "python":
             artifact.write(bytes("#!/usr/bin/env python\n", "utf8"))
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
-        
-        
-        
+
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i, p in enumerate(self.infiles):
@@ -380,9 +366,7 @@ class ScriptRunner:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newcl
             self.toutputs.append(aparm)
-            tp = gxtp.TestOutput(
-                name=newcl, value="%s_sample" % newcl, format=newfmt
-            )
+            tp = gxtp.TestOutput(name=newcl, value="%s_sample" % newcl, format=newfmt)
             self.testparam.append(tp)
         for p in self.infiles:
             newname = p[ICLPOS]
@@ -477,9 +461,7 @@ class ScriptRunner:
         anout.command_line_override = "> $%s" % newname
         anout.positional = self.is_positional
         self.toutputs.append(anout)
-        tp = gxtp.TestOutput(
-            name=newname, value="%s_sample" % newname, format=newfmt
-        )
+        tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname, format=newfmt)
         self.testparam.append(tp)
 
     def makeXML(self):
@@ -489,7 +471,9 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.args.cl_override:
-            self.tool.command_line_override = self.args.cl_override.split(' ') + self.xmlcl
+            self.tool.command_line_override = (
+                self.args.cl_override.split(" ") + self.xmlcl
+            )
         else:
             self.tool.command_line_override = self.xmlcl
         if self.args.interpreter_name:
@@ -509,17 +493,11 @@ class ScriptRunner:
 
         if self.args.interpreter_name:
             if self.args.dependencies:
-                for d in self.args.dependencies.split(','):
-                    requirements.append(
-                        gxtp.Requirement(
-                         "package", d, ""
-                        )
-                    )
+                for d in self.args.dependencies.split(","):
+                    requirements.append(gxtp.Requirement("package", d, ""))
             if self.args.interpreter_name == "python":
                 requirements.append(
-                    gxtp.Requirement(
-                        "package", "python", self.args.interpreter_version
-                    )
+                    gxtp.Requirement("package", "python", self.args.interpreter_version)
                 )
             elif self.args.interpreter_name not in ["bash", "sh"]:
                 requirements.append(
@@ -533,9 +511,7 @@ class ScriptRunner:
             if self.args.exe_package and self.args.parampass != "system":
                 requirements.append(
                     gxtp.Requirement(
-                        "package",
-                        self.args.exe_package,
-                        self.args.exe_package_version,
+                        "package", self.args.exe_package, self.args.exe_package_version,
                     )
                 )
         self.tool.requirements = requirements
@@ -565,7 +541,7 @@ class ScriptRunner:
             10.1093/bioinformatics/bts573"
         )
         exml = self.tool.export()
-        xf = open('%s.xml' % self.tool_name, "w")
+        xf = open("%s.xml" % self.tool_name, "w")
         xf.write(exml)
         xf.write("\n")
         xf.close()
@@ -580,9 +556,7 @@ class ScriptRunner:
         """
         retval = self.run()
         if retval:
-            sys.stderr.write(
-                "## Run failed. Cannot build yet. Please fix and retry"
-            )
+            sys.stderr.write("## Run failed. Cannot build yet. Please fix and retry")
             sys.exit(1)
         tdir = "tfout"
         if not os.path.exists(tdir):
@@ -616,27 +590,27 @@ class ScriptRunner:
             stname = os.path.join(tdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
-        xreal = '%s.xml' % self.tool_name
-        xout = os.path.join(tdir,xreal)
+        xreal = "%s.xml" % self.tool_name
+        xout = os.path.join(tdir, xreal)
         shutil.copyfile(xreal, xout)
         tarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(tarpath, "w:gz")
         tf.add(name=tdir, arcname=self.tool_name)
         tf.close()
         shutil.copyfile(tarpath, self.args.new_tool)
-        shutil.copyfile(xreal,"tool_xml.txt")
+        shutil.copyfile(xreal, "tool_xml.txt")
         repdir = "TF_run_report_tempdir"
         if not os.path.exists(repdir):
             os.mkdir(repdir)
         repoutnames = [x[OCLPOS] for x in self.outfiles]
-        with os.scandir('.') as outs:
+        with os.scandir(".") as outs:
             for entry in outs:
-                if entry.name.endswith('.tgz') or not entry.is_file():
+                if entry.name.endswith(".tgz") or not entry.is_file():
                     continue
                 if entry.name in repoutnames:
-                    shutil.copyfile(entry.name,os.path.join(repdir,entry.name))
+                    shutil.copyfile(entry.name, os.path.join(repdir, entry.name))
                 elif entry.name == "%s.xml" % self.tool_name:
-                    shutil.copyfile(entry.name,os.path.join(repdir,"new_tool_xml"))
+                    shutil.copyfile(entry.name, os.path.join(repdir, "new_tool_xml"))
         return retval
 
     def run(self):
@@ -652,15 +626,12 @@ class ScriptRunner:
         if self.args.parampass != "0":
             ste = open(self.elog, "wb")
             if self.lastclredirect:
-                sto = open(
-                    self.lastclredirect[1], "wb"
-                )  # is name of an output file
+                sto = open(self.lastclredirect[1], "wb")  # is name of an output file
             else:
                 sto = open(self.tlog, "wb")
                 sto.write(
                     bytes(
-                        "## Executing Toolfactory generated command line = %s\n"
-                        % scl,
+                        "## Executing Toolfactory generated command line = %s\n" % scl,
                         "utf8",
                     )
                 )
@@ -734,23 +705,17 @@ def main():
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
         % (args.bad_user, args.bad_user)
     )
-    assert (
-        args.tool_name
-    ), "## Tool Factory expects a tool name - eg --tool_name=DESeq"
+    assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"
     assert (
         args.interpreter_name or args.exe_package
     ), "## Tool Factory wrapper expects an interpreter or an executable package"
     assert args.exe_package or (
         len(args.script_path) > 0 and os.path.isfile(args.script_path)
     ), "## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable"
-    args.input_files = [
-        x.replace('"', "").replace("'", "") for x in args.input_files
-    ]
+    args.input_files = [x.replace('"', "").replace("'", "") for x in args.input_files]
     # remove quotes we need to deal with spaces in CL params
     for i, x in enumerate(args.additional_parameters):
-        args.additional_parameters[i] = args.additional_parameters[i].replace(
-            '"', ""
-        )
+        args.additional_parameters[i] = args.additional_parameters[i].replace('"', "")
     r = ScriptRunner(args)
     if args.make_Tool:
         retcode = r.makeTooltar()

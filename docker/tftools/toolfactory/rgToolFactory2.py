@@ -22,7 +22,6 @@
 # Be simpler to write the tool, then run it with planemo and soak up the test outputs.
 
 
-
 import argparse
 import logging
 import os
@@ -38,6 +37,8 @@ import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
 
 import lxml
+
+import yaml
 
 myversion = "V2.1 July 2020"
 verbose = True
@@ -74,6 +75,7 @@ AOCLPOS = 7
 
 foo = len(lxml.__version__)
 # fug you, flake8. Say my name!
+
 
 def timenow():
     """return current time as a string
@@ -118,9 +120,7 @@ def parse_citations(citations_text):
         if citation.startswith("doi"):
             citation_tuples.append(("doi", citation[len("doi") :].strip()))
         else:
-            citation_tuples.append(
-                ("bibtex", citation[len("bibtex") :].strip())
-            )
+            citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
 
@@ -168,14 +168,21 @@ class ScriptRunner:
             self.args.tool_desc,
             exe,
         )
+        self.tooloutdir = "tfout"
+        self.repdir = "TF_run_report_tempdir"
+        self.testdir = os.path.join(self.tooloutdir, "test-data")
+        if not os.path.exists(self.tooloutdir):
+            os.mkdir(self.tooloutdir)
+        if not os.path.exists(self.testdir):
+            os.mkdir(self.testdir)  # make tests directory
+        if not os.path.exists(self.repdir):
+            os.mkdir(self.repdir)
         self.tinputs = gxtp.Inputs()
         self.toutputs = gxtp.Outputs()
         self.testparam = []
-        if (
-            self.args.runmode == "Executable" or self.args.runmode == "system"
-        ): 
-            if len(self.args.cl_override) > 0:
-                for x in self.args.cl_override.split(' '):
+        if self.args.runmode == "Executable" or self.args.runmode == "system":
+            if len(self.args.command_override) > 0:
+                for x in self.args.cl_override.split(" "):
                     aCL(x)
             else:
                 aCL(self.args.exe_package)  # this little CL will just run
@@ -218,13 +225,9 @@ class ScriptRunner:
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
                 else:
                     clsuffix.append([p[OOCLPOS], p[OCLPOS], p[ONAMEPOS], ""])
-                    xclsuffix.append(
-                        [p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ""]
-                    )
+                    xclsuffix.append([p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ""])
             for p in self.addpar:
-                clsuffix.append(
-                    [p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]]
-                )
+                clsuffix.append([p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]])
                 xclsuffix.append(
                     [p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]]
                 )
@@ -249,21 +252,15 @@ class ScriptRunner:
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = "  %s" % "\n".join(
-            [" %s" % html_escape(x) for x in rx]
-        )
-        self.escapedScript = "%s" % "\n".join(
-            [" %s" % html_escape(x) for x in rx]
-        )
+        self.indentedScript = "  %s" % "\n".join([" %s" % html_escape(x) for x in rx])
+        self.escapedScript = "%s" % "\n".join([" %s" % html_escape(x) for x in rx])
         art = "%s.%s" % (self.tool_name, self.args.interpreter_name)
         artifact = open(art, "wb")
         if self.args.interpreter_name == "python":
             artifact.write(bytes("#!/usr/bin/env python\n", "utf8"))
         artifact.write(bytes(self.script, "utf8"))
         artifact.close()
-        
-        
-        
+
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i, p in enumerate(self.infiles):
@@ -380,9 +377,7 @@ class ScriptRunner:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newcl
             self.toutputs.append(aparm)
-            tp = gxtp.TestOutput(
-                name=newcl, value="%s_sample" % newcl, format=newfmt
-            )
+            tp = gxtp.TestOutput(name=newcl, value="%s_sample" % newcl, format=newfmt)
             self.testparam.append(tp)
         for p in self.infiles:
             newname = p[ICLPOS]
@@ -477,9 +472,7 @@ class ScriptRunner:
         anout.command_line_override = "> $%s" % newname
         anout.positional = self.is_positional
         self.toutputs.append(anout)
-        tp = gxtp.TestOutput(
-            name=newname, value="%s_sample" % newname, format=newfmt
-        )
+        tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname, format=newfmt)
         self.testparam.append(tp)
 
     def makeXML(self):
@@ -489,7 +482,9 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.args.cl_override:
-            self.tool.command_line_override = self.args.cl_override.split(' ') + self.xmlcl
+            self.tool.command_line_override = (
+                self.args.cl_override.split(" ") + self.xmlcl
+            )
         else:
             self.tool.command_line_override = self.xmlcl
         if self.args.interpreter_name:
@@ -509,17 +504,11 @@ class ScriptRunner:
 
         if self.args.interpreter_name:
             if self.args.dependencies:
-                for d in self.args.dependencies.split(','):
-                    requirements.append(
-                        gxtp.Requirement(
-                         "package", d, ""
-                        )
-                    )
+                for d in self.args.dependencies.split(","):
+                    requirements.append(gxtp.Requirement("package", d, ""))
             if self.args.interpreter_name == "python":
                 requirements.append(
-                    gxtp.Requirement(
-                        "package", "python", self.args.interpreter_version
-                    )
+                    gxtp.Requirement("package", "python", self.args.interpreter_version)
                 )
             elif self.args.interpreter_name not in ["bash", "sh"]:
                 requirements.append(
@@ -533,9 +522,7 @@ class ScriptRunner:
             if self.args.exe_package and self.args.parampass != "system":
                 requirements.append(
                     gxtp.Requirement(
-                        "package",
-                        self.args.exe_package,
-                        self.args.exe_package_version,
+                        "package", self.args.exe_package, self.args.exe_package_version,
                     )
                 )
         self.tool.requirements = requirements
@@ -565,7 +552,7 @@ class ScriptRunner:
             10.1093/bioinformatics/bts573"
         )
         exml = self.tool.export()
-        xf = open('%s.xml' % self.tool_name, "w")
+        xf = open("%s.xml" % self.tool_name, "w")
         xf.write(exml)
         xf.write("\n")
         xf.close()
@@ -580,69 +567,65 @@ class ScriptRunner:
         """
         retval = self.run()
         if retval:
-            sys.stderr.write(
-                "## Run failed. Cannot build yet. Please fix and retry"
-            )
+            sys.stderr.write("## Run failed. Cannot build yet. Please fix and retry")
             sys.exit(1)
-        tdir = "tfout"
-        if not os.path.exists(tdir):
-            os.mkdir(tdir)
         self.makeXML()
-        testdir = os.path.join(tdir, "test-data")
-        if not os.path.exists(testdir):
-            os.mkdir(testdir)  # make tests directory
         for p in self.infiles:
             pth = p[IPATHPOS]
-            dest = os.path.join(testdir, "%s_sample" % p[ICLPOS])
+            dest = os.path.join(self.testdir, "%s_sample" % p[ICLPOS])
             shutil.copyfile(pth, dest)
         for p in self.outfiles:
             pth = p[OCLPOS]
             if p[OOCLPOS] == "STDOUT" or self.args.parampass == "0":
                 pth = p[ONAMEPOS]
-                dest = os.path.join(testdir, "%s_sample" % p[ONAMEPOS])
+                dest = os.path.join(self.testdir, "%s_sample" % p[ONAMEPOS])
                 shutil.copyfile(pth, dest)
-                dest = os.path.join(tdir, p[ONAMEPOS])
+                dest = os.path.join(self.tooloutdir, p[ONAMEPOS])
                 shutil.copyfile(pth, dest)
             else:
                 pth = p[OCLPOS]
-                dest = os.path.join(testdir, "%s_sample" % p[OCLPOS])
+                dest = os.path.join(self.testdir, "%s_sample" % p[OCLPOS])
                 shutil.copyfile(pth, dest)
-                dest = os.path.join(tdir, p[OCLPOS])
+                dest = os.path.join(self.tooloutdir, p[OCLPOS])
                 shutil.copyfile(pth, dest)
-
         if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
-            shutil.copyfile(self.tlog, os.path.join(testdir, "test1_log_outfiletxt"))
+            shutil.copyfile(
+                self.tlog, os.path.join(self.tooloutdir, "test1_log_outfiletxt")
+            )
         if self.args.runmode not in ["Executable", "system"]:
-            stname = os.path.join(tdir, "%s" % (self.sfile))
+            stname = os.path.join(self.tooloutdir, "%s" % (self.sfile))
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
-        xreal = '%s.xml' % self.tool_name
-        xout = os.path.join(tdir,xreal)
+        xreal = "%s.xml" % self.tool_name
+        xout = os.path.join(self.tooloutdir, xreal)
         shutil.copyfile(xreal, xout)
-        tarpath = "toolfactory_%s.tgz" % self.tool_name
-        tf = tarfile.open(tarpath, "w:gz")
-        tf.add(name=tdir, arcname=self.tool_name)
+        self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
+        tf = tarfile.open(self.newtarpath, "w:gz")
+        tf.add(name=self.tooloutdir, arcname=self.tool_name)
         tf.close()
-        shutil.copyfile(tarpath, self.args.new_tool)
-        shutil.copyfile(xreal,"tool_xml.txt")
-        repdir = "TF_run_report_tempdir"
-        if not os.path.exists(repdir):
-            os.mkdir(repdir)
+        shutil.copyfile(self.newtarpath, self.args.new_tool)
+        shutil.copyfile(xreal, "tool_xml.txt")
         repoutnames = [x[OCLPOS] for x in self.outfiles]
-        with os.scandir('.') as outs:
+        with os.scandir(".") as outs:
             for entry in outs:
-                if entry.name.endswith('.tgz') or not entry.is_file():
+                if entry.name.endswith(".tgz") or not entry.is_file():
                     continue
                 if entry.name in repoutnames:
-                    shutil.copyfile(entry.name,os.path.join(repdir,entry.name))
+                    if "." in entry.name:
+                        ofne = os.path.splitext(entry.name)[1]
+                    else:
+                        ofne = ".txt"
+                    ofn = "%s%s" % (entry.name.replace(".", "_"), ofne)
+                    shutil.copyfile(entry.name, os.path.join(self.repdir, ofn))
                 elif entry.name == "%s.xml" % self.tool_name:
-                    shutil.copyfile(entry.name,os.path.join(repdir,"new_tool_xml"))
+                    shutil.copyfile(
+                        entry.name, os.path.join(self.repdir, "new_tool_xml.xml")
+                    )
         return retval
 
     def run(self):
         """
-        Some devteam tools have this defensive stderr read so I'm keeping with the faith
-        Feel free to update.
+
         """
         s = "run cl=%s" % str(self.cl)
 
@@ -652,15 +635,12 @@ class ScriptRunner:
         if self.args.parampass != "0":
             ste = open(self.elog, "wb")
             if self.lastclredirect:
-                sto = open(
-                    self.lastclredirect[1], "wb"
-                )  # is name of an output file
+                sto = open(self.lastclredirect[1], "wb")  # is name of an output file
             else:
                 sto = open(self.tlog, "wb")
                 sto.write(
                     bytes(
-                        "## Executing Toolfactory generated command line = %s\n"
-                        % scl,
+                        "## Executing Toolfactory generated command line = %s\n" % scl,
                         "utf8",
                     )
                 )
@@ -692,10 +672,112 @@ class ScriptRunner:
             os.unlink(self.tlog)
         if os.path.isfile(self.elog) and os.stat(self.elog).st_size == 0:
             os.unlink(self.elog)
-        if p.returncode != 0 and err:  # problem
+        if retval != 0 and err:  # problem
             sys.stderr.write(err)
         logging.debug("run done")
         return retval
+
+    def install_load(self):
+        testres = self.planemo_test()
+        if testres == 0:
+            if self.args.make_Tool == "install":
+                self.planemo_shedload()
+                self.eph_galaxy_load()
+        else:
+            stderr.write(
+                "Planemo test failed - tool %s was not installed" % self.args.tool_name
+            )
+
+    def planemo_shedload(self):
+        """
+        planemo shed_create --shed_target testtoolshed
+        planemo shed_update --check_diff --shed_target testtoolshed
+        """
+        cll = ["planemo", "shed_create", "--shed_target", "local"]
+        p = subprocess.run(cll, shell=False, cwd=self.tooloutdir)
+        if p.returncode != 0:
+            print("Repository %s exists" % self.args.tool_name)
+        else:
+            print("initiated %s" % self.args.tool_name)
+        cll = [
+            "planemo",
+            "shed_upload",
+            "--shed_target",
+            "local",
+            "--owner",
+            "fubar",
+            "--name",
+            self.args.tool_name,
+            "--shed_key",
+            self.args.toolshed_api_key,
+            "--tar",
+            self.newtarpath,
+        ]
+        print("Run", " ".join(cll))
+        p = subprocess.run(cll, shell=False)
+        print("Ran", " ".join(cll), "got", p.returncode)
+        return p.returncode
+
+    def planemo_test(self):
+        """planemo is a requirement so is available
+        """
+        xreal = "%s.xml" % self.tool_name
+        cll = ["planemo", "test", "--galaxy_root", self.args.galaxy_root, xreal]
+        p = subprocess.run(cll, shell=False, cwd=self.tooloutdir)
+        ols = os.listdir(self.tooloutdir)
+        for fn in ols:
+            if fn.startswith("tool_test_output"):
+                ofne = os.path.splitext(fn)[1]
+                ofn = "%s%s" % (fn.replace(".", "_"), ofne)
+                shutil.copyfile(
+                    os.path.join(self.tooloutdir, fn), os.path.join(self.repdir, ofn)
+                )
+        return p.returncode
+
+    def eph_galaxy_load(self):
+        """
+        """
+        cll = [
+            "shed-tools",
+            "install",
+            "-g",
+            self.args.galaxy_url,
+            "--latest",
+            "-a",
+            self.args.galaxy_api_key,
+            "--name",
+            self.args.tool_name,
+            "--owner",
+            "fubar",
+            "--toolshed",
+            self.args.toolshed_url,
+            "--section_label",
+            "Generated Tools",
+            "--install_tool_dependencies",
+        ]
+        print("running\n", " ".join(cll))
+        p = subprocess.run(cll, shell=False)
+        if p.returncode != 0:
+            print(
+                "Repository %s installation returned %d"
+                % (self.args.tool_name, p.returncode)
+            )
+        else:
+            print("installed %s" % self.args.tool_name)
+        return p.returncode
+
+    def writeShedyml(self):
+        yuser = self.args.user_email.split("@")[0]
+        yfname = os.path.join(self.tooloutdir, ".shed.yml")
+        yamlf = open(yfname, "w")
+        odict = {
+            "name": self.tool_name,
+            "owner": yuser,
+            "type": "unrestricted",
+            "description": self.args.tool_desc,
+        }
+        yaml.dump(odict, yamlf, allow_unicode=True)
+        yamlf.close()
 
 
 def main():
@@ -718,7 +800,7 @@ def main():
     a("--output_files", default=[], action="append")
     a("--user_email", default="Unknown")
     a("--bad_user", default=None)
-    a("--make_Tool", default=None)
+    a("--make_Tool", default="runonly")
     a("--help_text", default=None)
     a("--tool_desc", default=None)
     a("--tool_version", default=None)
@@ -729,35 +811,38 @@ def main():
     a("--tfout", default="./tfout")
     a("--new_tool", default="new_tool")
     a("--runmode", default=None)
+    a("--galaxy_url", default="http://localhost:8080")
+    a("--galaxy_api_key", default="fbdd3c2eecd191e88939fffc02eeeaf8")
+    a("--toolshed_url", default="http://localhost:9009")
+    a("--toolshed_api_key", default="d46e5ed0e242ed52c6e1f506b5d7f9f7")
+    a("--galaxy_root", default="/home/ross/galaxy")
+
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
         % (args.bad_user, args.bad_user)
     )
-    assert (
-        args.tool_name
-    ), "## Tool Factory expects a tool name - eg --tool_name=DESeq"
+    assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"
     assert (
         args.interpreter_name or args.exe_package
     ), "## Tool Factory wrapper expects an interpreter or an executable package"
     assert args.exe_package or (
         len(args.script_path) > 0 and os.path.isfile(args.script_path)
     ), "## Tool Factory wrapper expects a script path - eg --script_path=foo.R if no executable"
-    args.input_files = [
-        x.replace('"', "").replace("'", "") for x in args.input_files
-    ]
+    args.input_files = [x.replace('"', "").replace("'", "") for x in args.input_files]
     # remove quotes we need to deal with spaces in CL params
     for i, x in enumerate(args.additional_parameters):
-        args.additional_parameters[i] = args.additional_parameters[i].replace(
-            '"', ""
-        )
+        args.additional_parameters[i] = args.additional_parameters[i].replace('"', "")
     r = ScriptRunner(args)
-    if args.make_Tool:
+    if args.make_Tool != "runonly":
+        r.writeShedyml()
         retcode = r.makeTooltar()
+        if retcode == 0 and args.make_Tool in ["gentest", "install"]:
+            r.install_load()
     else:
         retcode = r.run()
-    if retcode:
-        sys.exit(retcode)  # indicate failure to job runner
+    # if retcode:
+    # sys.exit(retcode)  # indicate failure to job runner
 
 
 if __name__ == "__main__":

@@ -37,44 +37,62 @@ if you use this tool in your published work.
 
 #Short Story
 
-This is an unusual Galaxy tool capable of generating new Galaxy tools.
-It works by exposing *unrestricted* and therefore extremely dangerous scripting
+Galaxy is easily extended by adding a new tool. Each new scientific computational package added as
+a tool to Galaxy requires some special instructions to be written, so Galaxy can make the package 
+readily available to users. Most tool instructions are manually prepared by a skilled programmer, 
+most of whom use Planemo because it automates much of the basic boilerplate and makes the process 
+much easier. The ToolFactory (TF) uses Planemo under the hood for many functions, but hides the command
+line from the TF user.
+
+The TF is an unusual Galaxy tool, designed to allow a skilled user to make new Galaxy tools. 
+It appears in Galaxy just like any other tool but it's outputs include new Galaxy tools generated
+using instructions provided by the user.
+
+It offers a familiar Galaxy form driven way to define how the user of the new tool will 
+choose input data from their history, and what parameters the new tool user will be able to adjust.
+The TF user must know, or be able to read, enough about the tool to be able to define the details of
+the new Galaxy interface and the ToolFactory offers little guidance on that other than some examples.
+
+Tools always depend on other things. Most tools in Galaxy depend on third party
+scientific packages, so TF tools usually have one or more dependencies. These can be
+scientific packages such as BWA or scripting languages such as Python and are
+usually managed by Conda. If the new tool 
+relies on a system utility such as bash or awk where the importance of version control 
+on reproducibility is low, these can be used without Conda management.
+
+The TF user can optionally supply a working script where scripting is
+required and the chosen dependency is a scripting language such as Python. 
+That script must correctly parse the command line
+arguments it receives at tool execution, as they are defined by the TF user. The
+text of that script is "baked in" to the new tool and will be executed each time
+the new tool is run.
+
+Tools nearly always take one or more data sets from the user's history as input. TF tools
+allow the TF user to define what Galaxy datatypes the tool end user will be able to choose and what 
+names or positions will be used to pass them on a command line to the package or script.
+
+Tools often have various parameter settings. The TF allows the TF user to define how each
+parameter will appear on the tool form to the end user, and the names and positions will be
+used to pass them on the command line to the package. At present, parameters are limited to
+simple text and number fields. Pull requests for other kinds of parameters are welcomed.
+
+Best practice Galaxy tools have one or more automated tests. These should use small sample data sets and
+specific parameter settings so when the tool is tested, the outputs can be compared with their expected
+values. The TF will automatically create a test for the new tool. It will use the sample data sets chosen by the TF user
+when they built the new tool.
+
+The TF works by exposing *unrestricted* and therefore extremely dangerous scripting
 to all designated administrators of the host Galaxy server, allowing them to
-run scripts in R, python, sh and perl over multiple selected input data sets,
-writing a single new data set as output.
+run scripts in R, python, sh and perl. For this reason, a Docker container is
+available to help manage the associated risks.
 
-*You have a working r/python/perl/bash script or any executable with positional or argparse style parameters*
+#Scripting uses
 
-It can be turned into an ordinary Galaxy tool in minutes, using a Galaxy tool.
+To use a scripting language to create a new tool, you must first prepared and properly test a script. Use small sample
+data sets for testing. When the script is working correctly, upload the small sample datasets
+into a new history, start configuring a new ToolFactory tool, and paste the script into the script text box on the TF form.
 
-**Automated generation of new Galaxy tools for installation into any Galaxy**
-
-A test is generated using small sample test data inputs and parameter settings you supply.
-Once the test case outputs have been produced, they can be used to build a
-new Galaxy tool and optionally test it with planemo.
-
-The supplied script or executable is baked as a requirement
-into a new, ordinary Galaxy tool, fully workflow compatible out of the box.
-Generated tools are installed via a tool shed by an administrator
-and work exactly like all other Galaxy tools for your users.
-
-#More Detail
-
-To use the ToolFactory, you should have prepared a script to paste into a
-text box, or have a package in mind and a small test case with minimal input files ready to select from your history
-to test your new script.
-
-```planemo test --no_cleanup --no_dependency_resolution --skip_venv --galaxy_root ~/galaxy ~/rossgit/toolfactory``` works for me on
-a command line but now the ToolFactory will run it for you.
-
-There is an example in each scripting language on the Tool Factory form. You
-can just cut and paste these to try it out - remember to select the right
-interpreter please. You'll also need to create a small test data set using
-the Galaxy history add new data tool.
-
-If the script fails somehow, use the "redo" button on the tool output in
-your history to recreate the form complete with broken script. Fix the bug
-and execute again. Rinse, wash, repeat.
+#Outputs
 
 Once the script runs sucessfully, a new Galaxy tool that runs your script
 can be generated. Select the "generate" option and supply some help text and
@@ -94,31 +112,18 @@ ToolFactory run just like any other Galaxy tool,but run your script every time.
 Tool factory tools are perfect for workflow components. One input, one output,
 no variables.
 
-*To fully and safely exploit the awesome power* of this tool,
-Galaxy and the ToolShed, you should be a developer installing this
-tool on a private/personal/scratch local instance where you are an
-admin_user. Then, if you break it, you get to keep all the pieces see
-https://bitbucket.org/fubar/galaxytoolfactory/wiki/Home
-
 **Installation**
-This is a Galaxy tool. You can install it most conveniently using the
+The Docker container is the best way to use the TF because it is preconfigured
+to automate new tool testing and has a built in local toolshed where each new tool
+is uploaded. It is easy to install without Docker, but you will need to make some 
+configuration changes (TODO write a configuration). You can install it most conveniently using the
 administrative "Search and browse tool sheds" link. Find the Galaxy Main
 toolshed at https://toolshed.g2.bx.psu.edu/ and search for the toolfactory
-repository. Open it and review the code and select the option to install it.
-
-If you can't get the tool that way, the xml and py files here need to be
-copied into a new tools
-subdirectory such as tools/toolfactory Your tool_conf.xml needs a new entry
-pointing to the xml
-file - something like::
-
-  <section name="Tool building tools" id="toolbuilders">
-    <tool file="toolfactory/rgToolFactory.xml"/>
-  </section>
+repository in the Tool Maker section. Open it and review the code and select the option to install it.
 
 If not already there,
 please add:
-<datatype extension="toolshed.gz" type="galaxy.datatypes.binary:Binary"
+<datatype extension="tgz" type="galaxy.datatypes.binary:Binary"
 mimetype="multipart/x-gzip" subclass="True" />
 to your local data_types_conf.xml.
 
@@ -132,33 +137,6 @@ run any arbitrary script on your Galaxy server, the only thing that would
 impede a miscreant bent on destroying all your Galaxy data would probably
 be lack of appropriate technical skills.
 
-**What it does** 
-
-This is a tool factory for simple scripts in python, R and
-perl currently. Functional tests are automatically generated. 
-
-LIMITED to simple scripts that read one input from the history. Optionally can
-write one new history dataset, and optionally collect any number of outputs
-into links on an autogenerated HTML index page for the user to navigate -
-useful if the script writes images and output files - pdf outputs are shown
-as thumbnails and R's bloated pdf's are shrunk with ghostscript so that and
-imagemagik need to be available.
-
-Generated tools can be edited and enhanced like any Galaxy tool, so start
-small and build up since a generated script gets you a serious leg up to a
-more complex one.
-
-**What you do**
-
-You paste and run your script, you fix the syntax errors and
-eventually it runs. You can use the redo button and edit the script before
-trying to rerun it as you debug - it works pretty well.
-
-Once the script works on some test data, you can generate a toolshed compatible
-gzip file containing your script ready to run as an ordinary Galaxy tool in
-a repository on your local toolshed. That means safe and largely automated
-installation in any production Galaxy configured to use your toolshed.
-
 **Generated tool Security**
 
 Once you install a generated tool, it's just
@@ -168,7 +146,7 @@ Read the code before you install any tool. Especially this one - it is really sc
 
 **Send Code**
 
-Patches and suggestions welcome as bitbucket issues please?
+Pull requests and suggestions welcome as git issues please?
 
 **Attribution**
 
@@ -186,8 +164,4 @@ ross lazarus at g mail period com
 All rights reserved.
 
 Licensed under the LGPL
-
-**Obligatory screenshot**
-
-http://bitbucket.org/fubar/galaxytoolmaker/src/fda8032fe989/images/dynamicScriptTool.png
 
