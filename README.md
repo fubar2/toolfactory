@@ -1,4 +1,4 @@
-﻿#Breaking news! Docker container is recommended as at August 2020
+﻿**Breaking news! Docker container is recommended as at August 2020**
 
 A Docker container can be built - see the docker directory.
 It is highly recommended for isolation. It also has an integrated toolshed to allow installation of new tools back 
@@ -25,7 +25,7 @@ This should fill the history with some sample tools you can rerun and play with.
 Note that each new tool will have been tested using Planemo. In the workflow, in Galaxy.
 Extremely cool to watch.
 
-#WARNING before you start 
+*WARNING before you start* 
 
  Install this tool on a throw-away private Galaxy or Docker container ONLY
  Please NEVER on a public or production instance
@@ -34,7 +34,7 @@ Please cite the resource at
 http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&keytype=ref
 if you use this tool in your published work.
 
-#Short Story
+*Short Story*
 
 Galaxy is easily extended to new applications by adding a new tool. Each new scientific computational package added as
 a tool to Galaxy requires some special instructions to be written. This is sometimes termed "wrapping" an application
@@ -44,7 +44,7 @@ automates much of the basic boilerplate and makes the process much easier. The T
 uses Planemo under the hood for many functions, but hides the command
 line complexities from the TF user. 
 
-#More Explanation
+*More Explanation*
 
 The TF is an unusual Galaxy tool, designed to allow a skilled user to make new Galaxy tools. 
 It appears in Galaxy just like any other tool but outputs include new Galaxy tools generated
@@ -92,13 +92,13 @@ to all designated administrators of the host Galaxy server, allowing them to
 run scripts in R, python, sh and perl. For this reason, a Docker container is
 available to help manage the associated risks.
 
-#Scripting uses
+*Scripting uses*
 
 To use a scripting language to create a new tool, you must first prepared and properly test a script. Use small sample
 data sets for testing. When the script is working correctly, upload the small sample datasets
 into a new history, start configuring a new ToolFactory tool, and paste the script into the script text box on the TF form.
 
-#Outputs
+*Outputs*
 
 Once the script runs sucessfully, a new Galaxy tool that runs your script
 can be generated. Select the "generate" option and supply some help text and
@@ -119,14 +119,14 @@ Tool factory tools are perfect for workflow components. One input, one output,
 no variables.
 
 
-#Limitations
+*Limitations*
 
 The TF is flexible enough to generate wrappers for many common scientific packages
 but the inbuilt automation will not cope with all possible situations. Users can
 supply overrides for two tool XML segments - tests and command and the BWA
 example in the supplied samples workflow illustrates their use.  
 
-**Installation**
+*Installation*
 
 The Docker container is the best way to use the TF because it is preconfigured
 to automate new tool testing and has a built in local toolshed where each new tool
@@ -143,7 +143,7 @@ mimetype="multipart/x-gzip" subclass="True" />
 to your local data_types_conf.xml.
 
 
-**Restricted execution**
+*Restricted execution*
 
 The tool factory tool itself will then be usable ONLY by admin users -
 people with IDs in admin_users. **Yes, that's right. ONLY
