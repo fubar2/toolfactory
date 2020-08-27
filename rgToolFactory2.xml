@@ -78,6 +78,8 @@
             </param>
             <param name="history_CL" type="text"  label="Positional: ordinal integer. Argparse: argument name expected for this output parameter. Use STDOUT if '>' required."
               help="If positional parameters, enter the integer ordinal expected for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value=""/>
+            <param name="history_test" type="text"  label="Test pass decision criterion for this output compared to test generation"
+              help="Available options are diff:lines, sim_size" value="diff:2"/>
         </repeat>
      </xml>
      <xml name="additparam">
@@ -183,7 +185,7 @@ $__tool_directory__/rgToolFactory2.py
 --input_files="$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
      #end for
      #for $otab in $ppass.history_outputs:
---output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL"
+--output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
      #end for
  #end if
 ]]></command>
@@ -194,10 +196,14 @@ $usescript.dynScript
 #end if
  </configfile>
  <configfile name="commandoverride">
+#if $cover.commover == "yes" and len(str($cover.command_override).strip()) > 1:
 $cover.command_override
+#end if
  </configfile> 
  <configfile name="testoverride">
+#if $cover.commover == "yes" and len(str($cover.test_override).strip()) > 1:
 $cover.test_override
+#end if
  </configfile> 
  <configfile name="helpme">
     #if $makeMode.make_Tool != "runonly":
