@@ -8,7 +8,7 @@
              help="Supply a brief tool description for the Galaxy tool menu entry (optional - appears after the tool name)" />
             <param name="help_text" label="Tool form documentation and help text for users" type="text" area="true"
             value="**What it Does**"
-             help="Supply the brief user documentation to appear on the new tool form as reStructured text - http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html" >
+             help="Supply user documentation to appear on the new tool form as reStructured text - http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html" >
                 <sanitizer>
                     <valid initial="string.printable">
                     </valid>
@@ -40,7 +40,7 @@
      </xml>
      <xml name="io">
         <repeat name="history_inputs" title="Add a data file from your history to pass in to the script. Use the '+' button as needed"
-             help="USE SMALL SAMPLES because these will be used for the new tool's test. The names will become a history item selector as input for users of the new tool you are making">
+             help="USE SMALL SAMPLES for the new tool's test. Prompts will form a history item selector as input for users of this new tool">
             <param name="input_files" type="data" format="data" label="Select an input file from your history" optional="true" multiple="false"
                help=""/>
             <param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
@@ -78,6 +78,8 @@
             </param>
             <param name="history_CL" type="text"  label="Positional: ordinal integer. Argparse: argument name expected for this output parameter. Use STDOUT if '>' required."
               help="If positional parameters, enter the integer ordinal expected for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value=""/>
+            <param name="history_test" type="text"  label="Test pass decision criterion for this output compared to test generation"
+              help="Available options are diff:lines, sim_size" value="diff:2"/>
         </repeat>
      </xml>
      <xml name="additparam">
@@ -125,30 +127,13 @@
               help="Using positional parameters, enter the integer ordinal for this parameter on the command line. Using Argparse style, '--' will be prepended on the CL" value="" />
           <param name="param_CLprefixed" type="text" label="Override the generated default argparse name prefix if not empty - eg ----foo if needed"
               help="Some targets like Planemo expect an unadorned action like 'test' before --galaxy_root." value="" />
-
         </repeat>
      </xml>
-    <xml name="dynpar">
-            <param name="exe_package" type="hidden" value="" />
-            <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_prefix" type="hidden" value="" />
-            <param name="command_override" type="hidden" value="" />
-            <param name="test_override" type="hidden" value="" />
-            <param name="dependencies" type="text" value="" label="List additional dependencies - e.g. 'planemo, ephemeris'" help="These will be managed by Conda" />
-          <param name="interpreter_version" type="text" value=""
-          label="Specific interpreter version to match dependency (Conda) repositories - e.g. for python '3.8.5' Latest if empty"/>
-          <param name="dynScript" label="Cut and paste the script to be executed here" type="text" value="# my script" area="True"
-              help="If there are parameters, either positional or argparse style, the script must parse and use them appropriately">
-              <sanitizer>
-                 <valid initial="string.printable">
-                 </valid>
-                 <mapping initial="none"/>
-              </sanitizer>
-          </param>
-    </xml>
   </macros>
-   <requirements>
+  <requirements>
       <requirement type="package">python</requirement>
+      <requirement type="package">perl</requirement>
+      <requirement type="package">r-base</requirement>
       <requirement type="package">galaxyxml</requirement>
       <requirement type="package">planemo</requirement>
       <requirement type="package">yaml</requirement>
@@ -161,26 +146,26 @@
 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
  #else:
 $__tool_directory__/rgToolFactory2.py
---dependencies "$interexe.dependencies"
---runmode "$interexe.interpreter"
-   #if len(str($interexe.cl_override)) > 0:
---cl_override "$interexe.cl_override"
-   #end if
-   #if str($interexe.interpreter)=="Executable" or str($interexe.interpreter)=="system":
---exe_package="$interexe.exe_package"
-    #if $interexe.exe_package_version:
---exe_package_version="$interexe.exe_package_version"
+    #if len(str($cl_prefix)) > 3:
+--cl_prefix "$cl_prefix"
     #end if
-    #if $interexe.cl_prefix:
---cl_prefix $interexe.cl_prefix
+    #if $cover.commover == "yes":
+       #if len(str($cover.command_override)) > 10:
+--command_override "$commandoverride"
+       #end if
+       #if len(str($cover.test_override)) > 10:
+--test_override "$testoverride"
+       #end if
     #end if
-   #else:
---interpreter_name="$interexe.interpreter" --script_path "$runme"
-     #if str($interexe.interpreter_version) != 'None':
---interpreter_version="$interexe.interpreter_version"
-     #end if
-   #end if
+    #if $interexe.dependency_model == "managed":
+--packages "$interexe.packages"
+    #else:
+--sysexe "$interexe.sysexe"
+    #end if
 --tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
+   #if $usescript.choosescript == "yes":
+--script_path "$runme"
+   #end if
    #if str($makeMode.make_Tool)!="runonly":
 --make_Tool="$makeMode.make_Tool"
 --tool_desc="$makeMode.tool_desc"
@@ -200,26 +185,24 @@ $__tool_directory__/rgToolFactory2.py
 --input_files="$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
      #end for
      #for $otab in $ppass.history_outputs:
---output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL"
+--output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
      #end for
  #end if
 ]]></command>
  <configfiles>
   <configfile name="runme">
-#if $interexe.interpreter != "Executable" and $interexe.interpreter != "system" :
-${interexe.dynScript}
-#else:
-$tool_name
-#end if
- </configfile>
- <configfile name="testoverride">
-#if $interexe.interpreter in ["Executable", "system"] and str($interexe.test_override) > '':
-${interexe.test_override}
+#if $usescript.choosescript == 'yes':
+$usescript.dynScript
 #end if
  </configfile>
  <configfile name="commandoverride">
-#if $interexe.interpreter in ["Executable", "system"] and str($interexe.command_override) > '':
-${interexe.command_override}
+#if $cover.commover == "yes" and len(str($cover.command_override).strip()) > 1:
+$cover.command_override
+#end if
+ </configfile> 
+ <configfile name="testoverride">
+#if $cover.commover == "yes" and len(str($cover.test_override).strip()) > 1:
+$cover.test_override
 #end if
  </configfile> 
  <configfile name="helpme">
@@ -245,27 +228,82 @@ $tool_name help goes here
   </configfiles>
   <inputs>
    <param name="tool_name" type="text" value="tool1"   label="New tool ID and title for outputs"
-         help="This will become the toolshed repository name so choose thoughtfully to avoid namespace clashes with other tool writers. lower case, digits and underscores only">
+         help="Toolshed repository name. Choose thoughtfully to avoid namespace clashes with other tool writers. Lower case, digits and underscores only">
         <sanitizer invalid_char="">
             <valid initial="string.letters,string.digits">
                 <add value="_"/>
             </valid>
         </sanitizer>
     </param>
+  
     <conditional name="interexe">
-        <param name="interpreter" type="select" label="Tool model: Pasted script (Python/perl/R/system or managed external dependency"
-        help = "If executable, the supplied package will become a requirement so must match the tool dependency resolver package name in conda.">
-            <option value="python" selected="true" >Use Conda managed Python to run the script pasted below</option>
-            <option value="r-base">Use Conda managed R (Rscript) to run the script pasted below</option>
-            <option value="perl">Use Conda managed Perl to run the script pasted below</option>
-            <option value="system" >Use a non-dependency managed system executable like bash or awk</option>
-            <option value="Executable" >Executable command line driven binary/package managed by Conda</option>
+        <param name="dependency_model" type="select" label="Dependency model: Conda managed external dependency or existing system executable"
+        help = "If managed, the supplied package will become a requirement so must match the tool dependency resolver package name in conda.">
+            <option value="managed" selected="true" >Use Conda managed dependencies for scripting (python, R,....) or command line packages (bwa,samtools)</option>
+            <option value="system" >Use a non-dependency managed system executable for scripting like bash or command line driven like sed or awk</option>
         </param>
-        <when value="Executable">
-            <param name="exe_package" type="text" value="" label="Package name for Conda - e.g. 'bwa'" optional="false"/>
-            <param name="exe_package_version" type="text" value="" label="Executable/package version to match dependency (Conda) repositories - e.g. for bwa='0.7.17'. Latest if empty" />
-            <param name="cl_prefix" type="text" value="" label="Prefix for generated command line - does not replace like command override below"
-            help="If any preamble is required before user supplied parameters in the generated command line, supply it here." />
+        <when value="managed">
+            <param name="packages" type="text" value="" label="Package name[:version, name:version...] for Conda. First (e.g. python) will be called on generated command line" 
+            optional="false" help="Use :[ver] for specific version - 'bwa:0.17.0'. Default is latest. Will be used every time the tool is (re)run." /> 
+            <param name="sysexe" type="hidden" value="" />
+        </when>
+       <when value="system">
+            <param name="sysexe" type="text" value="" label="System executable to run. OS version - not Conda managed" optional="false"
+            help=".e.g bash, awk or other standard and relatively invariant unix utilities"/>
+            <param name="packages" type="hidden" value="" />
+        </when>
+    </conditional>
+    <conditional name="usescript">
+        <param name="choosescript" type="select" display="radio" label="Run a supplied script if the dependency reads one (e.g. python/R/bash)"
+        help = "For script interpreters like Python or bash. Parameters and i/o below must match script's expectations">
+            <option value="no" selected="true">No script required for the first dependency above - just parameters on the command line</option>
+            <option value="yes">Yes, a script is ready to be pasted below for the chosen package</option>
+        </param> 
+        <when value="no">
+            <param name="dynScript" type="hidden"  value="" />
+        </when>
+        <when value="yes">
+            <param name="dynScript" type="text" area="True" value="" label="Script for first dependency above (e.g. python) to interpret. "
+             help="Script must handle all i/o and parameters as specified below using the parameters and passing method chosen below">
+              <sanitizer>
+                 <valid initial="string.printable">
+                 </valid>
+                 <mapping initial="none"/>
+              </sanitizer>
+             </param>
+        </when>
+    </conditional>
+    <conditional name="ppass">
+        <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
+            <option value="argparse" selected="true">Argparse: passed in the form of --clname value</option>
+            <option value="positional">Positional: Passed in the order of positional ordinals ...foo.bam bar.idx zot.xls</option>
+            <option value="0">Tool reads selected input file from STDIN and writes STDOUT with no parameters</option>
+        </param>
+        <when value="argparse">
+            <expand macro="io" />
+            <expand macro="additparam" />
+        </when>
+        <when value="positional">
+            <expand macro="io" />
+            <expand macro="additparam" />
+        </when>
+        <when value="0">
+             <expand macro="io"/>
+        </when>
+    </conditional>
+    <param name="cl_prefix" type="text" value="" label="Prefix for generated command line. Prepends generated i/o and parameter CL. Use override below to replace completely"
+            help="Text will replace generated executable/script elements. Sometimes required before i/o and parameters in the generated command line." />
+    <conditional name="cover">
+        <param name="commover" type="select" display="radio" label="Add Human wrought code to override the generated XML command and/or test section - DIY"
+        help = "For arbitrary and artfull command lines. All i/o and parameters must be passed. Choose No unless needed. Not for the faint of heart">
+            <option value="no" selected="true">No. Use automatically generated command/test XML </option>
+            <option value="yes">Yes. XML needed to override autogenerated command and/or test segments will be pasted below</option>
+        </param> 
+        <when value="no">
+            <param name="command_override" type="hidden"  value="" />
+            <param name="test_override" type="hidden"  value="" />
+        </when>
+        <when value="yes">
             <param name="command_override" type="text" area="True" value="" label="Optional. Human wrought command element override XML/template - e.g. for bwa"
              help="For arbitrary and artfull command lines. All i/o and parameters must be passed. Leave blank unless needed. Not for the faint of heart">
               <sanitizer>
@@ -273,88 +311,38 @@ $tool_name help goes here
                  </valid>
                  <mapping initial="none"/>
               </sanitizer>
-            </param> 
-            <param name="test_override" type="text" area="True" value=""  label="Optional. Test XML/template override. Leave blank unless needed"
-             help="Some situations require humans to write test sections. Supply that here">
-              <sanitizer>
-                 <valid initial="string.printable">
-                 </valid>
-                 <mapping initial="none"/>
-              </sanitizer>
-            </param>
-            <param name="dependencies" type="hidden" value="" />
-        </when>
-        <when value="system">
-            <param name="dependencies" type="hidden" value="" />
-            <param name="exe_package" type="text" value="" label="System executable to run - e.g. awk"/>
-            <param name="exe_package_version" type="hidden" value="" />
-            <param name="cl_prefix" type="text" value="" label="Prefix for generated command line - does not replace like command override below"
-            help="If any preamble is required before user supplied parameters in the generated command line, supply it here." />
-            <param name="command_override" type="text" area="True" value="" label="Optional. Human wrought command element override XML/template - e.g. for sed or awk."
-             help="For arbitrary and artfull command lines. All i/o and parameters must be passed. Leave blank unless needed. Not for the faint of heart">
+             </param>
+            <param name="test_override" type="text" area="True" value="" label="Optional. Human wrought test element override XML/template - e.g. for bwa"
+             help="For arbitrary and artfull scripts. Leave blank unless needed. Not for the faint of heart">
               <sanitizer>
                  <valid initial="string.printable">
                  </valid>
                  <mapping initial="none"/>
               </sanitizer>
             </param> 
-            <param name="test_override" type="text" area="True" value="" label="Optional. Test XML/template override. Use only if needed"
-             help="Some situations require humans to write test sections. Supply that here">
-              <sanitizer>
-                 <valid initial="string.printable">
-                 </valid>
-                 <mapping initial="none"/>
-              </sanitizer>
-            </param>
-        </when>
-        <when value = "python">
-           <expand macro="dynpar" />
-        </when>
-        <when value = "r-base">
-           <expand macro="dynpar" />
-        </when>
-        <when value = "perl">
-           <expand macro="dynpar" />
         </when>
     </conditional>
-    <conditional name = "ppass">
-        <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
-            <option value="argparse" selected="true">Argparse style: passed in the form of '--[clname] [value]'</option>
-            <option value="positional">Positional: Passed in the order of positional ordinals '...foo.bam bar.idx zot.xls'</option>
-            <option value="0">Tool reads selected input file from STDIN and writes STDOUT with new history output with no parameters</option>
-        </param>
-        <when value = "argparse">
-            <expand macro="io" />
-            <expand macro="additparam" />
-        </when>
-        <when value = "positional">
-            <expand macro="io" />
-            <expand macro="additparam" />
-        </when>
-        <when value = "0">
-             <expand macro="io"/>
-        </when>
-    </conditional>
+
     <conditional name="makeMode">
-        <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run"
-          help="Testing and installation in this Galaxy is optional. Running and generating a tool are a good start" >
-        <option value="runonly">Just run this setup. No tool generation</option>
-        <option value="generate" selected="true">Run and generate toolshed archive containing the new tool</option>
-        <option value="gentest">Run, generate and test the new tool with Planemo</option>
-        <option value="install">Run, generate, test and install in this Galaxy. Docker recommended</option>
+        <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
+          help="Testing and installation in this Galaxy are optional" >
+        <option value="runonly">Run this configuration in Galaxy (will run Planemo if command or test override in play)</option>
+        <option value="generate">Generate a toolshed ready archive.</option>
+        <option value="gentest" selected="true">Test with planemo after generating.</option>
+        <option value="gentestinstall">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
         </param>
-        <when value = "generate">
+        <when value="runonly"/>
+        <when value="generate">
             <expand macro="planemo_steps" />
         </when>
-        <when value = "gentest">
+        <when value="gentest">
             <expand macro="planemo_steps" />
         </when>
-        <when value = "install">
+       <when value="gentestinstall">
             <expand macro="planemo_steps" />
-        </when>
-        <when value = "runonly">
         </when>
     </conditional>
+
   </inputs>
   <outputs>
 
@@ -377,7 +365,7 @@ $tool_name help goes here
     <param name="input_help" value="help" />
     <param name="tool_name" value="pyrevpos" />
     <param name="parampass" value="positional" />
-    <param name="make_Tool" value="yes" />
+    <param name="make_Tool" value="generate" />
     <param name="tool_version" value="0.01" />
     <param name="tool_desc" value="positional reverse" />
     <param name="help_text" value="help text goes here" />
