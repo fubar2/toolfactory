@@ -239,32 +239,32 @@ $tool_name help goes here
     <conditional name="interexe">
         <param name="dependency_model" type="select" label="Dependency model: Conda managed external dependency or existing system executable"
         help = "If managed, the supplied package will become a requirement so must match the tool dependency resolver package name in conda.">
-            <option value="managed" selected="true" >Use Conda managed dependencies</option>
-            <option value="system" >Use a non-dependency managed system executable like bash or awk</option>
+            <option value="managed" selected="true" >Use Conda managed dependencies for scripting (python, R,....) or command line packages (bwa,samtools)</option>
+            <option value="system" >Use a non-dependency managed system executable for scripting like bash or command line driven like sed or awk</option>
         </param>
         <when value="managed">
-            <param name="packages" type="text" value="" label="Package name[:version, name:version...] for Conda. First will be called on generated command line" optional="false"
-             help="Use colon to append specific versiion like 'bwa:0.17.0'. Default is latest if no version. Will be used every time the tool is (re)run." /> 
+            <param name="packages" type="text" value="" label="Package name[:version, name:version...] for Conda. First (e.g. python) will be called on generated command line" 
+            optional="false" help="Use :[ver] for specific version - 'bwa:0.17.0'. Default is latest. Will be used every time the tool is (re)run." /> 
             <param name="sysexe" type="hidden" value="" />
         </when>
        <when value="system">
-            <param name="sysexe" type="text" value="" label="System executable to run. Supplied/managed by the operating system - not Conda" optional="false"
+            <param name="sysexe" type="text" value="" label="System executable to run. OS version - not Conda managed" optional="false"
             help=".e.g bash, awk or other standard and relatively invariant unix utilities"/>
             <param name="packages" type="hidden" value="" />
         </when>
     </conditional>
     <conditional name="usescript">
-        <param name="choosescript" type="select" display="radio" label="Choose whether to run a supplied script - useful only if the dependency can use them"
-        help = "Useful for script interpreters like Python or bash. All i/o and parameters must be passed. Choose No unless script is needed.">
+        <param name="choosescript" type="select" display="radio" label="Run a supplied script if the dependency reads one (e.g. python/R/bash)"
+        help = "For script interpreters like Python or bash. Parameters and i/o below must match script's expectations">
             <option value="no" selected="true">No script required for the first dependency above - just parameters on the command line</option>
-            <option value="yes">A script is ready to be pasted below.</option>
+            <option value="yes">Yes, a script is ready to be pasted below for the chosen package</option>
         </param> 
         <when value="no">
             <param name="dynScript" type="hidden"  value="" />
         </when>
         <when value="yes">
-            <param name="dynScript" type="text" area="True" value="" label="Script for first dependency to interpret. "
-             help="Script must handle all i/o and parameters as specified below using the parameter passing method chosen above">
+            <param name="dynScript" type="text" area="True" value="" label="Script for first dependency above (e.g. python) to interpret. "
+             help="Script must handle all i/o and parameters as specified below using the parameters and passing method chosen below">
               <sanitizer>
                  <valid initial="string.printable">
                  </valid>
@@ -275,9 +275,9 @@ $tool_name help goes here
     </conditional>
     <conditional name="ppass">
         <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
-            <option value="argparse" selected="true">Argparse style: passed in the form of --clname value</option>
+            <option value="argparse" selected="true">Argparse: passed in the form of --clname value</option>
             <option value="positional">Positional: Passed in the order of positional ordinals ...foo.bam bar.idx zot.xls</option>
-            <option value="0">Tool reads selected input file from STDIN and writes STDOUT with new history output with no parameters</option>
+            <option value="0">Tool reads selected input file from STDIN and writes STDOUT with no parameters</option>
         </param>
         <when value="argparse">
             <expand macro="io" />
@@ -296,8 +296,8 @@ $tool_name help goes here
     <conditional name="cover">
         <param name="commover" type="select" display="radio" label="Add Human wrought code to override the generated XML command and/or test section - DIY"
         help = "For arbitrary and artfull command lines. All i/o and parameters must be passed. Choose No unless needed. Not for the faint of heart">
-            <option value="no" selected="true">Use automatically generated command/test XML </option>
-            <option value="yes">DIY XML needed to replace autogenerated command and/or test segments will be pasted below</option>
+            <option value="no" selected="true">No. Use automatically generated command/test XML </option>
+            <option value="yes">Yes. XML needed to override autogenerated command and/or test segments will be pasted below</option>
         </param> 
         <when value="no">
             <param name="command_override" type="hidden"  value="" />
@@ -324,14 +324,12 @@ $tool_name help goes here
     </conditional>
 
     <conditional name="makeMode">
-        <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. Docker is recommended if you want local installation"
-          help="Testing and installation in this Galaxy is optional. Planemo run must be used if you are providing XML overrides for the command or test sections" >
-        <option value="runonly">Run this configuration. NOT suitable for Executable command/test overriden tools</option>
-        <option value="generate" selected="true">Run and generate toolshed archive containing the new tool. NOT suitable for command/test overriden tools</option>
-        <option value="gentest">Run, generate and test the new tool with planemo. NOT suitable for command/test overriden tools</option>
-        <option value="gentestinstall">Run, generate, planemo test and install (via the local toolshed) the new tool. NOT suitable for command/test overriden tools</option>
-        <option value="planemogenerate">Planemo test twice - once to generate test outputs. Suitable for tools with or without command/test overrides but takes time</option>
-        <option value="planemogeninstall">Planemo test twice and install. Suitable for tools with or without command/test overrides.</option>
+        <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
+          help="Testing and installation in this Galaxy are optional" >
+        <option value="runonly">Run this configuration in Galaxy (will run Planemo if command or test override in play)</option>
+        <option value="generate">Generate a toolshed ready archive.</option>
+        <option value="gentest" selected="true">Test with planemo after generating.</option>
+        <option value="gentestinstall">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
         </param>
         <when value="runonly"/>
         <when value="generate">
@@ -341,12 +339,6 @@ $tool_name help goes here
             <expand macro="planemo_steps" />
         </when>
        <when value="gentestinstall">
-            <expand macro="planemo_steps" />
-        </when>
-        <when value="planemogenerate">
-            <expand macro="planemo_steps" />
-        </when>
-        <when value="planemogeninstall">
             <expand macro="planemo_steps" />
         </when>
     </conditional>

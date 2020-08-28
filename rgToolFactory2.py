@@ -23,7 +23,6 @@
 # Be simpler to write the tool, then run it with planemo and soak up the test outputs.
 
 
-
 import argparse
 import logging
 import os
@@ -47,7 +46,7 @@ verbose = True
 debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
 ourdelim = "~~~"
-ALOT = 10000000 # srsly. command or test overrides use read() so just in case
+ALOT = 10000000  # srsly. command or test overrides use read() so just in case
 STDIOXML = """<stdio>
 <exit_code range="100:" level="debug" description="shite happens" />
 </stdio>"""
@@ -177,7 +176,7 @@ class ScriptRunner:
             self.tool_id,
             self.args.tool_version,
             self.args.tool_desc,
-            FAKEEXE, 
+            FAKEEXE,
         )
         if self.args.script_path:
             self.tool.interpreter = self.executeme
@@ -205,7 +204,7 @@ class ScriptRunner:
             self.test_override = [x.rstrip() for x in stos]
         else:
             self.test_override = None
-        if self.args.cl_prefix: # DIY CL start
+        if self.args.cl_prefix:  # DIY CL start
             clp = self.args.cl_prefix.split(" ")
             for c in clp:
                 aCL(c)
@@ -227,8 +226,8 @@ class ScriptRunner:
                 else:
                     aCL(self.executeme)  # this little CL will just run
                     aXCL(self.executeme)
-        self.elog = os.path.join(self.repdir,"%s_error_log.txt" % self.tool_name)
-        self.tlog = os.path.join(self.repdir,"%s_runner_log.txt" % self.tool_name)
+        self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
+        self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
 
         if self.args.parampass == "0":
             self.clsimple()
@@ -412,15 +411,21 @@ class ScriptRunner:
             self.toutputs.append(aparm)
             usetest = None
             ld = None
-            if test > '':
-                if test.startswith('diff'):
-                    usetest = 'diff'
-                    if test.split(':')[1].isdigit:
-                        ld = int(test.split(':')[1])
+            if test > "":
+                if test.startswith("diff"):
+                    usetest = "diff"
+                    if test.split(":")[1].isdigit:
+                        ld = int(test.split(":")[1])
                 else:
                     usetest = test
-            tp = gxtp.TestOutput(name=newcl, value="%s_sample" % newcl, format=newfmt,
-                compare=usetest, lines_diff=ld, delta=None,)
+            tp = gxtp.TestOutput(
+                name=newcl,
+                value="%s_sample" % newcl,
+                format=newfmt,
+                compare=usetest,
+                lines_diff=ld,
+                delta=None,
+            )
             self.testparam.append(tp)
         for p in self.infiles:
             newname = p[ICLPOS]
@@ -526,15 +531,21 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.command_override:
-            self.tool.command_line_override = self.command_override # config file
+            self.tool.command_line_override = self.command_override  # config file
         else:
             self.tool.command_line_override = self.xmlcl
-        # if self.args.interpreter_name:
-        #    self.tool.interpreter = self.args.interpreter_name
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
-            helptext = [html_escape(x) for x in helptext]
-            self.tool.help = "".join([x for x in helptext])
+            safertext = [html_escape(x) for x in helptext]
+            if self.args.script_path:
+                scrpt = self.script.split('\n')
+                scrpt.append("```\n")
+                if len(scrpt) > 300:
+                    safertext = safertext + scrpt[:100] + ['>500 lines - stuff deleted','......'] + scrpt[-100:]
+                else:
+                    safertext = safertext + scrpt
+                safertext.append("\n```")
+            self.tool.help = "".join([x for x in safertext])
         else:
             self.tool.help = (
                 "Please ask the tool author (%s) for help \
@@ -550,7 +561,9 @@ class ScriptRunner:
                 else:
                     packg = d
                     ver = ""
-                requirements.append(gxtp.Requirement("package", packg.strip(), ver.strip()))
+                requirements.append(
+                    gxtp.Requirement("package", packg.strip(), ver.strip())
+                )
         self.tool.requirements = requirements
         if self.args.parampass == "0":
             self.doNoXMLparam()
@@ -558,9 +571,7 @@ class ScriptRunner:
             self.doXMLparam()
         self.tool.outputs = self.toutputs
         self.tool.inputs = self.tinputs
-        if (
-            self.args.script_path
-        ):
+        if self.args.script_path:
             configfiles = gxtp.Configfiles()
             configfiles.append(gxtp.Configfile(name="runme", text=self.script))
             self.tool.configfiles = configfiles
@@ -581,17 +592,18 @@ class ScriptRunner:
         )
         exml0 = self.tool.export()
         exml = exml0.replace(FAKEEXE, "")  # temporary work around until PR accepted
-        if self.test_override: # cannot do this inside galaxyxml as it expects lxml objects for tests
-            part1 = exml.split('<tests>')[0]
-            part2 = exml.split('</tests>')[1]
-            fixed = '%s\n%s\n%s' % (part1,self.test_override,part2)
+        if (
+            self.test_override
+        ):  # cannot do this inside galaxyxml as it expects lxml objects for tests
+            part1 = exml.split("<tests>")[0]
+            part2 = exml.split("</tests>")[1]
+            fixed = "%s\n%s\n%s" % (part1, self.test_override, part2)
             exml = fixed
         xf = open("%s.xml" % self.tool_name, "w")
         xf.write(exml)
         xf.write("\n")
         xf.close()
         # ready for the tarball
-
 
     def run(self):
         """
@@ -653,12 +665,14 @@ class ScriptRunner:
         planemo shed_update --check_diff --shed_target testtoolshed
         """
         if os.path.exists(self.tlog):
-            tout = open(self.tlog,'a')
+            tout = open(self.tlog, "a")
         else:
-            tout = open(self.tlog,'w')
+            tout = open(self.tlog, "w")
         cll = ["planemo", "shed_create", "--shed_target", "local"]
         try:
-            p = subprocess.run(cll, shell=False, cwd=self.tooloutdir, stdout=tout, stderr = tout)
+            p = subprocess.run(
+                cll, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
+            )
         except:
             pass
         if p.returncode != 0:
@@ -679,7 +693,6 @@ class ScriptRunner:
             "--tar",
             self.newtarpath,
         ]
-        print("Run", " ".join(cll))
         p = subprocess.run(cll, shell=False)
         print("Ran", " ".join(cll), "got", p.returncode)
         tout.close()
@@ -687,12 +700,13 @@ class ScriptRunner:
 
     def planemo_test(self, genoutputs=True):
         """planemo is a requirement so is available
+        test outputs are sent to repdir for display
         """
         xreal = "%s.xml" % self.tool_name
         if os.path.exists(self.tlog):
-            tout = open(self.tlog,'a')
+            tout = open(self.tlog, "a")
         else:
-            tout = open(self.tlog,'w')
+            tout = open(self.tlog, "w")
         if genoutputs:
             cll = [
                 "planemo",
@@ -705,9 +719,21 @@ class ScriptRunner:
         else:
             cll = ["planemo", "test", "--galaxy_root", self.args.galaxy_root, xreal]
         try:
-            p = subprocess.run(cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout)
+            p = subprocess.run(
+                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+            )
         except:
             pass
+        if genoutputs:
+            with os.scandir(self.testdir) as outs:
+                for entry in outs:
+                    if entry.is_file():
+                        dest = os.path.join(self.repdir, entry.name)
+                        src = os.path.join(self.testdir, entry.name)
+                        shutil.copyfile(src, dest)
+                    tout.write(
+                        "Copied output %s to %s after planemo test\n" % (src, dest)
+                    )
         tout.close()
         return p.returncode
 
@@ -715,9 +741,9 @@ class ScriptRunner:
         """
         """
         if os.path.exists(self.tlog):
-            tout = open(self.tlog,'a')
+            tout = open(self.tlog, "a")
         else:
-            tout = open(self.tlog,'w')
+            tout = open(self.tlog, "w")
         cll = [
             "shed-tools",
             "install",
@@ -757,10 +783,11 @@ class ScriptRunner:
             "owner": yuser,
             "type": "unrestricted",
             "description": self.args.tool_desc,
+            "synopsis": self.args.tool_desc,
         }
         yaml.dump(odict, yamlf, allow_unicode=True)
         yamlf.close()
-        
+
     def makeTool(self):
         """write xmls and samples into place
         """
@@ -776,6 +803,8 @@ class ScriptRunner:
             pth = p[IPATHPOS]
             dest = os.path.join(self.testdir, "%s_sample" % p[ICLPOS])
             shutil.copyfile(pth, dest)
+            dest = os.path.join(self.repdir, "%s.%s" % (p[ICLPOS], p[IFMTPOS]))
+            shutil.copyfile(pth, dest)
 
     def makeToolTar(self):
         for p in self.outfiles:
@@ -783,33 +812,33 @@ class ScriptRunner:
             if os.path.isfile(src):
                 dest = os.path.join(self.testdir, "%s_sample" % src)
                 shutil.copyfile(src, dest)
-                print('### moved %s to %s' % (src,dest))
+                dest = os.path.join(self.repdir, "%s.%s" % (src, p[OFMTPOS]))
+                shutil.copyfile(src, dest)
             else:
-                print('### problem - output file %s not found in tooloutdir %s' % (src,self.tooloutdir))
+                print(
+                    "### problem - output file %s not found in tooloutdir %s"
+                    % (src, self.tooloutdir)
+                )
         self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(self.newtarpath, "w:gz")
         tf.add(name=self.tooloutdir, arcname=self.tool_name)
         tf.close()
         shutil.copyfile(self.newtarpath, self.args.new_tool)
-        if os.path.exists(self.tlog) and os.stat(self.tlog).st_size > 0:
-            shutil.copyfile(
-                self.tlog, os.path.join(self.tooloutdir, "test1_log_outfiletxt")
-            )
 
     def moveRunOutputs(self):
         """need to move files into toolfactory collection after any run - planemo or not
         """
         with os.scandir(self.tooloutdir) as outs:
             for entry in outs:
-                if not entry.is_file() or entry.name.startswith('.'):
+                if not entry.is_file() or entry.name.startswith("."):
                     continue
                 if "." in entry.name:
-                    nayme,ext = os.path.splitext(entry.name) 
+                    nayme, ext = os.path.splitext(entry.name)
                 else:
                     ext = ".txt"
                 ofn = "%s%s" % (entry.name.replace(".", "_"), ext)
                 dest = os.path.join(self.repdir, ofn)
-                src = os.path.join(self.tooloutdir,entry.name)
+                src = os.path.join(self.tooloutdir, entry.name)
                 shutil.copyfile(src, dest)
 
 
@@ -867,7 +896,16 @@ def main():
     r = ScriptRunner(args)
     r.writeShedyml()
     r.makeTool()
-    if args.make_Tool == "runonly":
+    if args.command_override or args.test_override:
+        retcode = r.planemo_test(genoutputs=True)  # this fails :(
+        r.moveRunOutputs()
+        r.makeToolTar()
+        retcode = r.planemo_test(genoutputs=False)
+        r.moveRunOutputs()
+        if args.make_Tool == "gentestinstall":
+            r.planemo_shedload()
+            r.eph_galaxy_load()
+    else:
         retcode = r.run()
         if retcode:
             sys.stderr.write(
@@ -877,32 +915,13 @@ def main():
             sys.exit(1)
         else:
             r.moveRunOutputs()
-    elif args.make_Tool in ["gentestinstall", "generate", "gentest"]:
-        retcode = r.run()
-        if retcode:
-            sys.stderr.write(
-                "## Run failed with return code %d. Cannot build yet. Please fix and retry"
-                % retcode
-            )
-            sys.exit(1)
-        r.moveRunOutputs()
-        r.makeToolTar()
-        if args.make_Tool in ["gentestinstall","gentest"]:
-            r.planemo_test(genoutputs=False)
-            r.moveRunOutputs()
-            r.planemo_shedload()
-            r.eph_galaxy_load()
-    else:
-        retcode = r.planemo_test(genoutputs=True)  # this fails :(
-        r.moveRunOutputs()
-        r.makeToolTar()
-        retcode = r.planemo_test(genoutputs=False)
-        r.moveRunOutputs()
-        if args.make_Tool == "planemotestinstall":
-            r.planemo_shedload()            
-            r.eph_galaxy_load()
-        # if retcode:
-        # sys.exit(retcode)  # indicate failure to job runner
+            r.makeToolTar()
+            if args.make_Tool in ["gentestinstall", "gentest"]:
+                r.planemo_test(genoutputs=False)
+                r.moveRunOutputs()
+                if args.make_Tool == "gentestinstall":
+                    r.planemo_shedload()
+                    r.eph_galaxy_load()
 
 
 if __name__ == "__main__":
