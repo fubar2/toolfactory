@@ -25,21 +25,19 @@ This should fill the history with some sample tools you can rerun and play with.
 Note that each new tool will have been tested using Planemo. In the workflow, in Galaxy.
 Extremely cool to watch.
 
-*WARNING before you start* 
+*WARNING* 
 
  Install this tool on a throw-away private Galaxy or Docker container ONLY
  Please NEVER on a public or production instance
- 
-Please cite the resource at
-http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573?ijkey=lczQh1sWrMwdYWJ&keytype=ref
-if you use this tool in your published work.
 
 *Short Story*
 
 Galaxy is easily extended to new applications by adding a new tool. Each new scientific computational package added as
-a tool to Galaxy requires some special instructions to be written. This is sometimes termed "wrapping" an application
-because the wrapper code instructs Galaxy how to make the third party package readily available to all Galaxy users. 
-Most Galaxy tools have been manually prepared by skilled programmers, many using Planemo because it 
+a tool to Galaxy requires some special instructions to be written. This is sometimes termed "wrapping" the package
+because the instructions tell Galaxy how to run the package as a new Galaxy tool. Any tool in a Galaxy is 
+readily available to all the users through a consistent and easy to use interface.
+
+Most Galaxy tool wrappers have been manually prepared by skilled programmers, many using Planemo because it 
 automates much of the basic boilerplate and makes the process much easier. The ToolFactory (TF) 
 uses Planemo under the hood for many functions, but hides the command
 line complexities from the TF user. 
@@ -78,9 +76,10 @@ allow the TF user to define what Galaxy datatypes the tool end user will be able
 names or positions will be used to pass them on a command line to the package or script.
 
 Tools often have various parameter settings. The TF allows the TF user to define how each
-parameter will appear on the tool form to the end user, and the names and positions will be
+parameter will appear on the tool form to the end user, and what names or positions will be
 used to pass them on the command line to the package. At present, parameters are limited to
-simple text and number fields. Pull requests for other kinds of parameters are welcomed.
+simple text and number fields. Pull requests for other kinds of parameters that galaxyxml
+can handle are welcomed.
 
 Best practice Galaxy tools have one or more automated tests. These should use small sample data sets and
 specific parameter settings so when the tool is tested, the outputs can be compared with their expected
@@ -106,17 +105,25 @@ names. The new tool will be generated in the form of a new Galaxy datatype
 *tgz* - as the name suggests, it's an archive ready to upload to a
 Galaxy ToolShed as a new tool repository.
 
+It is also possible to run a tool to generate test outputs, then test it
+using planemo. A toolshed is built in to the Docker container and configured
+so a tool can be tested, sent to that toolshed, then installed in the Galaxy
+where the TF is running.
+
+If the tool requires a command or test XML override, then planemo is 
+needed to generate test outputs to make a complete tool, rerun to test 
+and if required upload to the local toolshed and install in the Galaxy 
+where the TF is running.
 
 Once it's in a ToolShed, it can be installed into any local Galaxy server
 from the server administrative interface.
 
-Once the new tool is installed, local users can run it - each time, the script
-that was supplied when it was built will be executed with the input chosen
-from the user's history. In other words, the tools you generate with the
-ToolFactory run just like any other Galaxy tool,but run your script every time.
+Once the new tool is installed, local users can run it - each time, the 
+package and/or script that was supplied when it was built will be executed with the input chosen
+from the user's history, together with user supplied parameters. In other words, the tools you generate with the
+ToolFactory run just like any other Galaxy tool.
 
-Tool factory tools are perfect for workflow components. One input, one output,
-no variables.
+TF generated tools work as normal workflow components.
 
 
 *Limitations*

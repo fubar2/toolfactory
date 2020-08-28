@@ -328,15 +328,19 @@ $tool_name help goes here
           help="Testing and installation in this Galaxy is optional. Planemo run must be used if you are providing XML overrides for the command or test sections" >
         <option value="runonly">Run this configuration. NOT suitable for Executable command/test overriden tools</option>
         <option value="generate" selected="true">Run and generate toolshed archive containing the new tool. NOT suitable for command/test overriden tools</option>
-        <option value="geninstall">Run, generate, test and install (via the local toolshed) the new tool. NOT suitable for command/test overriden tools</option>
-        <option value="planemogenerate">Planemo run and test. Suitable for tools with or without command/test overrides</option>
-        <option value="planemogeninstall">Planemo run, test and install. Suitable for tools with or without command/test overrides</option>
+        <option value="gentest">Run, generate and test the new tool with planemo. NOT suitable for command/test overriden tools</option>
+        <option value="gentestinstall">Run, generate, planemo test and install (via the local toolshed) the new tool. NOT suitable for command/test overriden tools</option>
+        <option value="planemogenerate">Planemo test twice - once to generate test outputs. Suitable for tools with or without command/test overrides but takes time</option>
+        <option value="planemogeninstall">Planemo test twice and install. Suitable for tools with or without command/test overrides.</option>
         </param>
         <when value="runonly"/>
         <when value="generate">
             <expand macro="planemo_steps" />
         </when>
-        <when value="geninstall">
+        <when value="gentest">
+            <expand macro="planemo_steps" />
+        </when>
+       <when value="gentestinstall">
             <expand macro="planemo_steps" />
         </when>
         <when value="planemogenerate">
