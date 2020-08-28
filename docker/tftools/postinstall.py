@@ -13,6 +13,6 @@ print("Import workflow = %s" % str(x))
 tools = gi.tools.get_tools(tool_id=None, name=None, trackster=None)
 for t in tools:
     tid = t["id"]
-    if tid in ["rgTF2", "planemotest"]:
+    if tid in ["rgTF2",]:
         gi.tools.install_dependencies(tid)
         print("Installed dependencies for tool_id %s" % tid)
