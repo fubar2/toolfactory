@@ -137,7 +137,29 @@ example in the supplied samples workflow illustrates their use.
 
 The Docker container is the best way to use the TF because it is preconfigured
 to automate new tool testing and has a built in local toolshed where each new tool
-is uploaded. It is easy to install without Docker, but you will need to make some 
+is uploaded. If you grab the docker container, it should just work. 
+
+If you build the container, there are some things to watch out for. Let it run for 10 minutes
+or so once you build it - check with top until conda has finished fussing. Once everything quietens
+down, find the container with
+```docker ps```
+and use
+```docker exec [containername] supervisorctl restart galaxy:```
+That colon is not a typographical mistake.
+Not restarting after first boot seems to leave the job/worflow system confused and the workflow
+just will not run properly until Galaxy has restarted.
+
+Login as admin@galaxy.org with password "password". Feel free to change it once you are logged in. 
+There should be a companion toolshed at localhost:9090. The history should have some sample data for
+the workflow.
+
+Run the workflow and make sure the right dataset is selected for each of the input files. Most of the 
+examples use text files so should run, but the bwa example needs the right ones to work properly.
+
+When the workflow is finished, you will have half a dozen examples to rerun and play with. They have also 
+all been tested and installed so you should find them in your tool menu under "Generated Tools"
+
+It is easy to install without Docker, but you will need to make some 
 configuration changes (TODO write a configuration). You can install it most conveniently using the
 administrative "Search and browse tool sheds" link. Find the Galaxy Main
 toolshed at https://toolshed.g2.bx.psu.edu/ and search for the toolfactory

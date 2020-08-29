@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<tool_dependency>
+<package name="planemovenv">
+<action type="setup_virtualenv" python="python3.6">
+planemo
+galaxyxml
+bioblend
+ephemeris
+lxml
+</action>
+</package>
+</tool_dependency>

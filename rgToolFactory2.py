@@ -171,15 +171,13 @@ class ScriptRunner:
         ], 'args.parampass must be "0","positional" or "argparse"'
         self.tool_name = re.sub("[^a-zA-Z0-9_]+", "", args.tool_name)
         self.tool_id = self.tool_name
-        self.tool = gxt.Tool(
+        self.newtool = gxt.Tool(
             self.args.tool_name,
             self.tool_id,
             self.args.tool_version,
             self.args.tool_desc,
             FAKEEXE,
         )
-        if self.args.script_path:
-            self.tool.interpreter = self.executeme
         self.tooloutdir = "tfout"
         self.repdir = "TF_run_report_tempdir"
         self.testdir = os.path.join(self.tooloutdir, "test-data")
@@ -214,6 +212,7 @@ class ScriptRunner:
                 if self.args.script_path:
                     aCL(self.executeme)
                     aCL(self.sfile)
+                    aXCL(self.executeme)
                     aXCL("$runme")
                 else:
                     aCL(self.executeme)  # this little CL will just run
@@ -222,6 +221,7 @@ class ScriptRunner:
                 if self.args.script_path:
                     aCL(self.executeme)
                     aCL(self.sfile)
+                    aXCL(self.executeme)
                     aXCL("$runme")
                 else:
                     aCL(self.executeme)  # this little CL will just run
@@ -531,9 +531,9 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.command_override:
-            self.tool.command_line_override = self.command_override  # config file
+            self.newtool.command_line_override = self.command_override  # config file
         else:
-            self.tool.command_line_override = self.xmlcl
+            self.newtool.command_line_override = self.xmlcl
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = [html_escape(x) for x in helptext]
@@ -545,14 +545,14 @@ class ScriptRunner:
                 else:
                     safertext = safertext + scrpt
                 safertext.append("\n```")
-            self.tool.help = "".join([x for x in safertext])
+            self.newtool.help = "".join([x for x in safertext])
         else:
-            self.tool.help = (
+            self.newtool.help = (
                 "Please ask the tool author (%s) for help \
               as none was supplied at tool generation\n"
                 % (self.args.user_email)
             )
-        self.tool.version_command = None  # do not want
+        self.newtool.version_command = None  # do not want
         requirements = gxtp.Requirements()
         if self.args.packages:
             for d in self.args.packages.split(","):
@@ -564,33 +564,33 @@ class ScriptRunner:
                 requirements.append(
                     gxtp.Requirement("package", packg.strip(), ver.strip())
                 )
-        self.tool.requirements = requirements
+        self.newtool.requirements = requirements
         if self.args.parampass == "0":
             self.doNoXMLparam()
         else:
             self.doXMLparam()
-        self.tool.outputs = self.toutputs
-        self.tool.inputs = self.tinputs
+        self.newtool.outputs = self.toutputs
+        self.newtool.inputs = self.tinputs
         if self.args.script_path:
             configfiles = gxtp.Configfiles()
             configfiles.append(gxtp.Configfile(name="runme", text=self.script))
-            self.tool.configfiles = configfiles
+            self.newtool.configfiles = configfiles
         tests = gxtp.Tests()
         test_a = gxtp.Test()
         for tp in self.testparam:
             test_a.append(tp)
         tests.append(test_a)
-        self.tool.tests = tests
-        self.tool.add_comment(
+        self.newtool.tests = tests
+        self.newtool.add_comment(
             "Created by %s at %s using the Galaxy Tool Factory."
             % (self.args.user_email, timenow())
         )
-        self.tool.add_comment("Source in git at: %s" % (toolFactoryURL))
-        self.tool.add_comment(
+        self.newtool.add_comment("Source in git at: %s" % (toolFactoryURL))
+        self.newtool.add_comment(
             "Cite: Creating re-usable tools from scripts doi: \
             10.1093/bioinformatics/bts573"
         )
-        exml0 = self.tool.export()
+        exml0 = self.newtool.export()
         exml = exml0.replace(FAKEEXE, "")  # temporary work around until PR accepted
         if (
             self.test_override
@@ -717,10 +717,13 @@ class ScriptRunner:
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
+                "--galaxy_python_version",
+                "3.6",
                 xreal,
             ]
         else:
-            cll = ["planemo", "test", "--galaxy_root", self.args.galaxy_root, xreal]
+            cll = ["planemo", "test", "--galaxy_python_version",
+                "3.6", "--galaxy_root", self.args.galaxy_root, xreal]
         try:
             p = subprocess.run(
                 cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
