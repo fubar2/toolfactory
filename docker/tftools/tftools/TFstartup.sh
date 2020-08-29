@@ -464,6 +464,5 @@ fi
 # at this point, for some reason, we need to restart 
 mkdir -p /galaxy-central/static/scripts && mkdir -p /galaxy-central/static/scripts/bundled \ 
  && ln -s /galaxy-central/static/dist/* /galaxy-central/static/scripts/bundled/
-sh run_tool_shed.sh --daemon
-# we want a local toolshed
+
 

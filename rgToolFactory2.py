@@ -607,10 +607,12 @@ class ScriptRunner:
 
     def run(self):
         """
-
+        generate test outputs by running a command line
+        won't work if command or test override in play - planemo is the 
+        easiest way to generate test outputs for that case so is
+        automagically selected
         """
         s = "run cl=%s" % str(self.cl)
-
         logging.debug(s)
         scl = " ".join(self.cl)
         err = None
@@ -699,7 +701,8 @@ class ScriptRunner:
         return p.returncode
 
     def planemo_test(self, genoutputs=True):
-        """planemo is a requirement so is available
+        """planemo is a requirement so is available for testing
+        and for generating test outputs if command or test overrides are supplied
         test outputs are sent to repdir for display
         """
         xreal = "%s.xml" % self.tool_name
@@ -738,7 +741,7 @@ class ScriptRunner:
         return p.returncode
 
     def eph_galaxy_load(self):
-        """
+        """load the new tool from the local toolshed after planemo uploads it
         """
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
@@ -775,6 +778,8 @@ class ScriptRunner:
         return p.returncode
 
     def writeShedyml(self):
+        """for planemo
+        """
         yuser = self.args.user_email.split("@")[0]
         yfname = os.path.join(self.tooloutdir, ".shed.yml")
         yamlf = open(yfname, "w")
@@ -789,7 +794,7 @@ class ScriptRunner:
         yamlf.close()
 
     def makeTool(self):
-        """write xmls and samples into place
+        """write xmls and input samples into place
         """
         self.makeXML()
         if self.args.script_path:
@@ -807,6 +812,8 @@ class ScriptRunner:
             shutil.copyfile(pth, dest)
 
     def makeToolTar(self):
+        """ move outputs into test-data and prepare the tarball 
+        """
         for p in self.outfiles:
             src = p[ONAMEPOS]
             if os.path.isfile(src):
@@ -826,7 +833,7 @@ class ScriptRunner:
         shutil.copyfile(self.newtarpath, self.args.new_tool)
 
     def moveRunOutputs(self):
-        """need to move files into toolfactory collection after any run - planemo or not
+        """need to move planemo or run outputs into toolfactory collection
         """
         with os.scandir(self.tooloutdir) as outs:
             for entry in outs:
@@ -875,10 +882,10 @@ def main():
     a("--new_tool", default="new_tool")
     a("--runmode", default=None)
     a("--galaxy_url", default="http://localhost:8080")
-    a("--galaxy_api_key", default="fbdd3c2eecd191e88939fffc02eeeaf8")
+    a("--galaxy_api_key", default="fakekey")
     a("--toolshed_url", default="http://localhost:9009")
-    a("--toolshed_api_key", default="d46e5ed0e242ed52c6e1f506b5d7f9f7")
-    a("--galaxy_root", default="/home/ross/galaxy")
+    a("--toolshed_api_key", default="fakekey")
+    a("--galaxy_root", default="/galaxy-central")
 
     args = parser.parse_args()
     assert not args.bad_user, (
@@ -897,7 +904,7 @@ def main():
     r.writeShedyml()
     r.makeTool()
     if args.command_override or args.test_override:
-        retcode = r.planemo_test(genoutputs=True)  # this fails :(
+        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
         r.moveRunOutputs()
         r.makeToolTar()
         retcode = r.planemo_test(genoutputs=False)

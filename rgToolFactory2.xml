@@ -1,7 +1,7 @@
 <tool id="rgTF2" name="toolfactory" version="2.00" profile="16.04" >
   <description>Scripts into tools</description>
   <macros>
-     <xml name="planemo_steps">
+     <xml name="tool_metadata">
          <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
             help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
             <param name="tool_desc" label="Tool Description" type="text" value=""
@@ -333,13 +333,13 @@ $tool_name help goes here
         </param>
         <when value="runonly"/>
         <when value="generate">
-            <expand macro="planemo_steps" />
+            <expand macro="tool_metadata" />
         </when>
         <when value="gentest">
-            <expand macro="planemo_steps" />
+            <expand macro="tool_metadata" />
         </when>
        <when value="gentestinstall">
-            <expand macro="planemo_steps" />
+            <expand macro="tool_metadata" />
         </when>
     </conditional>
 
@@ -470,7 +470,7 @@ Creating re-usable tools from scripts: The Galaxy Tool Factory
 Ross Lazarus; Antony Kaspi; Mark Ziemann; The Galaxy Team
 Bioinformatics 2012; doi: 10.1093/bioinformatics/bts573
 
-**Licensing**
+*Licensing*
 
 Copyright Ross Lazarus (ross period lazarus at gmail period com) May 2012
 All rights reserved.
