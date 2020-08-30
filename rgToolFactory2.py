@@ -673,7 +673,7 @@ class ScriptRunner:
         cll = ["planemo", "shed_create", "--shed_target", "local"]
         try:
             p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
+                cll, shell=True, cwd=self.tooloutdir, stdout=tout, stderr=tout
             )
         except:
             pass
@@ -695,7 +695,7 @@ class ScriptRunner:
             "--tar",
             self.newtarpath,
         ]
-        p = subprocess.run(cll, shell=False)
+        p = subprocess.run(cll, shell=True)
         print("Ran", " ".join(cll), "got", p.returncode)
         tout.close()
         return p.returncode
@@ -720,7 +720,7 @@ class ScriptRunner:
                 "--galaxy_python_version",
                 "3.6",
                 "--no_conda_auto_install",
-                "--no_conda_auto_init"
+                "--no_conda_auto_init",
                 xreal,
             ]
         else:
@@ -729,13 +729,10 @@ class ScriptRunner:
                 self.args.galaxy_root,
                 "--no_conda_auto_install",
                 "--no_conda_auto_init",
-                xreal]
-        try:
-            p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                xreal,]
+        p = subprocess.run(
+                cll, shell=True, cwd=self.tooloutdir, stderr=tout, stdout=tout
             )
-        except:
-            pass
         if genoutputs:
             with os.scandir(self.testdir) as outs:
                 for entry in outs:

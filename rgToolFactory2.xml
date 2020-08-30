@@ -1,19 +1,5 @@
 <tool id="rgTF2" name="toolfactory" version="2.00" profile="16.04" >
   <description>Scripts into tools</description>
-  <tool_dependency>
-        <package name="planemoenv">
-            <install version="1.0">
-                <actions>
-                    <action python="3.6" type="setup_virtualenv">planemo>=0.72.0.dev0</action>
-                    <action python="3.6" type="setup_virtualenv">bioblend>=0.14.0</action>
-                    <action python="3.6" type="setup_virtualenv">ephemeris>=0.10.6</action>
-                    <action python="3.6" type="setup_virtualenv">galaxyxml>=0.4.10</action>
-                    <action python="3.6" type="setup_virtualenv">lxml>=4.5.1</action>
-                </actions>
-            </install>
-            <readme>OncodriveFm avalable at https://bitbucket.org/bbglab/oncodrivefm/</readme>
-        </package>
-    </tool_dependency>
   <macros>
      <xml name="tool_metadata">
          <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
@@ -144,9 +130,9 @@
         </repeat>
      </xml>
   </macros>
-<!--  <requirements>
-      <requirement type="package">planemovenv</requirement>
-  </requirements> -->
+<requirements>
+       <requirement type="package" version="0.1">planemoenv</requirement>
+</requirements>
   <command ><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
