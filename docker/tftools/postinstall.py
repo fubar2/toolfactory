@@ -63,7 +63,7 @@ def eph_galaxy_load(toolname='tool_factory_2',owner="fubar"):
 
 installme = ["rgTF2"]
 
-eph_galaxy_load()
+#eph_galaxy_load()
 wfpath = "/tftools/TF_example_wf.ga"
 hispath = "/tftools/tfsamplehistory.tar.gz"
 gi = galaxy.GalaxyInstance(url="http://127.0.0.1", key="fakekey")
