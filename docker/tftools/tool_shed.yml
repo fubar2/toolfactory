@@ -3,7 +3,7 @@ uwsgi:
   # The address and port on which to listen.  By default, only listen to
   # localhost (tool_shed will not be accessible over the network).  Use
   # ':9009' to listen on all available network interfaces.
-  http: 127.0.0.1:9009
+  http: 0.0.0.0:9009
 
   # By default uWSGI allocates a very small buffer (4096 bytes) for the
   # headers of each request. If you start receiving "invalid request

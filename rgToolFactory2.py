@@ -798,6 +798,7 @@ class ScriptRunner:
             "type": "unrestricted",
             "description": self.args.tool_desc,
             "synopsis": self.args.tool_desc,
+            "category": "TF Generated Tools",
         }
         yaml.dump(odict, yamlf, allow_unicode=True)
         yamlf.close()
