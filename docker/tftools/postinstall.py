@@ -72,10 +72,10 @@ x = gi.histories.import_history(file_path=hispath, url=None)
 print("Import history = %s" % str(x))
 x = gi.workflows.import_workflow_from_local_path(wfpath, publish=True)
 print("Import workflow = %s" % str(x))
-tools = gi.tools.get_tools(tool_id=None, name=None, trackster=None)
-for tool in tools:
-    tid = tool["id"]
-    if tid in installme:
-        gi.tools.install_dependencies(tid)
-        print("### Installed dependencies for tool_id %s" % tid)
+# tools = gi.tools.get_tools(tool_id=None, name=None, trackster=None)
+# for tool in tools:
+    # tid = tool["id"]
+    # if tid in installme:
+        # gi.tools.install_dependencies(tid)
+        # print("### Installed dependencies for tool_id %s" % tid)
 hacktsuser()
