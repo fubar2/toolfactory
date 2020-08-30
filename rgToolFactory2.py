@@ -719,11 +719,17 @@ class ScriptRunner:
                 "--update_test_data",
                 "--galaxy_python_version",
                 "3.6",
+                "--no_conda_auto_install",
+                "--no_conda_auto_init"
                 xreal,
             ]
         else:
             cll = ["planemo", "test", "--galaxy_python_version",
-                "3.6", "--galaxy_root", self.args.galaxy_root, xreal]
+                "3.6", "--galaxy_root",
+                self.args.galaxy_root,
+                "--no_conda_auto_install",
+                "--no_conda_auto_init",
+                xreal]
         try:
             p = subprocess.run(
                 cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
