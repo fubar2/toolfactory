@@ -1,19 +1,5 @@
 <tool id="rgTF2" name="toolfactory" version="2.00" profile="16.04" >
   <description>Scripts into tools</description>
-  <tool_dependency>
-        <package name="planemoenv">
-            <install version="1.0">
-                <actions>
-                    <action python="3.6" type="setup_virtualenv">planemo>=0.72.0.dev0</action>
-                    <action python="3.6" type="setup_virtualenv">bioblend>=0.14.0</action>
-                    <action python="3.6" type="setup_virtualenv">ephemeris>=0.10.6</action>
-                    <action python="3.6" type="setup_virtualenv">galaxyxml>=0.4.10</action>
-                    <action python="3.6" type="setup_virtualenv">lxml>=4.5.1</action>
-                </actions>
-            </install>
-            <readme>OncodriveFm avalable at https://bitbucket.org/bbglab/oncodrivefm/</readme>
-        </package>
-    </tool_dependency>
   <macros>
      <xml name="tool_metadata">
          <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
@@ -144,9 +130,9 @@
         </repeat>
      </xml>
   </macros>
-<!--  <requirements>
-      <requirement type="package">planemovenv</requirement>
-  </requirements> -->
+<requirements>
+       <requirement type="package" version="0.1">planemoenv</requirement>
+</requirements>
   <command ><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
@@ -363,6 +349,7 @@ $tool_name help goes here
 <tests>
 <test>
     <param name="user_email" value="admin@galaxy.org"/>
+    <param name="input_files" value="input1_sample" />
     <param name="input_CL" value="1" />
     <param name="input_formats" value="txt" />
     <param name="input_label" value="input" />
@@ -380,27 +367,10 @@ $tool_name help goes here
     <param name="dynScript" value="import sys; inp = sys.argv[1]; outp = sys.argv[2]; inlist = open(inp,'r').readlines(); o = open(outp,'w'); rs = [''.join(list(reversed(x.rstrip()))) for x in inlist]; o.write('\n'.join(rs)); o.close()"/>
     <param name="choosescript" value="yes" />
     <param name="script_path" value="$runme"/>
-    <param name="input_files" value="input1_sample" />
-    <param name="output_files" value="output2" />
     <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />
 </test>
 </tests>
 <help>
-
-/home/ross/galaxy/tools/tool_makers/toolfactory/rgToolFactory2.py --packages "python" 
---tool_name="pyrevpos"  
---user_email="ross.lazarus@gmail.com" 
---citations="/home/ross/galaxy/database/jobs_directory/000/621/configs/tmp9se4s6ah"  
---parampass="positional" 
---script_path "/home/ross/galaxy/database/jobs_directory/000/621/configs/tmp5j4eaz_m" 
---make_Tool="gentestinstall" 
---tool_desc="Reverse text lines. Python script. Positional parameters. ToolFactory demo" 
---tool_version="0.01" 
---help_text="/home/ross/galaxy/database/jobs_directory/000/621/configs/tmpwz6fr7te" 
---new_tool="/home/ross/galaxy/database/objects/6/3/9/dataset_639b200c-9cf1-453c-9016-0c9d3b25948a.dat" 
---edit_additional_parameters 
---input_files="/home/ross/galaxy/database/objects/f/a/6/dataset_fa66be33-3c07-465d-be42-f2b0950b293d.dat~~~1~~~txt~~~inputfile~~~text input to reverse lines" 
---output_files "output~~~txt~~~2~~~diff:2"
 
 .. class:: warningmark
 
@@ -486,11 +456,8 @@ With argparse style parameters:
     o.close()
 
 
-Paper_ :
 
-Creating re-usable tools from scripts: The Galaxy Tool Factory
-Ross Lazarus; Antony Kaspi; Mark Ziemann; The Galaxy Team
-Bioinformatics 2012; doi: 10.1093/bioinformatics/bts573
+Paper_ 
 
 *Licensing*
 

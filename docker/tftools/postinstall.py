@@ -24,9 +24,46 @@ def hacktsuser():
     print("### executed %s" % sql)
     conn.close()
 
+def eph_galaxy_load(toolname='tool_factory_2',owner="fubar"):
+    """load the new tool from the toolshed the old skool dependency way
+    bioconda is too stale to use for this
+    """
+    cll = [
+        "shed-tools",
+        "install",
+        "-g",
+        "http://localhost",
+        "--latest",
+        "-a",
+        "fakekey",
+        "--name",
+        toolname,
+        "--owner",
+        owner,
+        "--toolshed",
+        "https://toolshed.g2.bx.psu.edu",
+        "--section_label",
+        "Tool Makers",
+        "--install_tool_dependencies",
+        "--skip_install_resolver_dependencies",
+        "--skip_install_repository_dependencies",
+    ]
+    print("running\n", " ".join(cll))
+    p = subprocess.run(cll, shell=False, )
+    if p.returncode != 0:
+        print(
+            "Repository %s installation returned %d"
+            % (self.args.tool_name, p.returncode)
+        )
+    else:
+        print("installed %s" % self.args.tool_name)
+    tout.close()
+    return p.returncode
+
 
 installme = ["rgTF2"]
 
+eph_galaxy_load()
 wfpath = "/tftools/TF_example_wf.ga"
 hispath = "/tftools/tfsamplehistory.tar.gz"
 gi = galaxy.GalaxyInstance(url="http://127.0.0.1", key="fakekey")

@@ -719,16 +719,12 @@ class ScriptRunner:
                 "--update_test_data",
                 "--galaxy_python_version",
                 "3.6",
-                "--no_conda_auto_install",
-                "--no_conda_auto_init",
                 xreal,
             ]
         else:
             cll = ["planemo", "test", "--galaxy_python_version",
                 "3.6", "--galaxy_root",
                 self.args.galaxy_root,
-                "--no_conda_auto_install",
-                "--no_conda_auto_init",
                 xreal,]
         p = subprocess.run(
                 cll, shell=True, cwd=self.tooloutdir, stderr=tout, stdout=tout
@@ -769,7 +765,7 @@ class ScriptRunner:
             self.args.toolshed_url,
             "--section_label",
             "Generated Tools",
-            "--install_tool_dependencies",
+
         ]
         print("running\n", " ".join(cll))
         p = subprocess.run(cll, shell=False, stderr=tout, stdout=tout)

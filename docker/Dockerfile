@@ -37,8 +37,8 @@ ADD tftools/tfwelcome.html /export/welcome.html
 ADD tftools/tfwelcome.html $GALAXY_ROOT/lib/galaxy/web/framework/static/welcome.html
 RUN chown $GALAXY_USER:$GALAXY_USER $GALAXY_ROOT/lib/galaxy/web/framework/static/welcome.html
 # ADD my_tool_list.yml /tftools/toolfactory_tools.yaml
-ADD tftools/tf_tool_conf.xml $GALAXY_ROOT/config/tf_tool_conf.xml
-RUN chown $GALAXY_USER:$GALAXY_USER $GALAXY_ROOT/config/tf_tool_conf.xml
+# ADD tftools/tf_tool_conf.xml $GALAXY_ROOT/config/tf_tool_conf.xml
+# RUN chown $GALAXY_USER:$GALAXY_USER $GALAXY_ROOT/config/tf_tool_conf.xml
 
 # NOTE above does work but takes 1-2 minutes
 # ENV GALAXY_CONFIG_TOOL_CONFIG_FILE=config/tool_conf.xml.sample,config/tf_tool_conf.xml,config/shed_tool_conf.xml.sample
@@ -53,14 +53,14 @@ RUN chmod a+xr /export/post-start-actions.sh \
  && chmod a+xr $GALAXY_ROOT/config/post-start-actions.sh \ 
  && chmod a+xr /usr/bin/tfstart
 ADD tftools/tool_shed.yml $GALAXY_ROOT/config/tool_shed.yml
-ADD tftools/tool_shed.yml $GALAXY_ROOT/lib/galaxy/config/sample/tool.shed.yml.sample
+COPY tftools/tool_shed.yml $GALAXY_ROOT/lib/galaxy/config/sample/tool.shed.yml.sample
 COPY tftools/requirements.txt $GALAXY_ROOT
 # Add Galaxy interactive tours
 # ADD ./rna-workbench-tours/* $GALAXY_ROOT/config/plugins/tours/
 # Add data library definition file
 # ADD library_data.yaml $GALAXY_ROOT/library_data.yaml
 ENV $GALAXY_DEFAULT_ADMIN_USER="admin"
-ENV GALAXY_CONFIG_TOOL_CONFIG_FILE=$GALAXY_ROOT/config/tf_tool_conf.xml,config/tool_conf.xml.sample
+# ENV GALAXY_CONFIG_TOOL_CONFIG_FILE=$GALAXY_ROOT/config/tf_tool_conf.xml,config/tool_conf.xml.sample
 # works but does not install dependencies - done in postinstall
 RUN chown -R $GALAXY_USER:$GALAXY_USER /tftools 
 

@@ -673,7 +673,7 @@ class ScriptRunner:
         cll = ["planemo", "shed_create", "--shed_target", "local"]
         try:
             p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
+                cll, shell=True, cwd=self.tooloutdir, stdout=tout, stderr=tout
             )
         except:
             pass
@@ -695,7 +695,7 @@ class ScriptRunner:
             "--tar",
             self.newtarpath,
         ]
-        p = subprocess.run(cll, shell=False)
+        p = subprocess.run(cll, shell=True)
         print("Ran", " ".join(cll), "got", p.returncode)
         tout.close()
         return p.returncode
@@ -723,13 +723,12 @@ class ScriptRunner:
             ]
         else:
             cll = ["planemo", "test", "--galaxy_python_version",
-                "3.6", "--galaxy_root", self.args.galaxy_root, xreal]
-        try:
-            p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                "3.6", "--galaxy_root",
+                self.args.galaxy_root,
+                xreal,]
+        p = subprocess.run(
+                cll, shell=True, cwd=self.tooloutdir, stderr=tout, stdout=tout
             )
-        except:
-            pass
         if genoutputs:
             with os.scandir(self.testdir) as outs:
                 for entry in outs:
@@ -766,7 +765,7 @@ class ScriptRunner:
             self.args.toolshed_url,
             "--section_label",
             "Generated Tools",
-            "--install_tool_dependencies",
+
         ]
         print("running\n", " ".join(cll))
         p = subprocess.run(cll, shell=False, stderr=tout, stdout=tout)
@@ -792,6 +791,7 @@ class ScriptRunner:
             "type": "unrestricted",
             "description": self.args.tool_desc,
             "synopsis": self.args.tool_desc,
+            "category": "TF Generated Tools",
         }
         yaml.dump(odict, yamlf, allow_unicode=True)
         yamlf.close()
