@@ -63,8 +63,8 @@ ENV $GALAXY_DEFAULT_ADMIN_USER="admin"
 # ENV GALAXY_CONFIG_TOOL_CONFIG_FILE=$GALAXY_ROOT/config/tf_tool_conf.xml,config/tool_conf.xml.sample
 # works but does not install dependencies - done in postinstall
 
-RUN mkdir -p /galaxy-central/static/scripts && cd /galaxy/central/static/scripts \
-  && ln -s galaxy-central/static/dist bundled
+RUN mkdir -p /galaxy-central/static/scripts && cd /galaxy-central/static/scripts \
+  && ln -s /galaxy-central/static/dist bundled
 
 RUN chown -R $GALAXY_USER:$GALAXY_USER /tftools 
 
