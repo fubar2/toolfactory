@@ -131,7 +131,11 @@
      </xml>
   </macros>
 <requirements>
-       <requirement type="package" version="0.1">planemoenv</requirement>
+      <requirement type="package" version="0.72.0">planemo</requirement>
+       <requirement type="package" version="0.4.10">galaxyxml</requirement>
+       <requirement type="package" version="4.5.1">lxml</requirement>
+       <requirement type="package" version="0.10.6">ephemeris</requirement>
+       <requirement type="package" version="0.14.0">bioblend</requirement>
 </requirements>
   <command ><![CDATA[
 #import os
