@@ -62,6 +62,8 @@ COPY tftools/requirements.txt $GALAXY_ROOT
 ENV $GALAXY_DEFAULT_ADMIN_USER="admin"
 # ENV GALAXY_CONFIG_TOOL_CONFIG_FILE=$GALAXY_ROOT/config/tf_tool_conf.xml,config/tool_conf.xml.sample
 # works but does not install dependencies - done in postinstall
+ADD tftools/tool_sheds_conf.xml /galaxy-central/config
+COPY tftools/tool_sheds_conf.xml $GALAXY_ROOT/lib/galaxy/config/sample/tool_sheds_conf.xml.sample
 
 RUN mkdir -p /galaxy-central/static/scripts && cd /galaxy-central/static/scripts \
   && ln -s /galaxy-central/static/dist bundled
