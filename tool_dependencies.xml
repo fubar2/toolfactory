@@ -4,7 +4,7 @@
         <install version="0.1">
             <actions>
                 <action type="setup_virtualenv" >
-planemo>=0.72.0.dev0
+planemo
 bioblend>=0.14.0
 ephemeris>=0.10.6
 galaxyxml>=0.4.10
