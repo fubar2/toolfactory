@@ -208,24 +208,14 @@ class ScriptRunner:
                 aCL(c)
                 aXCL(c)
         else:
-            if self.args.runmode == "Executable":
-                if self.args.script_path:
-                    aCL(self.executeme)
-                    aCL(self.sfile)
-                    aXCL(self.executeme)
-                    aXCL("$runme")
-                else:
-                    aCL(self.executeme)  # this little CL will just run
-                    aXCL(self.executeme)
+            if self.args.script_path:
+                aCL(self.executeme)
+                aCL(self.sfile)
+                aXCL(self.executeme)
+                aXCL("$runme")
             else:
-                if self.args.script_path:
-                    aCL(self.executeme)
-                    aCL(self.sfile)
-                    aXCL(self.executeme)
-                    aXCL("$runme")
-                else:
-                    aCL(self.executeme)  # this little CL will just run
-                    aXCL(self.executeme)
+                aCL(self.executeme)  # this little CL will just run
+                aXCL(self.executeme)
         self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
         self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
 
@@ -531,9 +521,9 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.command_override:
-            self.newtool.command_line_override = self.command_override  # config file
+            self.newtool.command_override = self.command_override  # config file
         else:
-            self.newtool.command_line_override = self.xmlcl
+            self.newtool.command_override = self.xmlcl
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = [html_escape(x) for x in helptext]
@@ -608,7 +598,7 @@ class ScriptRunner:
     def run(self):
         """
         generate test outputs by running a command line
-        won't work if command or test override in play - planemo is the 
+        won't work if command or test override in play - planemo is the
         easiest way to generate test outputs for that case so is
         automagically selected
         """
@@ -617,37 +607,28 @@ class ScriptRunner:
         scl = " ".join(self.cl)
         err = None
         if self.args.parampass != "0":
-            ste = open(self.elog, "wb")
+            if os.path.exists(self.elog):
+                ste = open(self.elog, "a")
+            else:
+                ste = open(self.elog, "w")
             if self.lastclredirect:
                 sto = open(self.lastclredirect[1], "wb")  # is name of an output file
             else:
-                sto = open(self.tlog, "wb")
+                if os.path.exists(self.tlog):
+                    sto = open(self.tlog, "a")
+                else:
+                    sto = open(self.tlog, "w")
                 sto.write(
-                    bytes(
-                        "## Executing Toolfactory generated command line = %s\n" % scl,
-                        "utf8",
-                    )
+                        "## Executing Toolfactory generated command line = %s\n" % scl
                 )
             sto.flush()
             p = subprocess.run(self.cl, shell=False, stdout=sto, stderr=ste)
             sto.close()
             ste.close()
-            tmp_stderr = open(self.elog, "rb")
-            err = ""
-            buffsize = 1048576
-            try:
-                while True:
-                    err += str(tmp_stderr.read(buffsize))
-                    if not err or len(err) % buffsize != 0:
-                        break
-            except OverflowError:
-                pass
-            tmp_stderr.close()
             retval = p.returncode
         else:  # work around special case - stdin and write to stdout
             sti = open(self.infiles[0][IPATHPOS], "rb")
             sto = open(self.outfiles[0][ONAMEPOS], "wb")
-            # must use shell to redirect
             p = subprocess.run(self.cl, shell=False, stdout=sto, stdin=sti)
             retval = p.returncode
             sto.close()
@@ -695,7 +676,7 @@ class ScriptRunner:
             "--tar",
             self.newtarpath,
         ]
-        p = subprocess.run(cll, shell=True)
+        p = subprocess.run(cll, shell=False)
         print("Ran", " ".join(cll), "got", p.returncode)
         tout.close()
         return p.returncode
@@ -717,17 +698,14 @@ class ScriptRunner:
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
-                "--galaxy_python_version",
-                "3.6",
                 xreal,
             ]
         else:
-            cll = ["planemo", "test", "--galaxy_python_version",
-                "3.6", "--galaxy_root",
+            cll = ["planemo", "test", "--galaxy_root",
                 self.args.galaxy_root,
                 xreal,]
         p = subprocess.run(
-                cll, shell=True, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
             )
         if genoutputs:
             with os.scandir(self.testdir) as outs:
@@ -815,7 +793,7 @@ class ScriptRunner:
             shutil.copyfile(pth, dest)
 
     def makeToolTar(self):
-        """ move outputs into test-data and prepare the tarball 
+        """ move outputs into test-data and prepare the tarball
         """
         for p in self.outfiles:
             src = p[ONAMEPOS]
@@ -883,7 +861,6 @@ def main():
     a("--parampass", default="positional")
     a("--tfout", default="./tfout")
     a("--new_tool", default="new_tool")
-    a("--runmode", default=None)
     a("--galaxy_url", default="http://localhost:8080")
     a("--galaxy_api_key", default="fakekey")
     a("--toolshed_url", default="http://localhost:9009")

@@ -1,5 +1,5 @@
-<tool id="rgTF2" name="toolfactory" version="3.00" profile="16.04" >
-  <description>Scripts into tools</description>
+<tool id="rgTF2" name="toolfactory" version="2.00" profile="16.04" >
+  <description>Scripts into tools v2</description>
   <macros>
      <xml name="tool_metadata">
          <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
@@ -130,13 +130,14 @@
         </repeat>
      </xml>
   </macros>
+
 <requirements>
-      <requirement type="package">planemo</requirement>
-       <requirement type="package">galaxyxml</requirement>
-       <requirement type="package">lxml</requirement>
-       <requirement type="package">ephemeris</requirement>
-       <requirement type="package">bioblend</requirement>
+       <requirement type="package" version="0.72.0" >planemo</requirement>
+       <requirement type="package" >bioblend</requirement>
+       <requirement type="package" >galaxyxml</requirement>
+       <requirement type="package" >ephemeris</requirement>
 </requirements>
+  
   <command ><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
@@ -185,6 +186,7 @@ python3 $__tool_directory__/rgToolFactory2.py
      #for $otab in $ppass.history_outputs:
 --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
      #end for
+--galaxy_root="$__root_dir__"
  #end if
 ]]></command>
  <configfiles>

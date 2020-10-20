@@ -68,6 +68,8 @@ COPY tftools/tool_sheds_conf.xml $GALAXY_ROOT/lib/galaxy/config/sample/tool_shed
 RUN mkdir -p /galaxy-central/static/scripts && cd /galaxy-central/static/scripts \
   && ln -s /galaxy-central/static/dist bundled
 
+ADD tftools/tf.crontab /galaxy-central/config/tf.crontab
+RUN crontab -u galaxy /galaxy-central/config/tf.crontab
 RUN chown -R $GALAXY_USER:$GALAXY_USER /tftools 
 
 
