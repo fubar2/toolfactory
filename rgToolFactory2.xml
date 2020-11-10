@@ -1,5 +1,5 @@
-<tool id="rgTF2" name="toolfactory" version="2.00" profile="16.04" >
-  <description>Scripts into tools v2</description>
+<tool id="rgtf2" name="toolfactory" version="2.00" profile="16.04" >
+  <description>Scripts into tools v2.0</description>
   <macros>
      <xml name="tool_metadata">
          <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
@@ -23,7 +23,7 @@
                     </param>
                     <when value="doi">
                         <param name="doi" label="DOI" type="text" value=""
-                        help="Supply a DOI (e.g. doi: 10.1111/j.1740-9713.2007.00258.x) that should be cited when this tool is used in published research." />
+                        help="Supply a DOI (e.g. doi: 10.1111/j.1740-9713.2007.00258.x) to be cited when this tool is used in published research." />
                     </when>
                     <when value="bibtex">
                         <param name="bibtex" label="BibTex" type="text" area="true"
@@ -56,7 +56,7 @@
               <mapping initial="none"/>
             </sanitizer>
             </param>
-            <param name="input_help" type="text" value="parameter_help" label="This will become help text on the form."
+            <param name="input_help" type="text" value="" label="This will become help text on the form."
              help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation">
             <sanitizer invalid_char="">
               <valid initial="string.printable"> <remove value='~~~'/> </valid>
@@ -85,13 +85,13 @@
      <xml name="additparam">
         <param name="edit_params" type="select" display="radio" label="Add any additional parameters to the generated tool form so they are user editable?"
              help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
-            <option value="yes">Yes, allow user to edit all additional parameters on the generated tool form</option>
-            <option value="no" selected="true">No - use the fixed values for all additional parameters - no user editing</option>
+            <option value="yes" selected="true">Yes, allow user to edit all additional parameters on the generated tool form</option>
+            <option value="no">No - use the fixed values for all additional parameters - no user editing</option>
         </param>
 
         <repeat name="additional_parameters" title="Pass additional parameters to the script"
              help="See examples below to see how these can be parsed by scripts in the various languages">
-          <param name="param_name" type="text" value="parameter_name" label="Choose the name for this parameter">
+          <param name="param_name" type="text" value="" label="Choose the name for this parameter - MUST not be blank!">
             <sanitizer invalid_char="">
               <valid initial="string.letters,string.digits"/>
               <mapping initial="none"/>
@@ -109,14 +109,14 @@
               <mapping initial="none"/>
             </sanitizer>
           </param>
-          <param name="param_label" type="text" value="parameter_label" label="Enter this parameter's label for the form"
+          <param name="param_label" type="text" value="" label="Enter this parameter's label for the form"
              help="Note that '~~~' is an internal delimiter so must not appear in this text field - please work around this technical limitation" >
             <sanitizer invalid_char="">
               <valid initial="string.printable"> <remove value='~~~'/> </valid>
               <mapping initial="none"/>
             </sanitizer>
           </param>
-          <param name="param_help" type="text" value="parameter_help" label="Help for this parameter"
+          <param name="param_help" type="text" value="" label="Help for this parameter"
              help="Note that three consecutive ~ cannot be used in this text field - please work around this technical limitation" >
             <sanitizer invalid_char="">
               <valid initial="string.printable"> <remove value='~~~'/> </valid>
@@ -133,11 +133,10 @@
 
 <requirements>
        <requirement type="package" version="0.72.0" >planemo</requirement>
-       <requirement type="package" >bioblend</requirement>
-       <requirement type="package" >galaxyxml</requirement>
-       <requirement type="package" >ephemeris</requirement>
+       <requirement type="package" version="0.4.11" >galaxyxml</requirement>
+
 </requirements>
-  
+
   <command ><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
@@ -156,21 +155,23 @@ python3 $__tool_directory__/rgToolFactory2.py
 --test_override "$testoverride"
        #end if
     #end if
-    #if $interexe.dependency_model == "managed":
---packages "$interexe.packages"
-    #else:
---sysexe "$interexe.sysexe"
-    #end if
---tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
+--packages "$packages"
    #if $usescript.choosescript == "yes":
 --script_path "$runme"
-   #end if
+--sysexe "$usescript.scriptrunner"
+    #end if
+--tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
+
    #if str($makeMode.make_Tool)!="runonly":
 --make_Tool="$makeMode.make_Tool"
 --tool_desc="$makeMode.tool_desc"
 --tool_version="$makeMode.tool_version"
 --help_text="$helpme"
 --new_tool="$new_tool"
+--toolshed_api_key="$makeMode.toolshed_apikey"
+--galaxy_api_key="$makeMode.galaxy_apikey"
+--toolshed_url="$makeMode.toolshed_url"
+--galaxy_url="$makeMode.galaxy_url"
    #end if
    #if $ppass.parampass != '0':
      #if str($ppass.edit_params) == "yes":
@@ -186,7 +187,7 @@ python3 $__tool_directory__/rgToolFactory2.py
      #for $otab in $ppass.history_outputs:
 --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
      #end for
---galaxy_root="$__root_dir__"
+--galaxy_root "$__root_dir__"
  #end if
 ]]></command>
  <configfiles>
@@ -197,12 +198,12 @@ $usescript.dynScript
 #if $cover.commover == "yes" and len(str($cover.command_override).strip()) > 1:
 $cover.command_override
 #end if
- </configfile> 
+ </configfile>
  <configfile name="testoverride">
 #if $cover.commover == "yes" and len(str($cover.test_override).strip()) > 1:
 $cover.test_override
 #end if
- </configfile> 
+ </configfile>
  <configfile name="helpme">
     #if $makeMode.make_Tool != "runonly":
 ${makeMode.help_text}
@@ -233,35 +234,29 @@ $tool_name help goes here
             </valid>
         </sanitizer>
     </param>
-  
-    <conditional name="interexe">
-        <param name="dependency_model" type="select" label="Dependency model: Conda managed external dependency or existing system executable"
-        help = "If managed, the supplied package will become a requirement so must match the tool dependency resolver package name in conda.">
-            <option value="managed" selected="true" >Use Conda managed dependencies for scripting (python, R,....) or command line packages (bwa,samtools)</option>
-            <option value="system" >Use a non-dependency managed system executable for scripting like bash or command line driven like sed or awk</option>
-        </param>
-        <when value="managed">
-            <param name="packages" type="text" value="" label="Package name[:version, name:version...] for Conda. First (e.g. python) will be called on generated command line" 
-            optional="false" help="Use :[ver] for specific version - 'bwa:0.17.0'. Default is latest. Will be used every time the tool is (re)run." /> 
-            <param name="sysexe" type="hidden" value="" />
-        </when>
-       <when value="system">
-            <param name="sysexe" type="text" value="" label="System executable to run. OS version - not Conda managed" optional="false"
-            help=".e.g bash, awk or other standard and relatively invariant unix utilities"/>
-            <param name="packages" type="hidden" value="" />
-        </when>
-    </conditional>
+    <param name="packages" type="text" value="" label="Conda dependencies as package name[:version, name:version...]. These will always be available when this tool executes"
+    optional="false" help="Use :[ver] for specific version - 'bwa:0.17.0'. Default is latest. Will be used every time the tool is (re)run. Only Conda is currently supported"  />
+
     <conditional name="usescript">
-        <param name="choosescript" type="select" display="radio" label="Run a supplied script if the dependency reads one (e.g. python/R/bash)"
-        help = "For script interpreters like Python or bash. Parameters and i/o below must match script's expectations">
-            <option value="no" selected="true">No script required for the first dependency above - just parameters on the command line</option>
-            <option value="yes">Yes, a script is ready to be pasted below for the chosen package</option>
-        </param> 
+        <param name="choosescript" type="select" display="radio" label="Supply a script to either a dependency (e.g. python/R/bash) or a system executable such as Bash"
+        help = "For script interpreters like Python or bash. Parameters and i/o specified below must match script's expectations - if you pass parameters, the script must deal with them">
+            <option value="no" selected="true">No script required for this tool - just pass parameters on the command line to the first dependency listed above</option>
+            <option value="yes">Yes, a script is ready to be pasted below</option>
+        </param>
         <when value="no">
             <param name="dynScript" type="hidden"  value="" />
+            <param name="scriptrunner" type="hidden"  value="" />
         </when>
         <when value="yes">
-            <param name="dynScript" type="text" area="True" value="" label="Script for first dependency above (e.g. python) to interpret. "
+            <param name="scriptrunner" type="text" value=""   label="Interpreter for the script pasted below - eg bash or python. Can be one of the dependencies named above or a system executable"
+             help="Scripts are interpreted by the executable named here. Use bash for bash scripts, or a conda dependency such as R or Python for those scripts">
+            <sanitizer invalid_char="">
+                <valid initial="string.letters,string.digits">
+                    <add value="_"/>
+                </valid>
+            </sanitizer>
+            </param>
+            <param name="dynScript" type="text" area="True" value="" label="Script for executable below to interpret. It can be one of the Conda dependency names "
              help="Script must handle all i/o and parameters as specified below using the parameters and passing method chosen below">
               <sanitizer>
                  <valid initial="string.printable">
@@ -271,6 +266,7 @@ $tool_name help goes here
              </param>
         </when>
     </conditional>
+
     <conditional name="ppass">
         <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
             <option value="argparse" selected="true">Argparse: passed in the form of --clname value</option>
@@ -296,7 +292,7 @@ $tool_name help goes here
         help = "For arbitrary and artfull command lines. All i/o and parameters must be passed. Choose No unless needed. Not for the faint of heart">
             <option value="no" selected="true">No. Use automatically generated command/test XML </option>
             <option value="yes">Yes. XML needed to override autogenerated command and/or test segments will be pasted below</option>
-        </param> 
+        </param>
         <when value="no">
             <param name="command_override" type="hidden"  value="" />
             <param name="test_override" type="hidden"  value="" />
@@ -317,26 +313,57 @@ $tool_name help goes here
                  </valid>
                  <mapping initial="none"/>
               </sanitizer>
-            </param> 
+            </param>
         </when>
     </conditional>
 
     <conditional name="makeMode">
         <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
-          help="Testing and installation in this Galaxy are optional" >
-        <option value="runonly">Run this configuration in Galaxy (will run Planemo if command or test override in play)</option>
-        <option value="generate">Generate a toolshed ready archive.</option>
+          help="Installation in this Galaxy is optional" >
         <option value="gentest" selected="true">Test with planemo after generating.</option>
         <option value="gentestinstall">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
         </param>
-        <when value="runonly"/>
-        <when value="generate">
-            <expand macro="tool_metadata" />
-        </when>
-        <when value="gentest">
+       <when value="gentest">
+           <param name="galaxy_apikey" value="" type="hidden"  ></param>
+           <param name="toolshed_apikey" value="" type="hidden"  ></param>
+           <param name="galaxy_url" value="" type="hidden"  ></param>
+           <param name="toolshed_url" value="" type="hidden"  ></param>
             <expand macro="tool_metadata" />
         </when>
        <when value="gentestinstall">
+            <param name="galaxy_url" type="text" value="http://localhost:8080" label="URL for the Galaxy server where the new tool should be installed"
+             help="Default is localhost">
+              <sanitizer>
+                 <valid initial="string.printable">
+                 </valid>
+                 <mapping initial="none"/>
+              </sanitizer>
+            </param>
+          <param name="galaxy_apikey" type="text" value="fakekey" label="API key for the Galaxy to install the new tool"
+             help="Cut and paste from the admin user properties screen">
+              <sanitizer>
+                 <valid initial="string.letters,string.digits">
+                 </valid>
+                 <mapping initial="none"/>
+              </sanitizer>
+            </param>
+           <param name="toolshed_url" type="text" value="http://localhost:9009" label="URL for the Toolshed where the new tool should be installed"
+             help="Default value is localhost:9009">
+              <sanitizer>
+                 <valid initial="string.printable">
+                 </valid>
+                 <mapping initial="none"/>
+              </sanitizer>
+            </param>
+           <param name="toolshed_apikey" type="text" value="fakekey" label="API key for the local toolshed to use when installing the tool"
+             help="Cut and paste from the admin user properties screen">
+              <sanitizer>
+                 <valid initial="string.letters,string.digits">
+                 </valid>
+                 <mapping initial="none"/>
+              </sanitizer>
+            </param>
+
             <expand macro="tool_metadata" />
         </when>
     </conditional>
@@ -374,6 +401,7 @@ $tool_name help goes here
     <param name="choosescript" value="yes" />
     <param name="script_path" value="$runme"/>
     <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />
+
 </test>
 </tests>
 <help>
@@ -463,7 +491,7 @@ With argparse style parameters:
 
 
 
-Paper_ 
+Paper_
 
 *Licensing*
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 #
@@ -24,6 +23,7 @@
 
 
 import argparse
+import copy
 import logging
 import os
 import re
@@ -33,6 +33,9 @@ import sys
 import tarfile
 import tempfile
 import time
+
+from bioblend import galaxy
+from bioblend import toolshed
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
@@ -155,13 +158,13 @@ class ScriptRunner:
         self.cl = []
         self.xmlcl = []
         self.is_positional = self.args.parampass == "positional"
-        if self.args.packages:
-            self.executeme = self.args.packages.split(",")[0].split(":")[0]
-        else:
+        if self.args.sysexe:
             self.executeme = self.args.sysexe
-        assert (
-            self.executeme is not None
-        ), "No system or managed executable passed in. Cannot build"
+        else:
+            if self.args.packages:
+                self.executeme = self.args.packages.split(",")[0].split(":")[0]
+            else:
+                self.executeme = None
         aCL = self.cl.append
         aXCL = self.xmlcl.append
         assert args.parampass in [
@@ -325,15 +328,18 @@ class ScriptRunner:
         """ no parameters - uses < and > for i/o
         """
         aCL = self.cl.append
-        aCL("<")
-        aCL(self.infiles[0][IPATHPOS])
-        aCL(">")
-        aCL(self.outfiles[0][OCLPOS])
         aXCL = self.xmlcl.append
-        aXCL("<")
-        aXCL("$%s" % self.infiles[0][ICLPOS])
-        aXCL(">")
-        aXCL("$%s" % self.outfiles[0][ONAMEPOS])
+
+        if len(self.infiles) > 0:
+            aCL("<")
+            aCL(self.infiles[0][IPATHPOS])
+            aXCL("<")
+            aXCL("$%s" % self.infiles[0][ICLPOS])
+        if len(self.outfiles) > 0:
+            aCL(">")
+            aCL(self.outfiles[0][OCLPOS])
+            aXCL(">")
+            aXCL("$%s" % self.outfiles[0][ONAMEPOS])
 
     def clpositional(self):
         # inputs in order then params
@@ -475,44 +481,46 @@ class ScriptRunner:
                 )
             aparm.positional = self.is_positional
             if self.is_positional:
-                aninput.positional = int(oldcl)
+                aparm.positional = int(oldcl)
             self.tinputs.append(aparm)
-            self.tparm = gxtp.TestParam(newname, value=newval)
+            tparm = gxtp.TestParam(newname, value=newval)
             self.testparam.append(tparm)
 
     def doNoXMLparam(self):
         """filter style package - stdin to stdout"""
-        alab = self.infiles[0][ILABPOS]
-        if len(alab) == 0:
-            alab = self.infiles[0][ICLPOS]
-        max1s = (
-            "Maximum one input if parampass is 0 but multiple input files supplied - %s"
-            % str(self.infiles)
-        )
-        assert len(self.infiles) == 1, max1s
-        newname = self.infiles[0][ICLPOS]
-        aninput = gxtp.DataParam(
-            newname,
-            optional=False,
-            label=alab,
-            help=self.infiles[0][IHELPOS],
-            format=self.infiles[0][IFMTPOS],
-            multiple=False,
-            num_dashes=0,
-        )
-        aninput.command_line_override = "< $%s" % newname
-        aninput.positional = self.is_positional
-        self.tinputs.append(aninput)
-        tp = gxtp.TestParam(name=newname, value="%s_sample" % newname)
-        self.testparam.append(tp)
-        newname = self.outfiles[0][OCLPOS]
-        newfmt = self.outfiles[0][OFMTPOS]
-        anout = gxtp.OutputData(newname, format=newfmt, num_dashes=0)
-        anout.command_line_override = "> $%s" % newname
-        anout.positional = self.is_positional
-        self.toutputs.append(anout)
-        tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname, format=newfmt)
-        self.testparam.append(tp)
+        if len(self.infiles) > 0:
+            alab = self.infiles[0][ILABPOS]
+            if len(alab) == 0:
+                alab = self.infiles[0][ICLPOS]
+            max1s = (
+                "Maximum one input if parampass is 0 but multiple input files supplied - %s"
+                % str(self.infiles)
+            )
+            assert len(self.infiles) == 1, max1s
+            newname = self.infiles[0][ICLPOS]
+            aninput = gxtp.DataParam(
+                newname,
+                optional=False,
+                label=alab,
+                help=self.infiles[0][IHELPOS],
+                format=self.infiles[0][IFMTPOS],
+                multiple=False,
+                num_dashes=0,
+            )
+            aninput.command_line_override = "< $%s" % newname
+            aninput.positional = self.is_positional
+            self.tinputs.append(aninput)
+            tp = gxtp.TestParam(name=newname, value="%s_sample" % newname)
+            self.testparam.append(tp)
+        if len(self.outfiles) > 0:
+            newname = self.outfiles[0][OCLPOS]
+            newfmt = self.outfiles[0][OFMTPOS]
+            anout = gxtp.OutputData(newname, format=newfmt, num_dashes=0)
+            anout.command_line_override = "> $%s" % newname
+            anout.positional = self.is_positional
+            self.toutputs.append(anout)
+            tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname, format=newfmt)
+            self.testparam.append(tp)
 
     def makeXML(self):
         """
@@ -527,15 +535,16 @@ class ScriptRunner:
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = [html_escape(x) for x in helptext]
-            if self.args.script_path:
-                scrpt = self.script.split('\n')
-                scrpt.append("```\n")
+            if False and self.args.script_path:
+                scrp = self.script.split('\n')
+                scrpt = ['   %s' % x for x in scrp] # try to stop templating
+                scrpt.insert(0,"```\n")
                 if len(scrpt) > 300:
                     safertext = safertext + scrpt[:100] + ['>500 lines - stuff deleted','......'] + scrpt[-100:]
                 else:
                     safertext = safertext + scrpt
                 safertext.append("\n```")
-            self.newtool.help = "".join([x for x in safertext])
+            self.newtool.help = "\n".join([x for x in safertext])
         else:
             self.newtool.help = (
                 "Please ask the tool author (%s) for help \
@@ -589,6 +598,7 @@ class ScriptRunner:
             part2 = exml.split("</tests>")[1]
             fixed = "%s\n%s\n%s" % (part1, self.test_override, part2)
             exml = fixed
+        exml = exml.replace('range="1:"', 'range="1000:"')
         xf = open("%s.xml" % self.tool_name, "w")
         xf.write(exml)
         xf.write("\n")
@@ -602,8 +612,6 @@ class ScriptRunner:
         easiest way to generate test outputs for that case so is
         automagically selected
         """
-        s = "run cl=%s" % str(self.cl)
-        logging.debug(s)
         scl = " ".join(self.cl)
         err = None
         if self.args.parampass != "0":
@@ -619,7 +627,7 @@ class ScriptRunner:
                 else:
                     sto = open(self.tlog, "w")
                 sto.write(
-                        "## Executing Toolfactory generated command line = %s\n" % scl
+                       "## Executing Toolfactory generated command line = %s\n" % scl
                 )
             sto.flush()
             p = subprocess.run(self.cl, shell=False, stdout=sto, stderr=ste)
@@ -627,9 +635,18 @@ class ScriptRunner:
             ste.close()
             retval = p.returncode
         else:  # work around special case - stdin and write to stdout
-            sti = open(self.infiles[0][IPATHPOS], "rb")
-            sto = open(self.outfiles[0][ONAMEPOS], "wb")
+            if len(self.infiles) > 0:
+                sti = open(self.infiles[0][IPATHPOS], "rb")
+            else:
+                sti = sys.stdin
+            if len(self.outfiles) > 0:
+                sto = open(self.outfiles[0][ONAMEPOS], "wb")
+            else:
+                sto = sys.stdout
             p = subprocess.run(self.cl, shell=False, stdout=sto, stdin=sti)
+            sto.write(
+              "## Executing Toolfactory generated command line = %s\n" % scl
+            )
             retval = p.returncode
             sto.close()
             sti.close()
@@ -642,83 +659,49 @@ class ScriptRunner:
         logging.debug("run done")
         return retval
 
-    def planemo_shedload(self):
-        """
-        planemo shed_create --shed_target testtoolshed
-        planemo shed_update --check_diff --shed_target testtoolshed
-        """
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        cll = ["planemo", "shed_create", "--shed_target", "local"]
-        try:
-            p = subprocess.run(
-                cll, shell=True, cwd=self.tooloutdir, stdout=tout, stderr=tout
-            )
-        except:
-            pass
-        if p.returncode != 0:
-            print("Repository %s exists" % self.args.tool_name)
-        else:
-            print("initiated %s" % self.args.tool_name)
-        cll = [
-            "planemo",
-            "shed_upload",
-            "--shed_target",
-            "local",
-            "--owner",
-            "fubar",
-            "--name",
-            self.args.tool_name,
-            "--shed_key",
-            self.args.toolshed_api_key,
-            "--tar",
-            self.newtarpath,
-        ]
-        p = subprocess.run(cll, shell=False)
-        print("Ran", " ".join(cll), "got", p.returncode)
-        tout.close()
-        return p.returncode
 
-    def planemo_test(self, genoutputs=True):
-        """planemo is a requirement so is available for testing
-        and for generating test outputs if command or test overrides are supplied
-        test outputs are sent to repdir for display
+    def shedLoad(self):
         """
-        xreal = "%s.xml" % self.tool_name
+        {'deleted': False,
+              'description': 'Tools for manipulating data',
+              'id': '175812cd7caaf439',
+              'model_class': 'Category',
+              'name': 'Text Manipulation',
+              'url': '/api/categories/175812cd7caaf439'}]
+
+
+        """
         if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
+            sto = open(self.tlog, "a")
         else:
-            tout = open(self.tlog, "w")
-        if genoutputs:
-            cll = [
-                "planemo",
-                "test",
-                "--galaxy_root",
-                self.args.galaxy_root,
-                "--update_test_data",
-                xreal,
-            ]
+            sto = open(self.tlog, "w")
+
+        ts = toolshed.ToolShedInstance(url=self.args.toolshed_url,key=self.args.toolshed_api_key,verify=False)
+        repos = ts.repositories.get_repositories()
+        rnames = [x.get('name','?') for x in repos]
+        rids = [x.get('id','?') for x in repos]
+        sto.write(f'############names={rnames} rids={rids}')
+        cat = 'ToolFactory generated tools'
+        if self.args.tool_name not in rnames:
+            tscat = ts.categories.get_categories()
+            cnames = [x.get('name','?') for x in tscat]
+            cids = [x.get('id','?') for x in tscat]
+            catID = None
+            if cat in cnames:
+                ci = cnames.index(cat)
+                catID = cids[ci]
+            res = ts.repositories.create_repository(name=self.args.tool_name, synopsis='Synopsis:%s' % self.args.tool_desc, description=self.args.tool_desc,
+                          type='unrestricted', remote_repository_url=self.args.toolshed_url,
+                          homepage_url=None, category_ids=catID)
+            tid = res.get('id',None)
+            sto.write(f'##########create res={res}')
         else:
-            cll = ["planemo", "test", "--galaxy_root",
-                self.args.galaxy_root,
-                xreal,]
-        p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
-            )
-        if genoutputs:
-            with os.scandir(self.testdir) as outs:
-                for entry in outs:
-                    if entry.is_file():
-                        dest = os.path.join(self.repdir, entry.name)
-                        src = os.path.join(self.testdir, entry.name)
-                        shutil.copyfile(src, dest)
-                    tout.write(
-                        "Copied output %s to %s after planemo test\n" % (src, dest)
-                    )
-        tout.close()
-        return p.returncode
+             i = rnames.index(self.args.tool_name)
+             tid = rids[i]
+        res = ts.repositories.update_repository(id=tid, tar_ball_path=self.newtarpath, commit_message=None)
+        sto.write(f'#####update res={res}')
+        sto.close()
+
 
     def eph_galaxy_load(self):
         """load the new tool from the local toolshed after planemo uploads it
@@ -741,21 +724,137 @@ class ScriptRunner:
             "fubar",
             "--toolshed",
             self.args.toolshed_url,
-            "--section_label",
-            "Generated Tools",
+           "--section_label",
+            "ToolFactory",
 
         ]
-        print("running\n", " ".join(cll))
+        tout.write("running\n%s\n" % " ".join(cll))
         p = subprocess.run(cll, shell=False, stderr=tout, stdout=tout)
-        if p.returncode != 0:
-            print(
-                "Repository %s installation returned %d"
-                % (self.args.tool_name, p.returncode)
-            )
-        else:
-            print("installed %s" % self.args.tool_name)
+        tout.write("installed %s - got retcode %d\n" % (self.args.tool_name,p.returncode))
         tout.close()
         return p.returncode
+
+
+    def planemo_shedload(self):
+        """
+        planemo shed_create --shed_target testtoolshed
+        planemo shed_init --name=<name>
+                  --owner=<shed_username>
+                  --description=<short description>
+                  [--remote_repository_url=<URL to .shed.yml on github>]
+                  [--homepage_url=<Homepage for tool.>]
+                  [--long_description=<long description>]
+                  [--category=<category name>]*
+        
+        
+        planemo shed_update --check_diff --shed_target testtoolshed
+        """
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        ts = toolshed.ToolShedInstance(url=self.args.toolshed_url,key=self.args.toolshed_api_key,verify=False)
+        repos = ts.repositories.get_repositories()
+        rnames = [x.get('name','?') for x in repos]
+        rids = [x.get('id','?') for x in repos]
+        tout.write(f'############names={rnames} rids={rids}')
+        cat = 'ToolFactory generated tools'
+        if self.args.tool_name not in rnames:
+            cll = ["planemo", "shed_create", "--shed_target", "local", 
+            "--owner","fubar","--name",
+            self.args.tool_name,"--shed_key",
+            self.args.toolshed_api_key,]
+            try:
+                p = subprocess.run(
+                    cll, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
+                )
+            except:
+                pass
+            if p.returncode != 0:
+               tout.write("Repository %s exists" % self.args.tool_name)
+            else:
+                tout.write("initiated %s" % self.args.tool_name)
+        cll = [
+            "planemo",
+            "shed_upload",
+            "--shed_target",
+            "local",
+            "--owner",
+            "fubar",
+            "--name",
+            self.args.tool_name,
+            "--shed_key",
+            self.args.toolshed_api_key,
+            "--tar",
+            self.newtarpath,
+        ]
+        p = subprocess.run(cll, shell=False, stdout=tout, stderr=tout)
+        tout.write("Ran %s got %d" %  (" ".join(cll), p.returncode))
+        tout.close()
+        return p.returncode
+
+
+    def eph_test(self):
+            """
+            """
+            if os.path.exists(self.tlog):
+                tout = open(self.tlog, "a")
+            else:
+                tout = open(self.tlog, "w")
+            cll = [
+                    "shed-tools",
+                    "test",
+                 "-g",
+                self.args.galaxy_url,
+                "-a",
+                self.args.galaxy_api_key,
+                "--name",
+                self.args.tool_name,
+                "--owner",
+                "fubar",
+                   ]
+            p = subprocess.run(
+                    cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                )
+            tout.write("eph_test Ran %s got %d" % (" ".join(cll), p.returncode))
+            tout.close()
+            return p.returncode
+
+    def planemo_test(self, genoutputs=True):
+        """planemo is a requirement so is available for testing
+        and for generating test outputs if command or test overrides are supplied
+        test outputs are sent to repdir for display
+        """
+        xreal = "%s.xml" % self.tool_name
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        if genoutputs:
+            dummy,tfile = tempfile.mkstemp()
+            cll = [
+                "planemo",
+                "test",
+                "--galaxy_root",
+                self.args.galaxy_root,
+                "--update_test_data",
+                xreal,
+            ]
+            p = subprocess.run(
+                    cll, shell=False, cwd=self.tooloutdir, stderr=dummy, stdout=dummy,
+                )
+            dummy.close() # throw all the log away as it will be rerun after outputs are generated
+        else:
+            cll = ["planemo", "test", "--galaxy_root",
+                self.args.galaxy_root,
+                xreal,]
+            p = subprocess.run(
+                    cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                )
+        tout.close()
+        return p.returncode
+
+
 
     def writeShedyml(self):
         """for planemo
@@ -862,10 +961,14 @@ def main():
     a("--tfout", default="./tfout")
     a("--new_tool", default="new_tool")
     a("--galaxy_url", default="http://localhost:8080")
-    a("--galaxy_api_key", default="fakekey")
-    a("--toolshed_url", default="http://localhost:9009")
+    a("--toolshed_url", default="http://localhost:9009") # make sure this is NOT 127.0.0.1 - it won't work if tool_sheds_conf.xml has localhost
+    #a("--galaxy_api_key", default="1e62ddad74fe9bf112859f4e9efea48b")
+    #a("--toolshed_api_key", default="9154c91f2a162bf12fda15764f43846c")
+
     a("--toolshed_api_key", default="fakekey")
+    a("--galaxy_api_key", default="fakekey")
     a("--galaxy_root", default="/galaxy-central")
+
 
     args = parser.parse_args()
     assert not args.bad_user, (
@@ -883,32 +986,16 @@ def main():
     r = ScriptRunner(args)
     r.writeShedyml()
     r.makeTool()
-    if args.command_override or args.test_override:
-        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
-        r.moveRunOutputs()
-        r.makeToolTar()
-        retcode = r.planemo_test(genoutputs=False)
-        r.moveRunOutputs()
-        if args.make_Tool == "gentestinstall":
-            r.planemo_shedload()
-            r.eph_galaxy_load()
-    else:
-        retcode = r.run()
-        if retcode:
-            sys.stderr.write(
-                "## Run failed with return code %d. Cannot build yet. Please fix and retry"
-                % retcode
-            )
-            sys.exit(1)
-        else:
-            r.moveRunOutputs()
-            r.makeToolTar()
-            if args.make_Tool in ["gentestinstall", "gentest"]:
-                r.planemo_test(genoutputs=False)
-                r.moveRunOutputs()
-                if args.make_Tool == "gentestinstall":
-                    r.planemo_shedload()
-                    r.eph_galaxy_load()
+    retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
+    r.moveRunOutputs()
+    r.makeToolTar()
+    retcode = r.planemo_test(genoutputs=False)
+    r.moveRunOutputs()
+    if args.make_Tool == "gentestinstall":
+        retcode = r.planemo_shedload() #r.shedLoad()
+        print(f'planemo_shedload returned {retcode}')
+        r.eph_galaxy_load()
+
 
 
 if __name__ == "__main__":
