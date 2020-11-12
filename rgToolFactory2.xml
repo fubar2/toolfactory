@@ -132,9 +132,9 @@
   </macros>
 
 <requirements>
+       <requirement type="package" version="3.8.5" >python</requirement>
        <requirement type="package" version="0.72.0" >planemo</requirement>
        <requirement type="package" version="0.4.11" >galaxyxml</requirement>
-
 </requirements>
 
   <command ><![CDATA[
@@ -320,9 +320,17 @@ $tool_name help goes here
     <conditional name="makeMode">
         <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
           help="Installation in this Galaxy is optional" >
+        <option value="generate" >Run to generate tests only. Should fail if dependencies needed.</option>
         <option value="gentest" selected="true">Test with planemo after generating.</option>
         <option value="gentestinstall">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
         </param>
+       <when value="generate">
+           <param name="galaxy_apikey" value="" type="hidden"  ></param>
+           <param name="toolshed_apikey" value="" type="hidden"  ></param>
+           <param name="galaxy_url" value="" type="hidden"  ></param>
+           <param name="toolshed_url" value="" type="hidden"  ></param>
+            <expand macro="tool_metadata" />
+        </when>
        <when value="gentest">
            <param name="galaxy_apikey" value="" type="hidden"  ></param>
            <param name="toolshed_apikey" value="" type="hidden"  ></param>

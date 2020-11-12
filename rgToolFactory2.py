@@ -745,8 +745,8 @@ class ScriptRunner:
                   [--homepage_url=<Homepage for tool.>]
                   [--long_description=<long description>]
                   [--category=<category name>]*
-        
-        
+
+
         planemo shed_update --check_diff --shed_target testtoolshed
         """
         if os.path.exists(self.tlog):
@@ -760,7 +760,7 @@ class ScriptRunner:
         tout.write(f'############names={rnames} rids={rids}')
         cat = 'ToolFactory generated tools'
         if self.args.tool_name not in rnames:
-            cll = ["planemo", "shed_create", "--shed_target", "local", 
+            cll = ["planemo", "shed_create", "--shed_target", "local",
             "--owner","fubar","--name",
             self.args.tool_name,"--shed_key",
             self.args.toolshed_api_key,]
@@ -824,6 +824,7 @@ class ScriptRunner:
         """planemo is a requirement so is available for testing
         and for generating test outputs if command or test overrides are supplied
         test outputs are sent to repdir for display
+        planemo test --engine docker_galaxy --database_type docker_postgres --galaxy_root /galaxy-central pyrevpos/pyrevpos.xml
         """
         xreal = "%s.xml" % self.tool_name
         if os.path.exists(self.tlog):
@@ -838,15 +839,15 @@ class ScriptRunner:
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
+                "--docker",
                 xreal,
             ]
             p = subprocess.run(
                     cll, shell=False, cwd=self.tooloutdir, stderr=dummy, stdout=dummy,
                 )
-            dummy.close() # throw all the log away as it will be rerun after outputs are generated
         else:
             cll = ["planemo", "test", "--galaxy_root",
-                self.args.galaxy_root,
+                self.args.galaxy_root, "--docker",
                 xreal,]
             p = subprocess.run(
                     cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
@@ -894,6 +895,11 @@ class ScriptRunner:
     def makeToolTar(self):
         """ move outputs into test-data and prepare the tarball
         """
+        excludeme = "tool_test_output"
+        def exclude_function(tarinfo):
+           filename = tarinfo.name
+           return None if filename.startswith(excludeme)  or os.path.splitext(filename)[1].startswith(excludeme) else tarinfo
+
         for p in self.outfiles:
             src = p[ONAMEPOS]
             if os.path.isfile(src):
@@ -908,7 +914,7 @@ class ScriptRunner:
                 )
         self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(self.newtarpath, "w:gz")
-        tf.add(name=self.tooloutdir, arcname=self.tool_name)
+        tf.add(name=self.tooloutdir, arcname=self.tool_name, filter=exclude_function)
         tf.close()
         shutil.copyfile(self.newtarpath, self.args.new_tool)
 
@@ -986,15 +992,20 @@ def main():
     r = ScriptRunner(args)
     r.writeShedyml()
     r.makeTool()
-    retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
-    r.moveRunOutputs()
-    r.makeToolTar()
-    retcode = r.planemo_test(genoutputs=False)
-    r.moveRunOutputs()
-    if args.make_Tool == "gentestinstall":
-        retcode = r.planemo_shedload() #r.shedLoad()
-        print(f'planemo_shedload returned {retcode}')
-        r.eph_galaxy_load()
+    if args.make_Tool == "generate":
+        retcode = r.run()
+        r.moveRunOutputs()
+        r.makeToolTar()
+    else:
+        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
+        r.moveRunOutputs()
+        r.makeToolTar()
+        retcode = r.planemo_test(genoutputs=False)
+        r.moveRunOutputs()
+        if args.make_Tool == "gentestinstall":
+            retcode = r.planemo_shedload() #r.shedLoad()
+            print(f'planemo_shedload returned {retcode}')
+            r.eph_galaxy_load()
 
 
 
