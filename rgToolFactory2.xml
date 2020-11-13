@@ -132,9 +132,7 @@
   </macros>
 
 <requirements>
-       <requirement type="package" version="3.8.5" >python</requirement>
-       <requirement type="package" version="0.72.0" >planemo</requirement>
-       <requirement type="package" version="0.4.11" >galaxyxml</requirement>
+	<container type="docker">quay.io/fubar2/toolfactorybiocontainer</container>
 </requirements>
 
   <command ><![CDATA[
