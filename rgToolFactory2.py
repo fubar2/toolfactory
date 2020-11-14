@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 #

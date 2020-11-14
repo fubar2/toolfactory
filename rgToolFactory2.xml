@@ -132,7 +132,10 @@
   </macros>
 
 <requirements>
-	<container type="docker">quay.io/fubar2/toolfactorybiocontainer</container>
+    <requirement type="package" >galaxyxml</requirement>
+    <requirement type="package" >bioblend</requirement>
+    <requirement type="package">planemo</requirement>
+    <container type="docker">quay.io/fubar2/toolfactorybiocontainer</container>
 </requirements>
 
   <command ><![CDATA[
