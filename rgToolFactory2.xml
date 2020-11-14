@@ -142,9 +142,9 @@
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
-python3 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
+rgToolFactory2.py --bad_user $__user_email__
  #else:
-python3 $__tool_directory__/rgToolFactory2.py
+rgToolFactory2.py
     #if len(str($cl_prefix)) > 3:
 --cl_prefix "$cl_prefix"
     #end if
