@@ -189,6 +189,7 @@ rgToolFactory2.py
 --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
      #end for
 --galaxy_root "$__root_dir__"
+--tool_dir "$__tool_dir__"
  #end if
 ]]></command>
  <configfiles>

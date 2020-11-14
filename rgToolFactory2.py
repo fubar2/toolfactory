@@ -762,6 +762,7 @@ class ScriptRunner:
         cat = 'ToolFactory generated tools'
         if self.args.tool_name not in rnames:
             cll = ["planemo", "shed_create", "--shed_target", "local",
+            "--directory", self.args.tool_dir,
             "--owner","fubar","--name",
             self.args.tool_name,"--shed_key",
             self.args.toolshed_api_key,]
@@ -788,6 +789,7 @@ class ScriptRunner:
             self.args.toolshed_api_key,
             "--tar",
             self.newtarpath,
+            "--directory", self.args.tool_dir,
         ]
         p = subprocess.run(cll, shell=False, stdout=tout, stderr=tout)
         tout.write("Ran %s got %d" %  (" ".join(cll), p.returncode))
@@ -839,8 +841,8 @@ class ScriptRunner:
                 "test",
                 "--galaxy_root",
                 self.args.galaxy_root,
-                "--update_test_data",
-                "--docker",
+                "--update_test_data",           
+                "--directory", self.args.tool_dir,
                 xreal,
             ]
             p = subprocess.run(
@@ -848,7 +850,8 @@ class ScriptRunner:
                 )
         else:
             cll = ["planemo", "test", "--galaxy_root",
-                self.args.galaxy_root, "--docker",
+                self.args.galaxy_root, 
+            "--directory", self.args.tool_dir,
                 xreal,]
             p = subprocess.run(
                     cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
@@ -951,6 +954,7 @@ def main():
     a("--sysexe", default=None)
     a("--packages", default=None)
     a("--tool_name", default=None)
+    a("--tool_dir", default=None)
     a("--input_files", default=[], action="append")
     a("--output_files", default=[], action="append")
     a("--user_email", default="Unknown")
