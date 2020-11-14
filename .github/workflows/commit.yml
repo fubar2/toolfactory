@@ -52,8 +52,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-    - name: flake8
-      run: flake8 --ignore=E2,E3,E4,E5,W3,W505
+    - name: flake8 *.py
+      run: flake8 --ignore=E2,E3,E4,E5,W3,W505,E722
     - name: Planemo lint
       run: planemo lint .
     - name: Planemo test tool
