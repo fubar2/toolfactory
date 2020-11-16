@@ -1,4 +1,4 @@
-<tool id="rgtf2" name="toolfactory" version="2.01" profile="16.04" >
+<tool id="rgtf2" name="toolfactory" version="2.00" profile="16.04" >
   <description>Scripts into tools v2.0</description>
   <macros>
      <xml name="tool_metadata">
