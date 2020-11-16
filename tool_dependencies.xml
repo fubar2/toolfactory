@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<tool_dependency>
-    <package name="toolfactory_dep" version="0.03">
-        <repository name="toolfactory_deps_01" owner="fubar" prior_installation_required="True" />
-    </package>
-</tool_dependency>
-

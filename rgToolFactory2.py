@@ -24,6 +24,8 @@
 
 
 import argparse
+import datetime
+import json
 import logging
 import os
 import re
@@ -179,6 +181,7 @@ class ScriptRunner:
             self.args.tool_desc,
             FAKEEXE,
         )
+        self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
         self.tooloutdir = "tfout"
         self.repdir = "TF_run_report_tempdir"
         self.testdir = os.path.join(self.tooloutdir, "test-data")
@@ -815,8 +818,9 @@ class ScriptRunner:
         tout.close()
         return p.returncode
 
-    def eph_test(self):
-        """"""
+    def eph_test(self, genoutputs=True):
+        """problem getting jobid - ephemeris upload is the job before the one we want - but depends on how many inputs
+        """
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
@@ -833,10 +837,41 @@ class ScriptRunner:
             "--owner",
             "fubar",
         ]
-        p = subprocess.run(
-            cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
-        )
-        tout.write("eph_test Ran %s got %d" % (" ".join(cll), p.returncode))
+        if genoutputs:
+            dummy, tfile = tempfile.mkstemp()
+            p = subprocess.run(
+               cll, shell=False, stderr=dummy, stdout=dummy
+            )
+
+            with open('tool_test_output.json','rb') as f:
+                s = json.loads(f.read())
+                print('read %s' % s)
+                cl = s['tests'][0]['data']['job']['command_line'].split()
+                n = cl.index('--script_path')
+                jobdir = cl[n+1]
+                jobdir = jobdir.replace('"','')
+                jobdir = jobdir.split('/configs')[0]
+                print('jobdir=%s' % jobdir)
+
+                #"/home/ross/galthrow/database/jobs_directory/000/649/configs/tmptfxu51gs\"
+            src = os.path.join(jobdir,'working',self.newtarpath)
+            if os.path.exists(src):
+                dest = os.path.join(self.testdir, self.newtarpath)
+                shutil.copyfile(src, dest)
+            else:
+                tout.write('No toolshed archive found after first ephemeris test - not a good sign')
+            ephouts = os.path.join(jobdir,'working','tfout','test-data')
+            with os.scandir(ephouts) as outs:
+                for entry in outs:
+                    if not entry.is_file():
+                        continue
+                    dest = os.path.join(self.tooloutdir, entry.name)
+                    src = os.path.join(ephouts, entry.name)
+                    shutil.copyfile(src, dest)
+        else:
+            p = subprocess.run(
+               cll, shell=False,  stderr=tout, stdout=tout)
+            tout.write("eph_test Ran %s got %d" % (" ".join(cll), p.returncode))
         tout.close()
         return p.returncode
 
@@ -940,7 +975,6 @@ class ScriptRunner:
                     "### problem - output file %s not found in tooloutdir %s"
                     % (src, self.tooloutdir)
                 )
-        self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
         tf = tarfile.open(self.newtarpath, "w:gz")
         tf.add(name=self.tooloutdir, arcname=self.tool_name, filter=exclude_function)
         tf.close()
@@ -962,6 +996,7 @@ class ScriptRunner:
                 shutil.copyfile(src, dest)
 
 
+
 def main():
     """
     This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml as:
@@ -976,7 +1011,7 @@ def main():
     a("--cl_prefix", default=None)
     a("--sysexe", default=None)
     a("--packages", default=None)
-    a("--tool_name", default=None)
+    a("--tool_name", default="newtool")
     a("--tool_dir", default=None)
     a("--input_files", default=[], action="append")
     a("--output_files", default=[], action="append")
@@ -996,15 +1031,11 @@ def main():
     a("--new_tool", default="new_tool")
     a("--galaxy_url", default="http://localhost:8080")
     a(
-        "--toolshed_url", default="http://localhost:9009"
-    )  # make sure this is NOT 127.0.0.1 - it won't work if tool_sheds_conf.xml has localhost
-    # a("--galaxy_api_key", default="1e62ddad74fe9bf112859f4e9efea48b")
-    # a("--toolshed_api_key", default="9154c91f2a162bf12fda15764f43846c")
-
+        "--toolshed_url", default="http://localhost:9009")
+    # make sure this is identical to tool_sheds_conf.xml  localhost != 127.0.0.1 so validation fails
     a("--toolshed_api_key", default="fakekey")
     a("--galaxy_api_key", default="fakekey")
     a("--galaxy_root", default="/galaxy-central")
-
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
@@ -1031,9 +1062,8 @@ def main():
         r.makeToolTar()
         retcode = r.planemo_test(genoutputs=False)
         r.moveRunOutputs()
+        print(f"second planemo_test returned {retcode}")
         if args.make_Tool == "gentestinstall":
-            retcode = r.planemo_shedload()  # r.shedLoad()
-            print(f"planemo_shedload returned {retcode}")
             r.eph_galaxy_load()
 
 

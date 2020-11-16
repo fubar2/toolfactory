@@ -1,4 +1,4 @@
-<tool id="rgtf2" name="toolfactory" version="2.00" profile="16.04" >
+<tool id="rgtf2" name="toolfactory" version="2.01" profile="16.04" >
   <description>Scripts into tools v2.0</description>
   <macros>
      <xml name="tool_metadata">
@@ -132,8 +132,8 @@
   </macros>
 
 <requirements>
-    <requirement type="package" >galaxyxml</requirement>
-    <requirement type="package" >bioblend</requirement>
+    <requirement type="package">galaxyxml</requirement>
+    <requirement type="package">bioblend</requirement>
     <requirement type="package">planemo</requirement>
     <container type="docker">quay.io/fubar2/toolfactorybiocontainer</container>
 </requirements>
@@ -142,9 +142,9 @@
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):
-rgToolFactory2.py --bad_user $__user_email__
+python3 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
  #else:
-rgToolFactory2.py
+python3 $__tool_directory__/rgToolFactory2.py
     #if len(str($cl_prefix)) > 3:
 --cl_prefix "$cl_prefix"
     #end if
