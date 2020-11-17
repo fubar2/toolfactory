@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 #
@@ -689,7 +689,7 @@ class ScriptRunner:
         repos = ts.repositories.get_repositories()
         rnames = [x.get("name", "?") for x in repos]
         rids = [x.get("id", "?") for x in repos]
-        sto.write(f"############names={rnames} rids={rids}")
+        sto.write(f"############names={rnames} rids={rids}\n")
         cat = "ToolFactory generated tools"
         if self.args.tool_name not in rnames:
             tscat = ts.categories.get_categories()
@@ -709,14 +709,14 @@ class ScriptRunner:
                 category_ids=catID,
             )
             tid = res.get("id", None)
-            sto.write(f"##########create res={res}")
+            sto.write(f"##########create res={res}\n")
         else:
             i = rnames.index(self.args.tool_name)
             tid = rids[i]
         res = ts.repositories.update_repository(
             id=tid, tar_ball_path=self.newtarpath, commit_message=None
         )
-        sto.write(f"#####update res={res}")
+        sto.write(f"#####update res={res}\n")
         sto.close()
 
     def eph_galaxy_load(self):
@@ -774,7 +774,6 @@ class ScriptRunner:
         repos = ts.repositories.get_repositories()
         rnames = [x.get("name", "?") for x in repos]
         rids = [x.get("id", "?") for x in repos]
-        tout.write(f"############names={rnames} rids={rids}")
         #cat = "ToolFactory generated tools"
         if self.args.tool_name not in rnames:
             cll = [
@@ -796,9 +795,9 @@ class ScriptRunner:
             except:
                 pass
             if p.returncode != 0:
-                tout.write("Repository %s exists" % self.args.tool_name)
+                tout.write("Repository %s exists\n" % self.args.tool_name)
             else:
-                tout.write("initiated %s" % self.args.tool_name)
+                tout.write("initiated %s\n" % self.args.tool_name)
         cll = [
             "planemo",
             "shed_upload",
@@ -814,7 +813,7 @@ class ScriptRunner:
             self.newtarpath,
         ]
         p = subprocess.run(cll, shell=False, stdout=tout, stderr=tout)
-        tout.write("Ran %s got %d" % (" ".join(cll), p.returncode))
+        tout.write("Ran %s got %d\n" % (" ".join(cll), p.returncode))
         tout.close()
         return p.returncode
 
@@ -882,6 +881,7 @@ class ScriptRunner:
         planemo test --engine docker_galaxy --database_type docker_postgres --galaxy_root /galaxy-central pyrevpos/pyrevpos.xml
         """
         xreal = "%s.xml" % self.tool_name
+        tool_test_path = os.path.join(self.repdir,f"{self.tool_name}_planemo_test_report.html")
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
@@ -891,10 +891,12 @@ class ScriptRunner:
             cll = [
                 "planemo",
                 "test",
+                "--test_data", os.path.abspath(self.testdir),
+                "--test_output", os.path.abspath(tool_test_path),
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
-                xreal,
+                os.path.abspath(xreal),
             ]
             p = subprocess.run(
                 cll,
@@ -903,13 +905,16 @@ class ScriptRunner:
                 stderr=dummy,
                 stdout=dummy,
             )
+
         else:
             cll = [
                 "planemo",
                 "test",
+                "--test_data", os.path.abspath(self.testdir),
+                "--test_output", os.path.abspath(tool_test_path),
                 "--galaxy_root",
                 self.args.galaxy_root,
-                xreal,
+                os.path.abspath(xreal),
             ]
             p = subprocess.run(
                 cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
@@ -947,8 +952,6 @@ class ScriptRunner:
             pth = p[IPATHPOS]
             dest = os.path.join(self.testdir, "%s_sample" % p[ICLPOS])
             shutil.copyfile(pth, dest)
-            dest = os.path.join(self.repdir, "%s.%s" % (p[ICLPOS], p[IFMTPOS]))
-            shutil.copyfile(pth, dest)
 
     def makeToolTar(self):
         """move outputs into test-data and prepare the tarball"""
@@ -958,8 +961,7 @@ class ScriptRunner:
             filename = tarinfo.name
             return (
                 None
-                if filename.startswith(excludeme) or \
-                os.path.splitext(filename)[1].startswith(excludeme)
+                if filename.startswith(excludeme)
                 else tarinfo
             )
 
@@ -984,15 +986,29 @@ class ScriptRunner:
         """need to move planemo or run outputs into toolfactory collection"""
         with os.scandir(self.tooloutdir) as outs:
             for entry in outs:
-                if not entry.is_file() or entry.name.startswith("."):
+                if not entry.is_file():
                     continue
                 if "." in entry.name:
                     nayme, ext = os.path.splitext(entry.name)
+                    if ext in ['.yml','.xml','.json','.yaml']:
+                        ext = f'{ext}.txt'
                 else:
                     ext = ".txt"
                 ofn = "%s%s" % (entry.name.replace(".", "_"), ext)
                 dest = os.path.join(self.repdir, ofn)
                 src = os.path.join(self.tooloutdir, entry.name)
+                shutil.copyfile(src, dest)
+        with os.scandir(self.testdir) as outs:
+            for entry in outs:
+                if not entry.is_file():
+                    continue
+                if "." in entry.name:
+                    nayme, ext = os.path.splitext(entry.name)
+                else:
+                    ext = ".txt"
+                newname = f"{entry.name}{ext}"
+                dest = os.path.join(self.repdir, newname)
+                src = os.path.join(self.testdir, entry.name)
                 shutil.copyfile(src, dest)
 
 
@@ -1062,8 +1078,10 @@ def main():
         r.makeToolTar()
         retcode = r.planemo_test(genoutputs=False)
         r.moveRunOutputs()
+        r.makeToolTar()
         print(f"second planemo_test returned {retcode}")
         if args.make_Tool == "gentestinstall":
+            r.shedLoad()
             r.eph_galaxy_load()
 
 

@@ -135,7 +135,7 @@
    <!--<requirement type="package" version="3.8.5" >python</requirement>-->
    <requirement type="package" version="0.72.0" >planemo</requirement>
    <requirement type="package" version="0.4.11" >galaxyxml</requirement>
-</requirements></requirements>
+</requirements>
 
   <command ><![CDATA[
 #import os
