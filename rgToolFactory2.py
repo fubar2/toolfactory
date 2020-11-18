@@ -1,4 +1,3 @@
-
 # rgToolFactory.py
 # see https://github.com/fubar2/toolfactory
 #
@@ -878,7 +877,19 @@ class ScriptRunner:
         """planemo is a requirement so is available for testing
         and for generating test outputs if command or test overrides are supplied
         test outputs are sent to repdir for display
-        planemo test --engine docker_galaxy --database_type docker_postgres --galaxy_root /galaxy-central pyrevpos/pyrevpos.xml
+        planemo test --engine docker_galaxy  --galaxy_root /galaxy-central pyrevpos/pyrevpos.xml
+
+        Planemo runs:
+python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
+/export/galaxy-central/database/job_working_directory/000/17/working/TF_run_report_tempdir/tacrev_planemo_test_report.html
+--with-xunit --xunit-file /tmp/tmpt90p7f9h/xunit.xml --with-structureddata
+--structured-data-file
+/export/galaxy-central/database/job_working_directory/000/17/working/tfout/tool_test_output.json functional.test_toolbox
+
+
+        for the planemo-biocontainer,
+        planemo test --conda_dependency_resolution --skip_venv --galaxy_root /galthrow/ rgToolFactory2.xml
+
         """
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(self.repdir,f"{self.tool_name}_planemo_test_report.html")
@@ -891,8 +902,10 @@ class ScriptRunner:
             cll = [
                 "planemo",
                 "test",
+                "--conda_dependency_resolution",
                 "--test_data", os.path.abspath(self.testdir),
                 "--test_output", os.path.abspath(tool_test_path),
+                "--skip_venv",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
@@ -910,8 +923,10 @@ class ScriptRunner:
             cll = [
                 "planemo",
                 "test",
+                "--conda_dependency_resolution",
                 "--test_data", os.path.abspath(self.testdir),
                 "--test_output", os.path.abspath(tool_test_path),
+                "--skip_venv",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 os.path.abspath(xreal),

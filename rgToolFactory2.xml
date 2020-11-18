@@ -132,9 +132,14 @@
   </macros>
 
 <requirements>
-   <!--<requirement type="package" version="3.8.5" >python</requirement>-->
-   <requirement type="package" version="0.72.0" >planemo</requirement>
-   <requirement type="package" version="0.4.11" >galaxyxml</requirement>
+   <!--
+   <requirement type="package" version="3.8.5" >python</requirement>
+   <requirement type="package" version="0.72.0">planemo</requirement>
+   -->
+   <container type="docker">quay.io/fubar2/planemo-biocontainer</container>
+   <requirement type="package" version="0.4.11">galaxyxml</requirement>
+   <requirement type="package" version="0.14.0">bioblend</requirement>
+
 </requirements>
 
   <command ><![CDATA[
