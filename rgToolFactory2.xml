@@ -139,6 +139,7 @@
    <container type="docker">quay.io/fubar2/planemo-biocontainer</container>
    <requirement type="package" version="0.4.11">galaxyxml</requirement>
    <requirement type="package" version="0.14.0">bioblend</requirement>
+   <requirement type="package" version="0.10.6">ephemeris</requirement>
 
 </requirements>
 
