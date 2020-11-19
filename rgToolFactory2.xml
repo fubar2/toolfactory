@@ -158,29 +158,29 @@ python3 $__tool_directory__/rgToolFactory2.py
 --script_path "$runme"
 --sysexe "$usescript.scriptrunner"
     #end if
---tool_name="$tool_name"  --user_email="$__user_email__" --citations="$citeme"  --parampass="$ppass.parampass"
+--tool_name "$tool_name"  --user_email "$__user_email__" --citations "$citeme"  --parampass "$ppass.parampass"
 
    #if str($makeMode.make_Tool)!="runonly":
---make_Tool="$makeMode.make_Tool"
---tool_desc="$makeMode.tool_desc"
---tool_version="$makeMode.tool_version"
---help_text="$helpme"
---new_tool="$new_tool"
---toolshed_api_key="$makeMode.toolshed_apikey"
---galaxy_api_key="$makeMode.galaxy_apikey"
---toolshed_url="$makeMode.toolshed_url"
---galaxy_url="$makeMode.galaxy_url"
+--make_Tool "$makeMode.make_Tool"
+--tool_desc "$makeMode.tool_desc"
+--tool_version "$makeMode.tool_version"
+--help_text "$helpme"
+--new_tool "$new_tool"
+--toolshed_api_key "$makeMode.toolshed_apikey"
+--galaxy_api_key "$makeMode.galaxy_apikey"
+--toolshed_url "$makeMode.toolshed_url"
+--galaxy_url "$makeMode.galaxy_url"
    #end if
    #if $ppass.parampass != '0':
      #if str($ppass.edit_params) == "yes":
 --edit_additional_parameters
      #end if
      #for apar in $ppass.additional_parameters:
---additional_parameters="$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.param_CL~~~$apar.param_CLprefixed"
+--additional_parameters "$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.param_CL~~~$apar.param_CLprefixed"
      #end for
    #end if
      #for $intab in $ppass.history_inputs:
---input_files="$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
+--input_files "$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
      #end for
      #for $otab in $ppass.history_outputs:
 --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
