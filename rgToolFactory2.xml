@@ -132,7 +132,7 @@
   </macros>
 
 <requirements>
-   <container type="docker">quay.io/fubar2/toolfactory-biocontainer</container>
+   <container type="docker">quay.io/fubar2/toolfactorybiocontainer</container>
 </requirements>
 
   <command ><![CDATA[
