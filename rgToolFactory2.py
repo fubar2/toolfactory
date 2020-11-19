@@ -905,7 +905,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
                 "--galaxy_root",
-                self.args.galaxy_root,
+                "/home/biodocker/galaxy-central",
                 "--update_test_data",
                 os.path.abspath(xreal),
             ]
@@ -926,7 +926,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
                 "--galaxy_root",
-                self.args.galaxy_root,
+                "/home/biodocker/galaxy-central",
                 os.path.abspath(xreal),
             ]
             p = subprocess.run(
@@ -965,7 +965,6 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             cll = [
                 "planemo",
                 "test",
-                "--conda_dependency_resolution",
                 "--test_data", os.path.abspath(self.testdir),
                 "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
@@ -986,7 +985,6 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             cll = [
                 "planemo",
                 "test",
-                "--conda_dependency_resolution",
                 "--test_data", os.path.abspath(self.testdir),
                 "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
