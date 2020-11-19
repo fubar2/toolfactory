@@ -1,4 +1,4 @@
-# rgToolFactory.py
+# replace with shebang for biocontainer
 # see https://github.com/fubar2/toolfactory
 #
 # copyright ross lazarus (ross stop lazarus at gmail stop com) May 2012
@@ -898,7 +898,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
         if genoutputs:
             dummy, tfile = tempfile.mkstemp()
             cll = [
-                ".","/home/biodocker/galaxy-central/.venv/bin/activate &&",
+                ".","/home/biodocker/galaxy-central/.venv/bin/activate", "&&",
                 "planemo",
                 "test",
                 "--test_data", os.path.abspath(self.testdir),
