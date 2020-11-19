@@ -898,14 +898,13 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
         if genoutputs:
             dummy, tfile = tempfile.mkstemp()
             cll = [
-                ".","/home/biodocker/galaxy-central/.venv/bin/activate", "&&",
                 "planemo",
                 "test",
                 "--test_data", os.path.abspath(self.testdir),
                 "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
                 "--galaxy_root",
-                "/home/biodocker/galaxy-central",
+                self.args.galaxy_root,
                 "--update_test_data",
                 os.path.abspath(xreal),
             ]
@@ -919,14 +918,13 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
 
         else:
             cll = [
-                ".","/home/biodocker/galaxy-central/.venv/bin/activate","&&",
                 "planemo",
                 "test",
                 "--test_data", os.path.abspath(self.testdir),
                 "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
                 "--galaxy_root",
-                "/home/biodocker/galaxy-central",
+                self.args.galaxy_root,
                 os.path.abspath(xreal),
             ]
             p = subprocess.run(
