@@ -131,7 +131,7 @@
      </xml>
   </macros>
 
-<requirements>p
+<requirements>
    <requirement type="package" version="0.72.0">planemo</requirement>
    <requirement type="package" version="0.4.11">galaxyxml</requirement>
    <requirement type="package" version="0.14.0">bioblend</requirement>
