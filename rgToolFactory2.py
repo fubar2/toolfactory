@@ -20,7 +20,9 @@
 # essential problem is to create two command lines - one for the tool xml and a different
 # one to run the executable with the supplied test data and settings
 # Be simpler to write the tool, then run it with planemo and soak up the test outputs.
-
+# well well. sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
+# does the needful. Use GALAXY_TEST_SAVE /foo to save outputs - only the tar.gz - not the rest sadly
+# GALAXY_TEST_NO_CLEANUP GALAXY_TEST_TMP_DIR=wherever
 
 import argparse
 import datetime

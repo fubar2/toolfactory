@@ -411,6 +411,7 @@ $tool_name help goes here
     <param name="choosescript" value="yes" />
     <param name="script_path" value="$runme"/>
     <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />
+    <output name="output2" file="output2_sample" compare="diff" />
 
 </test>
 </tests>
