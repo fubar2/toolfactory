@@ -967,8 +967,6 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             cll = [
                 "planemo",
                 "test",
-                "--test_data", os.path.abspath(self.testdir),
-                "--test_output", os.path.abspath(tool_test_path),
                 "--skip_venv",
                 "--galaxy_root",
                 self.args.galaxy_root,
@@ -978,7 +976,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             p = subprocess.run(
                 cll,
                 shell=False,
-                cwd=self.tooloutdir,
+                cwd=self.testdir,
                 stderr=dummy,
                 stdout=dummy,
             )
@@ -995,7 +993,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 os.path.abspath(xreal),
             ]
             p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                cll, shell=False, cwd=self.testdir, stderr=tout, stdout=tout
             )
         tout.close()
         return p.returncode
@@ -1045,11 +1043,12 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             )
 
         for p in self.outfiles:
-            src = p[ONAMEPOS]
+            oname = p[ONAMEPOS]
+            src = os.path.join(self.testdir,oname)
             if os.path.isfile(src):
-                dest = os.path.join(self.testdir, "%s_sample" % src)
+                dest = os.path.join(self.testdir, "%s_sample" % oname)
                 shutil.copyfile(src, dest)
-                dest = os.path.join(self.repdir, "%s.%s" % (src, p[OFMTPOS]))
+                dest = os.path.join(self.repdir, "%s.sample" % (oname))
                 shutil.copyfile(src, dest)
             else:
                 print(
