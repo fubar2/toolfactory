@@ -898,6 +898,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
         if genoutputs:
             dummy, tfile = tempfile.mkstemp()
             cll = [
+                ".", os.path.join(self.args.galaxy_root,'.venv','bin','activate'),"&&",
                 "planemo",
                 "test",
                 "--test_data", os.path.abspath(self.testdir),
@@ -918,6 +919,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
 
         else:
             cll = [
+                ".", os.path.join(self.args.galaxy_root,'.venv','bin','activate'),"&&",
                 "planemo",
                 "test",
                 "--test_data", os.path.abspath(self.testdir),
