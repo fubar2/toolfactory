@@ -999,6 +999,57 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
         return p.returncode
 
 
+    def gal_test(self, genoutputs=True):
+        """
+export GALAXY_TEST_SAVE="./foo" && export GALAXY_TEST_NO_CLEANUP="1" \
+&& export GALAXY_TEST_TMP_DIR=./foo && sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
+
+        """
+        tool_test_rep_path = os.path.join(self.repdir,f"{self.tool_name}_galaxy_test_report.html")
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        if genoutputs:
+            dummy, tfile = tempfile.mkstemp()
+            cll = [
+            "mkdir -p ./test","&&","export GALAXY_TEST_SAVE='./test'", "&&", "export GALAXY_TEST_NO_CLEANUP='1'", \
+           "&&", "export GALAXY_TEST_TMP_DIR='./test'", "&&", f"sh {self.args.galaxy_root}/run_tests.sh --id {self.args.tool_id} --report_file {tool_test_rep_path} functional.test_toolbox",
+            ]
+            p = subprocess.run(
+                cll,
+                shell=False,
+                cwd=self.testdir,
+                stderr=dummy,
+                stdout=dummy,
+            )
+            # if all went well, tgz is in ./test and down a nest of tmp directories lurk the output files
+            outfiles = []
+            for p in self.outfiles:
+                oname = p[ONAMEPOS]
+                outfiles.append(oname)
+            paths = []
+            for root, dirs, files in os.walk('./test'):
+                for f in files:
+                    if f in outfiles:
+                        paths.append([root,f])
+            for p in paths:
+                src = os.path.join(p[0],p[1])
+                dest = os.path.join(self.testdir,f"{p[1]}_sample")
+                shutil.copyfile(src,dest)
+
+        else:
+            cll = [
+            "mkdir -p ./test","&&","rm -rf ./test/*","&&","export GALAXY_TEST_SAVE='./test'", "&&", "export GALAXY_TEST_NO_CLEANUP=", \
+           "&&", "export GALAXY_TEST_TMP_DIR='./test'", "&&", f"sh {self.args.galaxy_root}/run_tests.sh --id {self.args.tool_id} --report_file {tool_test_rep_path} functional.test_toolbox",
+            ]
+            p = subprocess.run(
+                cll, shell=False, cwd=self.testdir, stderr=tout, stdout=tout
+            )
+        tout.close()
+        return p.returncode
+
+
     def writeShedyml(self):
         """for planemo"""
         yuser = self.args.user_email.split("@")[0]
@@ -1151,16 +1202,15 @@ def main():
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
+        r.makeToolTar()
+        r.shedLoad()
+        r.eph_galaxy_load()
+        retcode = r.gal_test(genoutputs=True)  # this fails
+        r.makeToolTar()
+        retcode = r.gal_test(genoutputs=False)
         r.moveRunOutputs()
         r.makeToolTar()
-        retcode = r.planemo_test(genoutputs=False)
-        r.moveRunOutputs()
-        r.makeToolTar()
-        print(f"second planemo_test returned {retcode}")
-        if args.make_Tool == "gentestinstall":
-            r.shedLoad()
-            r.eph_galaxy_load()
+        print(f"second galaxy_test returned {retcode}")
 
 
 if __name__ == "__main__":
