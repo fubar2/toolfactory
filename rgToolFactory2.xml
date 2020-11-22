@@ -136,6 +136,7 @@
    <requirement type="package" version="0.14.0">bioblend</requirement>
    <requirement type="package" version="0.10.6">ephemeris</requirement>
    <requirement type="package" version="0.72.0">planemo</requirement>
+   <requirement type="package" version="4.3.1">docker-py</requirement>
 </requirements>
 
   <command ><![CDATA[
