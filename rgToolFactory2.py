@@ -23,6 +23,7 @@
 # well well. sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
 # does the needful. Use GALAXY_TEST_SAVE /foo to save outputs - only the tar.gz - not the rest sadly
 # GALAXY_TEST_NO_CLEANUP GALAXY_TEST_TMP_DIR=wherever
+# planemo test --engine docker_galaxy --test_data ./test-data/ --docker_extra_volume ./test-data rgToolFactory2.xml
 
 import argparse
 import datetime
@@ -670,6 +671,93 @@ class ScriptRunner:
         logging.debug("run done")
         return retval
 
+
+    def gal_tool_test(self):
+        """
+        This handy script writes test outputs even if they don't exist
+        galaxy-tool-test [-h] [-u GALAXY_URL] [-k KEY] [-a ADMIN_KEY] [--force_path_paste] [-t TOOL_ID] [--tool-version TOOL_VERSION]
+        [-i TEST_INDEX] [-o OUTPUT] [--append] [-j OUTPUT_JSON] [--verbose] [-c CLIENT_TEST_CONFIG]
+        galaxy-tool-test -u http://localhost:8080 -a 3c9afe09f1b7892449d266109639c104 -o /tmp/foo -t hello -j /tmp/foo/hello.json --verbose
+        handy - just leaves outputs in -o
+        """
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp")
+        dummy, tfile = tempfile.mkstemp()
+        cll = [
+            os.path.join(self.args.tool_dir,"galaxy-tool-test"),
+            "-u",
+            self.args.galaxy_url,
+            "-k",
+            self.args.galaxy_api_key,
+            "-t",
+            self.args.tool_name,
+            "-o",
+            testouts,
+        ]
+        subp = subprocess.run(
+           cll, shell=False, stderr=dummy, stdout=dummy
+        )
+        outfiles = []
+        for p in self.outfiles:
+            oname = p[ONAMEPOS]
+            outfiles.append(oname)
+        with os.scandir(testouts) as outs:
+            for entry in outs:
+                if not entry.is_file():
+                    continue
+                dest = os.path.join(self.tooloutdir, entry.name)
+                src = os.path.join(testouts, entry.name)
+                shutil.copyfile(src, dest)
+                dest = os.path.join(self.testdir, entry.name)
+                src = os.path.join(testouts, entry.name)
+                shutil.copyfile(src, dest)
+                dest = os.path.join(self.repdir,f"{entry.name}_sample")
+                tout.write(f"## found and moved output {entry.name} to {dest}\n")
+        tout.close()
+        shutil.rmtree(testouts)
+        return subp.returncode
+
+    def gal_test(self):
+        """
+        Uses the built in galaxy tool tester run_test.sh
+
+        export GALAXY_TEST_SAVE="./foo" && export GALAXY_TEST_NO_CLEANUP="1" \
+        && export GALAXY_TEST_TMP_DIR=./foo && sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
+
+        """
+        testdir = tempfile.mkdtemp(suffix=None, prefix="tftemp")
+        tool_test_rep = f"{self.tool_name}_galaxy_test_report_html.html"
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+
+        ourenv = os.environ
+        ourenv["GALAXY_TEST_SAVE"] = testdir
+        ourenv["GALAXY_TEST_NO_CLEANUP"] = "1"
+        ourenv["GALAXY_TEST_TMP_DIR"] = testdir
+
+        cll = [
+       "sh", f"{self.args.galaxy_root}/run_tests.sh", "--id", self.args.tool_name,
+       "--report_file", os.path.join(testdir,tool_test_rep), "functional.test_toolbox",
+        ]
+        subp = subprocess.run(
+            cll, env = ourenv,
+            shell=False, cwd=self.args.galaxy_root, stderr=tout, stdout=tout
+        )
+        src = os.path.join(testdir, tool_test_rep)
+        if os.path.isfile(src):
+            dest = os.path.join(self.repdir, tool_test_rep)
+            shutil.copyfile(src, dest)
+        else:
+            tout.write(f"### {src} not found\n")
+        tout.close()
+        return subp.returncode
+
+
     def shedLoad(self):
         """
         {'deleted': False,
@@ -753,7 +841,7 @@ class ScriptRunner:
         tout.close()
         return subp.returncode
 
-    def planemo_shedload(self):
+    def planemo_shedLoad(self):
         """
         planemo shed_create --shed_target testtoolshed
         planemo shed_init --name=<name>
@@ -999,74 +1087,6 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
         return subp.returncode
 
 
-    def gal_test(self, genoutputs=True):
-        """
-export GALAXY_TEST_SAVE="./foo" && export GALAXY_TEST_NO_CLEANUP="1" \
-&& export GALAXY_TEST_TMP_DIR=./foo && sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
-
-        """
-        tool_test_rep_path = os.path.join(self.repdir,f"{self.tool_name}_galaxy_test_report_html.html")
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        testdir = '/tmp/testdir'
-        ourenv = os.environ
-        ourenv["GALAXY_TEST_SAVE"] = os.abspath(testdir)
-        ourenv["GALAXY_TEST_NO_CLEANUP"] = "1"
-        ourenv["GALAXY_TEST_TMP_DIR"] = os.abspath(testdir)
-        if genoutputs:
-
-            if not os.path.exists(testdir):
-                os.mkdir(testdir)
-            dummy = open('failedtest.log','w')
-            cll = [
-            "sh", f"{self.args.galaxy_root}/run_tests.sh", "--id", self.args.tool_name,
-           "--report_file", tool_test_rep_path, "functional.test_toolbox",
-           ]
-            subp = subprocess.run(
-                cll,
-                shell=False,
-                env = ourenv,
-                cwd=self.testdir,
-                stderr=dummy,
-                stdout=dummy,
-            )
-            dummy.close()
-            # if all went well, tgz is in ./test and down a nest of tmp directories lurk the output files
-            outfiles = []
-            for p in self.outfiles:
-                oname = p[ONAMEPOS]
-                outfiles.append(oname)
-            paths = []
-            for root, dirs, files in os.walk(testdir):
-                for f in files:
-                    tout.write(f"{root} {f}\n")
-                    if f in outfiles:
-                        paths.append([root,f])
-                        tout.write(f"## found output {f}")
-
-            if len(paths) != len(self.outfiles):
-                tout.write(f"## problem - outfiles not all found")
-            for path in paths:
-                fname = path[1]
-                src = os.path.join(path[0],fname)
-                dest = os.path.join(self.testdir,f"{fname}_sample")
-                shutil.copyfile(src,dest)
-        else:
-            cll = [
-           "sh", f"{self.args.galaxy_root}/run_tests.sh", "--id", self.args.tool_name,
-           "--report_file", tool_test_rep_path, "functional.test_toolbox",
-            ]
-            subp = subprocess.run(
-                cll, env = ourenv,
-                shell=False, cwd=self.testdir, stderr=tout, stdout=tout
-            )
-        tout.close()
-        return subp.returncode
-
-
-
     def writeShedyml(self):
         """for planemo"""
         yuser = self.args.user_email.split("@")[0]
@@ -1112,56 +1132,22 @@ export GALAXY_TEST_SAVE="./foo" && export GALAXY_TEST_NO_CLEANUP="1" \
 
         for p in self.outfiles:
             oname = p[ONAMEPOS]
-            src = os.path.join(self.testdir,oname)
-            if os.path.isfile(src):
-                dest = os.path.join(self.testdir, "%s_sample" % oname)
-                shutil.copyfile(src, dest)
-                dest = os.path.join(self.repdir, "%s.sample" % (oname))
-                shutil.copyfile(src, dest)
-            else:
-                print(
-                    "### problem - output file %s not found in tooloutdir %s"
-                    % (src, self.tooloutdir)
-                )
+            tdest = os.path.join(self.testdir, "%s_sample" % oname)
+            if not os.path.isfile(tdest):
+                src = os.path.join(self.testdir,oname)
+                if os.path.isfile(src):
+                    shutil.copyfile(src, tdest)
+                    dest = os.path.join(self.repdir, "%s.sample" % (oname))
+                    shutil.copyfile(src, dest)
+                else:
+                    print(
+                        "### problem - output file %s not found in testdir %s"
+                        % (tdest, self.testdir)
+                    )
         tf = tarfile.open(self.newtarpath, "w:gz")
         tf.add(name=self.tooloutdir, arcname=self.tool_name, filter=exclude_function)
         tf.close()
         shutil.copyfile(self.newtarpath, self.args.new_tool)
-
-    def fakeToolTar(self):
-        """move fake outputs into test-data and prepare the tarball"""
-        excludeme = "tool_test_output"
-
-        def exclude_function(tarinfo):
-            filename = tarinfo.name
-            return (
-                None
-                if filename.startswith(excludeme)
-                else tarinfo
-            )
-
-        for p in self.outfiles:
-            oname = p[ONAMEPOS]
-            src = os.path.join(self.testdir,oname)
-            if os.path.isfile(src):
-                dest = os.path.join(self.testdir, "%s_sample" % oname)
-                shutil.copyfile(src, dest)
-                dest = os.path.join(self.repdir, "%s.sample" % (oname))
-                shutil.copyfile(src, dest)
-            else:
-                with open(src,'w') as fayk:
-                    fayk.write('fake!\n')
-                dest = os.path.join(self.testdir, "%s_sample" % oname)
-                shutil.copyfile(src, dest)
-                print(
-                    "### problem - output file %s not found in tooloutdir %s so faked"
-                    % (src, self.tooloutdir)
-                )
-        tf = tarfile.open(self.newtarpath, "w:gz")
-        tf.add(name=self.tooloutdir, arcname=self.tool_name, filter=exclude_function)
-        tf.close()
-        shutil.copyfile(self.newtarpath, self.args.new_tool)
-
 
     def moveRunOutputs(self):
         """need to move planemo or run outputs into toolfactory collection"""
@@ -1254,12 +1240,16 @@ def main():
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        r.fakeToolTar()
+        r.makeToolTar()
+        #r.planemo_shedLoad()
         r.shedLoad()
         r.eph_galaxy_load()
-        retcode = r.gal_test(genoutputs=True)  # this fails
+        retcode = r.gal_tool_test()  # writes outputs
         r.makeToolTar()
-        retcode = r.gal_test(genoutputs=False)
+        #r.planemo_shedLoad()
+        r.shedLoad()
+        r.eph_galaxy_load()
+        retcode = r.gal_test()
         r.moveRunOutputs()
         r.makeToolTar()
         print(f"second galaxy_test returned {retcode}")
