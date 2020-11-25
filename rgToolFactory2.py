@@ -26,6 +26,7 @@
 # planemo test --engine docker_galaxy --test_data ./test-data/ --docker_extra_volume ./test-data rgToolFactory2.xml
 
 import argparse
+import copy
 import datetime
 import json
 import logging
@@ -39,9 +40,10 @@ import tempfile
 import time
 
 
+from bioblend import ConnectionError
 from bioblend import toolshed
 
-# import docker
+import docker
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
@@ -152,6 +154,8 @@ class ScriptRunner:
         prepare command line cl for running the tool here
         and prepare elements needed for galaxyxml tool generation
         """
+        self.ourcwd = os.getcwd()
+        self.ourenv = copy.deepcopy(os.environ)
         self.infiles = [x.split(ourdelim) for x in args.input_files]
         self.outfiles = [x.split(ourdelim) for x in args.output_files]
         self.addpar = [x.split(ourdelim) for x in args.additional_parameters]
@@ -179,7 +183,7 @@ class ScriptRunner:
         self.tool_name = re.sub("[^a-zA-Z0-9_]+", "", args.tool_name)
         self.tool_id = self.tool_name
         self.newtool = gxt.Tool(
-            self.args.tool_name,
+            self.tool_name,
             self.tool_id,
             self.args.tool_version,
             self.args.tool_desc,
@@ -644,7 +648,7 @@ class ScriptRunner:
                     "## Executing Toolfactory generated command line = %s\n" % scl
                 )
             sto.flush()
-            subp = subprocess.run(self.cl, shell=False, stdout=sto, stderr=ste)
+            subp = subprocess.run(self.cl, env=self.ourenv, shell=False, stdout=sto, stderr=ste)
             sto.close()
             ste.close()
             retval = subp.returncode
@@ -657,7 +661,7 @@ class ScriptRunner:
                 sto = open(self.outfiles[0][ONAMEPOS], "wb")
             else:
                 sto = sys.stdout
-            subp = subprocess.run(self.cl, shell=False, stdout=sto, stdin=sti)
+            subp = subprocess.run(self.cl, env=self.ourenv, shell=False, stdout=sto, stdin=sti)
             sto.write("## Executing Toolfactory generated command line = %s\n" % scl)
             retval = subp.returncode
             sto.close()
@@ -671,34 +675,114 @@ class ScriptRunner:
         logging.debug("run done")
         return retval
 
+    def planemo_biodocker_test(self):
+        """planemo currently leaks dependencies if used in the same container and gets unhappy after a
+        first successful run. https://github.com/galaxyproject/planemo/issues/1078#issuecomment-731476930
+
+        Docker biocontainer has planemo with caches filled so should run faster
+
+
+        """
+        planemoimage = "quay.io/fubar2/planemo-biocontainer"
+        xreal = "%s.xml" % self.tool_name
+        repname = f"{self.tool_name}_planemo_test_report.html"
+        ptestrep_path = os.path.join(self.repdir,repname)
+        # these are for the image
+        galaxy_root = "/home/biodocker/galaxy-central"
+        galaxy_url = 'http://localhost'
+        toolshed_url = 'http://localhost:9009' # from the host
+        galaxy_api = 'fakekey'
+        toolshed_api = 'ba17969ec4f1d06a201ef405a646bb48 ' # 'fakekey'
+        tool_name = self.tool_name
+        workdir = "/export/tooltest" # must be mounted as a volume
+        shutil.rmtree(workdir,ignore_errors=True)
+        imtooldir = os.path.join(workdir,self.tool_name)
+        imtestdir = os.path.join(imtooldir,'test-data')
+        ptestpath = os.path.join(imtooldir,xreal)
+        imrep_path = os.path.join(workdir,repname)
+        for d in [workdir, imtooldir, imtestdir]:
+            if not os.path.exists(d):
+                os.mkdirs(d)
+        with os.scandir(self.testdir) as outs:
+            for entry in outs:
+                if not entry.is_file():
+                    continue
+                src = os.path.join(self.testdir, entry.name)
+                dest = os.path.join(imtestdir, entry.name)
+                shutil.copyfile(src, dest)
+        shutil.copy_file(xreal,os.path.join(imtooldir,xreal))
+        ptestcl = f"planemo test --job_output_files {workdir} --update_test_data --test_data {self.testdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        client = docker.from_env()
+        container = client.containers.run(planemoimage,ptestcl,
+            volumes={os.abspath("export/tooltest"):{'bind':'/export/tooltest','mode':'rw'}}, )
+        tout.write(f"## Ran {ptestcl}")
+        with os.scandir(imtestdir) as outs:
+            for entry in outs:
+                if not entry.is_file():
+                    continue
+                src = os.path.join(imtestdir, entry.name)
+                dest = os.path.join(self.testdir, entry.name)
+                shutil.copyfile(src, dest)
+        ptestcl = f"planemo test --job_output_files {workdir}  --test_output {imrep_path} --test_data {self.testdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        container = client.containers.run(planemoimage,ptestcl,
+            volumes={os.abspath("export/tooltest"):{'bind':'/export/tooltest','mode':'rw'}}, )
+        tout.write(f"## Ran {ptestcl}")
+        if os.path.isfile(imrep_path):
+            shutil.copyfile(imrep_path,ptestrep_path)
+        else:
+            tout.write(f"## planemo_biodocker_test - no test report {imrep_path} found")
+        tout.close()
+
+
 
     def gal_tool_test(self):
         """
-        This handy script writes test outputs even if they don't exist
-        galaxy-tool-test [-h] [-u GALAXY_URL] [-k KEY] [-a ADMIN_KEY] [--force_path_paste] [-t TOOL_ID] [--tool-version TOOL_VERSION]
-        [-i TEST_INDEX] [-o OUTPUT] [--append] [-j OUTPUT_JSON] [--verbose] [-c CLIENT_TEST_CONFIG]
+        On path should be a handy script writes test outputs even if they don't exist
+
         galaxy-tool-test -u http://localhost:8080 -a 3c9afe09f1b7892449d266109639c104 -o /tmp/foo -t hello -j /tmp/foo/hello.json --verbose
-        handy - just leaves outputs in -o
+
+       leaves outputs in -o !
         """
+        gttscript = f"""#!{self.args.galaxy_venv}/bin/python3
+# -*- coding: utf-8 -*-
+import re
+import sys
+from galaxy.tool_util.verify.script import main
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())
+
+        """
+        galaxy_lib = os.path.join(self.args.galaxy_root,'lib')
+        fakeenv = copy.copy(os.environ)
+        fakeenv ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        fakeenv ["PYTHONPATH"] = f"{galaxy_lib}"
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
             tout = open(self.tlog, "w")
-        testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp")
+        testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp",dir="/tmp")
+        tout.write(f"#### using {testouts} as tempdir\n")
         dummy, tfile = tempfile.mkstemp()
+        gtt = 'galaxy-tool-test'
+        gttf = open(gtt,'w')
+        gttf.write(gttscript)
+        gttf.write('\n')
+        gttf.close()
+        os.chmod(gtt,0o744)
         cll = [
-            os.path.join(self.args.tool_dir,"galaxy-tool-test"),
+            os.path.abspath(gtt),
             "-u",
             self.args.galaxy_url,
             "-k",
             self.args.galaxy_api_key,
             "-t",
-            self.args.tool_name,
+            self.tool_name,
             "-o",
             testouts,
         ]
         subp = subprocess.run(
-           cll, shell=False, stderr=dummy, stdout=dummy
+           cll, env=fakeenv, cwd=galaxy_lib, shell=True, stderr=tout, stdout=tout
         )
         outfiles = []
         for p in self.outfiles:
@@ -711,13 +795,13 @@ class ScriptRunner:
                 dest = os.path.join(self.tooloutdir, entry.name)
                 src = os.path.join(testouts, entry.name)
                 shutil.copyfile(src, dest)
-                dest = os.path.join(self.testdir, entry.name)
+                testdest = os.path.join(self.testdir, entry.name)
                 src = os.path.join(testouts, entry.name)
-                shutil.copyfile(src, dest)
+                shutil.copyfile(src, testdest)
                 dest = os.path.join(self.repdir,f"{entry.name}_sample")
-                tout.write(f"## found and moved output {entry.name} to {dest}\n")
+                tout.write(f"## found and moved output {entry.name} to {dest} and {testdest}\n")
         tout.close()
-        shutil.rmtree(testouts)
+        #shutil.rmtree(testouts)
         return subp.returncode
 
     def gal_test(self):
@@ -728,25 +812,26 @@ class ScriptRunner:
         && export GALAXY_TEST_TMP_DIR=./foo && sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
 
         """
-        testdir = tempfile.mkdtemp(suffix=None, prefix="tftemp")
+        testdir = tempfile.mkdtemp(suffix=None, prefix="tftemp",dir="/tmp")
         tool_test_rep = f"{self.tool_name}_galaxy_test_report_html.html"
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
             tout = open(self.tlog, "w")
 
-        ourenv = os.environ
-        ourenv["GALAXY_TEST_SAVE"] = testdir
-        ourenv["GALAXY_TEST_NO_CLEANUP"] = "1"
-        ourenv["GALAXY_TEST_TMP_DIR"] = testdir
+        fakeenv  = copy.copy(os.environ)
+        fakeenv["GALAXY_TEST_SAVE"] = testdir
+        fakeenv["GALAXY_TEST_NO_CLEANUP"] = "1"
+        fakeenv["GALAXY_TEST_TMP_DIR"] = testdir
+        galaxy_lib = os.path.join(self.args.galaxy_root,'lib')
 
         cll = [
-       "sh", f"{self.args.galaxy_root}/run_tests.sh", "--id", self.args.tool_name,
+       "sh", f"{self.args.galaxy_root}/run_tests.sh", "--id", self.tool_name,
        "--report_file", os.path.join(testdir,tool_test_rep), "functional.test_toolbox",
         ]
         subp = subprocess.run(
-            cll, env = ourenv,
-            shell=False, cwd=self.args.galaxy_root, stderr=tout, stdout=tout
+            cll, env = fakeenv ,
+            shell=False, cwd=galaxy_lib, stderr=tout, stdout=tout
         )
         src = os.path.join(testdir, tool_test_rep)
         if os.path.isfile(src):
@@ -781,8 +866,9 @@ class ScriptRunner:
         rnames = [x.get("name", "?") for x in repos]
         rids = [x.get("id", "?") for x in repos]
         sto.write(f"############names={rnames} rids={rids}\n")
+        sto.write(f"############names={repos}\n")
         tfcat = "ToolFactory generated tools"
-        if self.args.tool_name not in rnames:
+        if self.tool_name not in rnames:
             tscat = ts.categories.get_categories()
             cnames = [x.get("name", "?").strip() for x in tscat]
             cids = [x.get("id", "?") for x in tscat]
@@ -802,12 +888,14 @@ class ScriptRunner:
             tid = res.get("id", None)
             sto.write(f"##########create res={res}\n")
         else:
-            i = rnames.index(self.args.tool_name)
+            i = rnames.index(self.tool_name)
             tid = rids[i]
-        res = ts.repositories.update_repository(
-            id=tid, tar_ball_path=self.newtarpath, commit_message=None
-        )
-        sto.write(f"#####update res={res}\n")
+        try:
+            res = ts.repositories.update_repository(
+                id=tid, tar_ball_path=self.newtarpath, commit_message=None)
+            sto.write(f"#####update res={res}\n")
+        except ConnectionError:
+            sto.write("Probably no change to repository - bioblend shed upload failed\n")
         sto.close()
 
     def eph_galaxy_load(self):
@@ -825,7 +913,7 @@ class ScriptRunner:
             "-a",
             self.args.galaxy_api_key,
             "--name",
-            self.args.tool_name,
+            self.tool_name,
             "--owner",
             "fubar",
             "--toolshed",
@@ -834,9 +922,9 @@ class ScriptRunner:
             "ToolFactory",
         ]
         tout.write("running\n%s\n" % " ".join(cll))
-        subp = subprocess.run(cll, shell=False, stderr=tout, stdout=tout)
+        subp = subprocess.run(cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stderr=tout, stdout=tout)
         tout.write(
-            "installed %s - got retcode %d\n" % (self.args.tool_name, subp.returncode)
+            "installed %s - got retcode %d\n" % (self.tool_name, subp.returncode)
         )
         tout.close()
         return subp.returncode
@@ -866,7 +954,7 @@ class ScriptRunner:
         rnames = [x.get("name", "?") for x in repos]
         rids = [x.get("id", "?") for x in repos]
         #cat = "ToolFactory generated tools"
-        if self.args.tool_name not in rnames:
+        if self.tool_name not in rnames:
             cll = [
                 "planemo",
                 "shed_create",
@@ -875,20 +963,20 @@ class ScriptRunner:
                 "--owner",
                 "fubar",
                 "--name",
-                self.args.tool_name,
+                self.tool_name,
                 "--shed_key",
                 self.args.toolshed_api_key,
             ]
             try:
                 subp = subprocess.run(
-                    cll, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
+                    cll, env=self.ourenv, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
                 )
             except:
                 pass
             if subp.returncode != 0:
-                tout.write("Repository %s exists\n" % self.args.tool_name)
+                tout.write("Repository %s exists\n" % self.tool_name)
             else:
-                tout.write("initiated %s\n" % self.args.tool_name)
+                tout.write("initiated %s\n" % self.tool_name)
         cll = [
             "planemo",
             "shed_upload",
@@ -897,13 +985,13 @@ class ScriptRunner:
             "--owner",
             "fubar",
             "--name",
-            self.args.tool_name,
+            self.tool_name,
             "--shed_key",
             self.args.toolshed_api_key,
             "--tar",
             self.newtarpath,
         ]
-        subp = subprocess.run(cll, shell=False, stdout=tout, stderr=tout)
+        subp = subprocess.run(cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stdout=tout, stderr=tout)
         tout.write("Ran %s got %d\n" % (" ".join(cll),subp.returncode))
         tout.close()
         return subp.returncode
@@ -923,14 +1011,14 @@ class ScriptRunner:
             "-a",
             self.args.galaxy_api_key,
             "--name",
-            self.args.tool_name,
+            self.tool_name,
             "--owner",
             "fubar",
         ]
         if genoutputs:
             dummy, tfile = tempfile.mkstemp()
             subp = subprocess.run(
-               cll, shell=False, stderr=dummy, stdout=dummy
+               cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stderr=dummy, stdout=dummy
             )
 
             with open('tool_test_output.json','rb') as f:
@@ -960,7 +1048,7 @@ class ScriptRunner:
                     shutil.copyfile(src, dest)
         else:
             subp = subprocess.run(
-               cll, shell=False,  stderr=tout, stdout=tout)
+               cll, env=self.ourenv, cwd=self.ourcwd, shell=False,  stderr=tout, stdout=tout)
             tout.write("eph_test Ran %s got %d" % (" ".join(cll), subp.returncode))
         tout.close()
         return subp.returncode
@@ -1003,6 +1091,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             ]
             subp = subprocess.run(
                 cll,
+                env=self.ourenv,
                 shell=False,
                 cwd=self.tooloutdir,
                 stderr=dummy,
@@ -1022,7 +1111,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 xreal,
             ]
             subp = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                cll, env=self.ourenv, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
             )
         tout.close()
         return subp.returncode
@@ -1064,6 +1153,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
             ]
             subp = subprocess.run(
                 cll,
+                env=self.ourenv,
                 shell=False,
                 cwd=self.testdir,
                 stderr=dummy,
@@ -1081,7 +1171,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 xreal,
             ]
             subp = subprocess.run(
-                cll, shell=False, cwd=self.testdir, stderr=tout, stdout=tout
+                cll, env=self.ourenv, shell=False, cwd=self.testdir, stderr=tout, stdout=tout
             )
         tout.close()
         return subp.returncode
@@ -1219,6 +1309,7 @@ def main():
     a("--toolshed_api_key", default="fakekey")
     a("--galaxy_api_key", default="fakekey")
     a("--galaxy_root", default="/galaxy-central")
+    a("--galaxy_venv", default="/galaxy_venv")
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
@@ -1236,23 +1327,16 @@ def main():
     r.writeShedyml()
     r.makeTool()
     if args.make_Tool == "generate":
-        retcode = r.run()
+        retcode = r.run() # for testing toolfactory itself
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        r.makeToolTar()
-        #r.planemo_shedLoad()
-        r.shedLoad()
-        r.eph_galaxy_load()
-        retcode = r.gal_tool_test()  # writes outputs
-        r.makeToolTar()
-        #r.planemo_shedLoad()
-        r.shedLoad()
-        r.eph_galaxy_load()
-        retcode = r.gal_test()
+        r.planemo_biodocker_test() # test to make outputs and then test
         r.moveRunOutputs()
         r.makeToolTar()
-        print(f"second galaxy_test returned {retcode}")
+        if args.make_Tool == "gentestinstall":
+            r.planemo_shedLoad()
+            r.eph_galaxy_load()
 
 
 if __name__ == "__main__":
