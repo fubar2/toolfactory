@@ -679,13 +679,18 @@ class ScriptRunner:
     def copy_to_container(self, src, dest, container):
         """ Recreate the src directory tree at dest - full path included
         """
+        idir = os.getcwd()
+        workdir = os.path.dirname(src)
+        os.chdir(workdir)
         _, tfname = tempfile.mkstemp(suffix=".tar")
         tar = tarfile.open(tfname, mode='w')
-        tar.add(src)
+        srcb = os.path.basename(src)
+        tar.add(srcb)
         tar.close()
         data = open(tfname, 'rb').read()
         container.put_archive(dest, data)
         os.unlink(tfname)
+        os.chdir(idir)
 
 
     def copy_from_container(self, src, dest, container):
@@ -719,31 +724,47 @@ class ScriptRunner:
             tout = open(self.tlog, "w")
         planemoimage = "quay.io/fubar2/planemo-biocontainer"
         xreal = "%s.xml" % self.tool_name
+        destdir = "/tmp/tfout"
         repname = f"{self.tool_name}_planemo_test_report.html"
         imrep  = os.path.join(destdir,repname)
         ptestrep_path = os.path.join(self.repdir,repname)
         tool_name = self.tool_name
         client = docker.from_env()
         container = client.containers.run(planemoimage,'sleep 10000m', detach=True)
-        destdir = os.path.join("/home/biodocker",self.tool_name)
+        rlog = container.exec_run(f"mkdir -p {destdir}")
+        slogl = str(rlog).split('\\n')
+        slog = '\n'.join(slogl)
+        tout.write(f"## got rlog {slog} from mkdir {destdir}")
         ptestpath = os.path.join(destdir,xreal)
-        copy_to_container(self.tooloutdir,destdir,container)
-        ptestcll = f"planemo test --job_output_files {destdir} --update_test_data --test_data {destdir}/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        self.copy_to_container(self.tooloutdir,'/tmp',container)
+        rlog = container.exec_run(f"ls -la {destdir}")
+        ptestcl = f"planemo test  --update_test_data  --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
             rlog = container.exec_run(ptestcl)
         except:
             e = sys.exc_info()[0]
-            print(f"error: {e}")
-        tout.write(f"## Got {rlog} from {ptestcl}")
-        ptestcl = f"planemo test --job_output_files {destdir}  --test_output {imrep} --test_data {destdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+            tout.write(f"#### error: {e} from {ptestcl}")
+        # fails - used to generate test outputs
+        ptestcl = f"planemo test  --test_output {imrep} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
             rlog = container.exec_run(ptestcl)
         except:
             pass
-        tout.write(f"## Got {rlog} from {ptestcl}")
-        copy_from_container(destdir,self.tooloutdir,container)
+        slogl = str(rlog).split('\\n')
+        slog = '\n'.join(slogl)
+        tout.write(f"## got rlog {slog} from mkdir {destdir}")
+        testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp",dir=".")
+        self.copy_from_container(destdir,testouts,container)
+        try:
+            shutil.rmtree(os.path.join(testouts,self.tooloutdir,'test-data','test-data'))
+        except:
+            e = sys.exc_info()[0]
+            tout.write(f"#### error: {e} from {ptestcl}")
+        shutil.copytree(os.path.join(testouts,self.tooloutdir), self.tooloutdir, dirs_exist_ok=True)
         tout.close()
-        #shutil.rmtree(workdir)
+        container.stop()
+        container.remove()
+        shutil.rmtree(testouts)
 
 
     def planemo_biodocker_vol_test(self):
@@ -1297,13 +1318,13 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
 
     def makeToolTar(self):
         """move outputs into test-data and prepare the tarball"""
-        excludeme = "tool_test_output"
+        excludeme = "_planemo_test_report.html"
 
         def exclude_function(tarinfo):
             filename = tarinfo.name
             return (
                 None
-                if filename.startswith(excludeme)
+                if filename.endswith(excludeme)
                 else tarinfo
             )
 
@@ -1344,7 +1365,7 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 shutil.copyfile(src, dest)
         with os.scandir(self.testdir) as outs:
             for entry in outs:
-                if not entry.is_file():
+                if (not entry.is_file()) or entry.name.endswith('_sample') or entry.name.endswith("_planemo_test_report.html"):
                     continue
                 if "." in entry.name:
                     nayme, ext = os.path.splitext(entry.name)
@@ -1422,7 +1443,7 @@ def main():
         r.moveRunOutputs()
         r.makeToolTar()
         if args.make_Tool == "gentestinstall":
-            r.planemo_shedLoad()
+            r.shedLoad()
             r.eph_galaxy_load()
 
 
