@@ -675,63 +675,150 @@ class ScriptRunner:
         logging.debug("run done")
         return retval
 
+
+    def copy_to_container(self, src, dest, container):
+        """ Recreate the src directory tree at dest - full path included
+        """
+        _, tfname = tempfile.mkstemp(suffix=".tar")
+        tar = tarfile.open(tfname, mode='w')
+        tar.add(src)
+        tar.close()
+        data = open(tfname, 'rb').read()
+        container.put_archive(dest, data)
+        os.unlink(tfname)
+
+
+    def copy_from_container(self, src, dest, container):
+        """ recreate the src directory tree at dest using docker sdk
+        """
+        os.makedirs(dest,exist_ok=True)
+        _, tfname = tempfile.mkstemp(suffix=".tar")
+        tf = open(tfname,'wb')
+        bits, stat = container.get_archive(src)
+        for chunk in bits:
+            tf.write(chunk)
+        tf.close()
+        tar = tarfile.open(tfname,'r')
+        tar.extractall(dest)
+        tar.close()
+        os.unlink(tfname)
+
+
+
     def planemo_biodocker_test(self):
         """planemo currently leaks dependencies if used in the same container and gets unhappy after a
         first successful run. https://github.com/galaxyproject/planemo/issues/1078#issuecomment-731476930
 
-        Docker biocontainer has planemo with caches filled so should run faster
+        Docker biocontainer has planemo with caches filled to save repeated downloads
 
 
         """
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        planemoimage = "quay.io/fubar2/planemo-biocontainer"
+        xreal = "%s.xml" % self.tool_name
+        repname = f"{self.tool_name}_planemo_test_report.html"
+        imrep  = os.path.join(destdir,repname)
+        ptestrep_path = os.path.join(self.repdir,repname)
+        tool_name = self.tool_name
+        client = docker.from_env()
+        container = client.containers.run(planemoimage,'sleep 10000m', detach=True)
+        destdir = os.path.join("/home/biodocker",self.tool_name)
+        ptestpath = os.path.join(destdir,xreal)
+        copy_to_container(self.tooloutdir,destdir,container)
+        ptestcll = f"planemo test --job_output_files {destdir} --update_test_data --test_data {destdir}/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        try:
+            rlog = container.exec_run(ptestcl)
+        except:
+            e = sys.exc_info()[0]
+            print(f"error: {e}")
+        tout.write(f"## Got {rlog} from {ptestcl}")
+        ptestcl = f"planemo test --job_output_files {destdir}  --test_output {imrep} --test_data {destdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        try:
+            rlog = container.exec_run(ptestcl)
+        except:
+            pass
+        tout.write(f"## Got {rlog} from {ptestcl}")
+        copy_from_container(destdir,self.tooloutdir,container)
+        tout.close()
+        #shutil.rmtree(workdir)
+
+
+    def planemo_biodocker_vol_test(self):
+        """planemo currently leaks dependencies if used in the same container and gets unhappy after a
+        first successful run. https://github.com/galaxyproject/planemo/issues/1078#issuecomment-731476930
+
+        Docker biocontainer has planemo with caches filled to save repeated downloads
+        Cannot get volumes to work right in this version
+
+        """
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
         planemoimage = "quay.io/fubar2/planemo-biocontainer"
         xreal = "%s.xml" % self.tool_name
         repname = f"{self.tool_name}_planemo_test_report.html"
         ptestrep_path = os.path.join(self.repdir,repname)
-        # these are for the image
-        galaxy_root = "/home/biodocker/galaxy-central"
-        galaxy_url = 'http://localhost'
-        toolshed_url = 'http://localhost:9009' # from the host
-        galaxy_api = 'fakekey'
-        toolshed_api = 'ba17969ec4f1d06a201ef405a646bb48 ' # 'fakekey'
         tool_name = self.tool_name
-        workdir = "/export/tooltest" # must be mounted as a volume
-        shutil.rmtree(workdir,ignore_errors=True)
-        imtooldir = os.path.join(workdir,self.tool_name)
+        workdir = "export"
+        aworkdir = os.path.abspath(workdir)
+        os.makedirs(workdir, exist_ok=True)
+        os.chmod(workdir,0o777)
+        imworkdir = "/export"
+        # must be mounted as a volume
+        tooldir = os.path.join(workdir,self.tool_name)
+        testdir = os.path.join(tooldir,'test-data')
+        imtooldir = os.path.join(imworkdir,self.tool_name)
         imtestdir = os.path.join(imtooldir,'test-data')
-        ptestpath = os.path.join(imtooldir,xreal)
-        imrep_path = os.path.join(workdir,repname)
-        for d in [workdir, imtooldir, imtestdir]:
+        for d in [tooldir,testdir]:
             if not os.path.exists(d):
-                os.mkdirs(d)
+                os.mkdir(d)
         with os.scandir(self.testdir) as outs:
             for entry in outs:
                 if not entry.is_file():
                     continue
                 src = os.path.join(self.testdir, entry.name)
-                dest = os.path.join(imtestdir, entry.name)
+                dest = os.path.join(testdir, entry.name)
                 shutil.copyfile(src, dest)
-        shutil.copy_file(xreal,os.path.join(imtooldir,xreal))
-        ptestcl = f"planemo test --job_output_files {workdir} --update_test_data --test_data {self.testdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        shutil.copyfile(xreal,os.path.join(tooldir,xreal))
         client = docker.from_env()
-        container = client.containers.run(planemoimage,ptestcl,
-            volumes={os.abspath("export/tooltest"):{'bind':'/export/tooltest','mode':'rw'}}, )
+        # mnt = docker.types.Mount(source='workdir', target=imworkdir) # mounts=[mnt],)
+        atestcl = "ls -lt /export"
+        container = client.containers.run(planemoimage,atestcl,
+           volumes={aworkdir:{'bind':'/export','mode':'rw'}}, )
+        tout.write(f"## Ran {atestcl} and got {container}")
+        ptestpath = os.path.join(imtooldir,xreal)
+        ptestcll = f"planemo test --job_output_files {imtooldir} --update_test_data --test_data {imtestdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        try:
+            container = client.containers.run(planemoimage,ptestcl,
+               volumes={aworkdir:{'bind':'/export','mode':'rw'}}, )
+        except:
+            pass
         tout.write(f"## Ran {ptestcl}")
-        with os.scandir(imtestdir) as outs:
+        with os.scandir(testdir) as outs:
             for entry in outs:
                 if not entry.is_file():
                     continue
-                src = os.path.join(imtestdir, entry.name)
+                src = os.path.join(testdir, entry.name)
                 dest = os.path.join(self.testdir, entry.name)
                 shutil.copyfile(src, dest)
-        ptestcl = f"planemo test --job_output_files {workdir}  --test_output {imrep_path} --test_data {self.testdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
-        container = client.containers.run(planemoimage,ptestcl,
-            volumes={os.abspath("export/tooltest"):{'bind':'/export/tooltest','mode':'rw'}}, )
+        imrep_path = os.path.join(imtooldir,repname)
+        ptestcl = f"planemo test --job_output_files {imtooldir}  --test_output {imrep_path} --test_data {imtestdir} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        try:
+            container = client.containers.run(planemoimage,ptestcl,
+               volumes={aworkdir:{'bind':'/export','mode':'rw'}}, )
+        except:
+            pass
         tout.write(f"## Ran {ptestcl}")
         if os.path.isfile(imrep_path):
             shutil.copyfile(imrep_path,ptestrep_path)
         else:
             tout.write(f"## planemo_biodocker_test - no test report {imrep_path} found")
         tout.close()
+        #shutil.rmtree(workdir)
 
 
 

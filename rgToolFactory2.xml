@@ -133,8 +133,9 @@
 
 <requirements>
    <requirement type="package" version="0.4.11">galaxyxml</requirement>
-   <requirement type="package" version="4.4.0">docker</requirement>
-   <container type="docker">quay.io/fubar2/planemo-biocontainer:latest</requirement>
+   <requirement type="package" version="0.14.0">bioblend</requirement>
+   <requirement type="package" version="4.4.0">docker-py</requirement>
+   <container type="docker">quay.io/fubar2/planemo-biocontainer:latest</container>
 </requirements>
 
   <command ><![CDATA[
