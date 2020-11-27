@@ -741,7 +741,8 @@ class ScriptRunner:
         tvolname = tvol.name
         destdir = "/toolfactory/ptest"
         imrep  = os.path.join(destdir,repname)
-        container = client.containers.run(planemoimage,'sleep 10000m', detach=True, user="biodocker",
+        # need to keep the container running so sleep a while - we stop and destroy it when we are done
+        container = client.containers.run(planemoimage,'sleep 30m', detach=True, user="biodocker",
             network="host", volumes={f"{tvolname}": {'bind': '/toolfactory', 'mode': 'rw'}})
         cl = f"groupmod -g {dgroup} docker"
         prun(container, tout, cl, user="root")
