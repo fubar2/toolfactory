@@ -28,6 +28,7 @@
 import argparse
 import copy
 import datetime
+import grp
 import json
 import logging
 import os
@@ -710,6 +711,7 @@ class ScriptRunner:
 
 
 
+
     def planemo_biodocker_test(self):
         """planemo currently leaks dependencies if used in the same container and gets unhappy after a
         first successful run. https://github.com/galaxyproject/planemo/issues/1078#issuecomment-731476930
@@ -718,53 +720,66 @@ class ScriptRunner:
 
 
         """
+        def prun(container,tout,cl,user="biodocker"):
+            rlog = container.exec_run(cl,user=user)
+            slogl = str(rlog).split('\\n')
+            slog = '\n'.join(slogl)
+            tout.write(f"## got rlog {slog} from {cl}\n")
+
+        dgroup = grp.getgrnam('docker')[2]
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
             tout = open(self.tlog, "w")
         planemoimage = "quay.io/fubar2/planemo-biocontainer"
         xreal = "%s.xml" % self.tool_name
-        destdir = "/tmp/tfout"
         repname = f"{self.tool_name}_planemo_test_report.html"
-        imrep  = os.path.join(destdir,repname)
         ptestrep_path = os.path.join(self.repdir,repname)
         tool_name = self.tool_name
         client = docker.from_env()
-        container = client.containers.run(planemoimage,'sleep 10000m', detach=True)
-        rlog = container.exec_run(f"mkdir -p {destdir}")
-        slogl = str(rlog).split('\\n')
-        slog = '\n'.join(slogl)
-        tout.write(f"## got rlog {slog} from mkdir {destdir}")
-        ptestpath = os.path.join(destdir,xreal)
-        self.copy_to_container(self.tooloutdir,'/tmp',container)
+        tvol = client.volumes.create()
+        tvolname = tvol.name
+        destdir = "/toolfactory/ptest"
+        imrep  = os.path.join(destdir,repname)
+        container = client.containers.run(planemoimage,'sleep 10000m', detach=True, user="biodocker",
+            network="host", volumes={f"{tvolname}": {'bind': '/toolfactory', 'mode': 'rw'}})
+        cl = f"groupmod -g {dgroup} docker"
+        prun(container, tout, cl, user="root")
+        cl = f"mkdir -p {destdir}"
+        prun(container, tout, cl, user="root")
+        cl = f"rm -rf {destdir}/*"
+        prun(container, tout, cl, user="root")
+        ptestpath = os.path.join(destdir,'tfout',xreal)
+        self.copy_to_container(self.tooloutdir,destdir,container)
+        cl ='chmod -R a+rwx /toolfactory'
+        prun(container, tout, cl, user="root")
         rlog = container.exec_run(f"ls -la {destdir}")
-        ptestcl = f"planemo test  --update_test_data  --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        ptestcl = f"planemo test  --update_test_data  --no_cleanup --test_data {destdir}/tfout/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
             rlog = container.exec_run(ptestcl)
         except:
             e = sys.exc_info()[0]
-            tout.write(f"#### error: {e} from {ptestcl}")
+            tout.write(f"#### error: {e} from {ptestcl}\n")
         # fails - used to generate test outputs
-        ptestcl = f"planemo test  --test_output {imrep} --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
+        cl = f"planemo test  --test_output {imrep} --no_cleanup --test_data {destdir}/tfout/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
-            rlog = container.exec_run(ptestcl)
+            prun(container,tout,cl)
         except:
             pass
-        slogl = str(rlog).split('\\n')
-        slog = '\n'.join(slogl)
-        tout.write(f"## got rlog {slog} from mkdir {destdir}")
         testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp",dir=".")
         self.copy_from_container(destdir,testouts,container)
-        try:
-            shutil.rmtree(os.path.join(testouts,self.tooloutdir,'test-data','test-data'))
-        except:
-            e = sys.exc_info()[0]
-            tout.write(f"#### error: {e} from {ptestcl}")
-        shutil.copytree(os.path.join(testouts,self.tooloutdir), self.tooloutdir, dirs_exist_ok=True)
+        src = os.path.join(testouts,'ptest')
+        if os.path.isdir(src):
+            shutil.copytree(src, '.', dirs_exist_ok=True)
+            src = repname
+            if os.path.isfile(repname):
+                shutil.copyfile(src,ptestrep_path)
+        else:
+            tout.write(f"No output from run to shutil.copytree in {src}\n")
         tout.close()
         container.stop()
         container.remove()
-        shutil.rmtree(testouts)
+        #shutil.rmtree(testouts)
 
     def shedLoad(self):
         """
