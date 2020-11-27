@@ -779,6 +779,7 @@ class ScriptRunner:
         tout.close()
         container.stop()
         container.remove()
+        tvol.remove()
         #shutil.rmtree(testouts)
 
     def shedLoad(self):
