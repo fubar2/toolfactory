@@ -79,7 +79,7 @@
             <param name="history_CL" type="text"  label="Positional: ordinal integer. Argparse: argument name expected for this output parameter. Use STDOUT if '>' required."
               help="If positional parameters, enter the integer ordinal expected for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value=""/>
             <param name="history_test" type="text"  label="Test pass decision criterion for this output compared to test generation"
-              help="Available options are diff:lines, sim_size" value="diff:2"/>
+              help="Available options are diff:[lines], sim_size:[delta (integer) or delta_frac (float)" value="sim_size:0.01"/>
         </repeat>
      </xml>
      <xml name="additparam">
@@ -232,7 +232,7 @@ $tool_name help goes here
    <param name="tool_name" type="text" value="tool1"   label="New tool ID and title for outputs"
          help="Toolshed repository name. Choose thoughtfully to avoid namespace clashes with other tool writers. Lower case, digits and underscores only">
         <sanitizer invalid_char="">
-            <valid initial="string.letters,string.digits">
+            <valid initial="string.ascii_lowercase,string.digits">
                 <add value="_"/>
             </valid>
         </sanitizer>
@@ -243,8 +243,8 @@ $tool_name help goes here
     <conditional name="usescript">
         <param name="choosescript" type="select" display="radio" label="Supply a script to either a dependency (e.g. python/R/bash) or a system executable such as Bash"
         help = "For script interpreters like Python or bash. Parameters and i/o specified below must match script's expectations - if you pass parameters, the script must deal with them">
-            <option value="no" selected="true">No script required for this tool - just pass parameters on the command line to the first dependency listed above</option>
-            <option value="yes">Yes, a script is ready to be pasted below</option>
+            <option value="no">No script required for this tool - just pass parameters on the command line to the first dependency listed above</option>
+            <option value="yes" selected="true">Yes, a script is ready to be pasted below</option>
         </param>
         <when value="no">
             <param name="dynScript" type="hidden"  value="" />
@@ -324,8 +324,8 @@ $tool_name help goes here
         <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
           help="Installation in this Galaxy is optional" >
         <option value="generate" >Run to generate tests only. Should fail if dependencies needed.</option>
-        <option value="gentest" selected="true">Test with planemo after generating.</option>
-        <option value="gentestinstall">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
+        <option value="gentest">Test with planemo after generating.</option>
+        <option value="gentestinstall" selected="true">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
         </param>
        <when value="generate">
            <param name="galaxy_apikey" value="" type="hidden"  ></param>

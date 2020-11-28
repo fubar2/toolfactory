@@ -72,7 +72,7 @@ ILABPOS = 3
 IHELPOS = 4
 IOCLPOS = 5
 
-# --output_files "$otab.history_name~~~$otab.history_format~~~$otab.CL~~~otab.history_test
+# --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
 ONAMEPOS = 0
 OFMTPOS = 1
 OCLPOS = 2
@@ -115,12 +115,16 @@ def quote_non_numeric(s):
         return '"%s"' % s
 
 
-html_escape_table = {"&": "&amp;", ">": "&gt;", "<": "&lt;", "$": r"\$"}
-
+html_escape_table = {"&": "&amp;", ">": "&gt;", "<": "&lt;", "$": r"\$","#":"&#35;", "$":"&#36;"}
+cheetah_escape_table = {"$": "\$","#":"\#"}
 
 def html_escape(text):
     """Produce entities within text."""
     return "".join(html_escape_table.get(c, c) for c in text)
+
+def cheetah_escape(text):
+    """Produce entities within text."""
+    return "".join(cheetah_escape_table.get(c, c) for c in text)
 
 
 def html_unescape(text):
@@ -129,6 +133,8 @@ def html_unescape(text):
     t = t.replace("&gt;", ">")
     t = t.replace("&lt;", "<")
     t = t.replace("\\$", "$")
+    t = t.replace("&#36;","$")
+    t = t.replace("&#35;","#")
     return t
 
 
@@ -289,11 +295,11 @@ class ScriptRunner:
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = "  %s" % "\n".join([" %s" % html_escape(x) for x in rx])
-        self.escapedScript = "%s" % "\n".join([" %s" % html_escape(x) for x in rx])
+        self.indentedScript = "  %s" % "\n".join([" %s" % cheetah_escape(x) for x in rx])
+        self.escapedScript = "%s" % "\n".join([" %s" % cheetah_escape(x) for x in rx])
         art = "%s.%s" % (self.tool_name, self.executeme)
         artifact = open(art, "wb")
-        artifact.write(bytes(self.script, "utf8"))
+        artifact.write(bytes(self.escapedScript, "utf8"))
         artifact.close()
 
     def cleanuppar(self):
@@ -408,6 +414,7 @@ class ScriptRunner:
         """flake8 made me do this..."""
         for p in self.outfiles:
             newname, newfmt, newcl, test, oldcl = p
+            test = test.strip()
             ndash = self.getNdash(newcl)
             aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
             aparm.positional = self.is_positional
@@ -419,24 +426,39 @@ class ScriptRunner:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newcl
             self.toutputs.append(aparm)
-            usetest = None
             ld = None
-            if test > "":
+            if test.strip() > "":
                 if test.startswith("diff"):
-                    usetest = "diff"
+                    c = "diff"
+                    ld = 0
                     if test.split(":")[1].isdigit:
                         ld = int(test.split(":")[1])
-                else:
-                    usetest = test
-            tp = gxtp.TestOutput(
-                name=newcl,
-                value="%s_sample" % newcl,
-                format=newfmt,
-                compare=usetest,
-                lines_diff=ld,
-                delta=None,
-            )
-            self.testparam.append(tp)
+                    tp = gxtp.TestOutput(
+                                    name=newcl,
+                                    value="%s_sample" % newcl,
+                                    format=newfmt,
+                                    compare= c,
+                                    lines_diff=ld,
+                                )
+                elif test.startswith("sim_size"):
+                    c = "sim_size"
+                    tn = test.split(":")[1].strip()
+                    if tn > '':
+                        if '.' in tn:
+                            delta = None
+                            delta_frac = min(1.0,float(tn))
+                        else:
+                            delta = int(tn)
+                            delta_frac = None
+                    tp = gxtp.TestOutput(
+                                    name=newcl,
+                                    value="%s_sample" % newcl,
+                                    format=newfmt,
+                                    compare= c,
+                                    delta = delta,
+                                    delta_frac = delta_frac
+                                )
+                self.testparam.append(tp)
         for p in self.infiles:
             newname = p[ICLPOS]
             newfmt = p[IFMTPOS]
@@ -550,11 +572,11 @@ class ScriptRunner:
             self.newtool.command_override = self.xmlcl
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
-            safertext = [html_escape(x) for x in helptext]
-            if False and self.args.script_path:
-                scrp = self.script.split("\n")
-                scrpt = ["   %s" % x for x in scrp]  # try to stop templating
-                scrpt.insert(0, "```\n")
+            safertext = "\n".join([cheetah_escape(x) for x in helptext])
+            if self.args.script_path:
+                scrpt = self.script.split("\n")
+                scrpt = ['    %s' % x for x in scrpt if x.strip() > ''] # indent
+                scrpt.insert(0,'------\n\nScript::\n')
                 if len(scrpt) > 300:
                     safertext = (
                         safertext
@@ -563,9 +585,8 @@ class ScriptRunner:
                         + scrpt[-100:]
                     )
                 else:
-                    safertext = safertext + scrpt
-                safertext.append("\n```")
-            self.newtool.help = "\n".join([x for x in safertext])
+                    safertext = safertext + "\n".join(scrpt)
+            self.newtool.help = safertext
         else:
             self.newtool.help = (
                 "Please ask the tool author (%s) for help \
@@ -593,7 +614,7 @@ class ScriptRunner:
         self.newtool.inputs = self.tinputs
         if self.args.script_path:
             configfiles = gxtp.Configfiles()
-            configfiles.append(gxtp.Configfile(name="runme", text=self.script))
+            configfiles.append(gxtp.Configfile(name="runme", text=self.escapedScript))
             self.newtool.configfiles = configfiles
         tests = gxtp.Tests()
         test_a = gxtp.Test()
