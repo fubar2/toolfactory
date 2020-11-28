@@ -557,8 +557,10 @@ class ScriptRunner:
                 scrpt.insert(0, "```\n")
                 if len(scrpt) > 300:
                     safertext = (
-                        safertext + scrpt[:100] + \
-                        [">500 lines - stuff deleted", "......"] + scrpt[-100:]
+                        safertext
+                        + scrpt[:100]
+                        + [">500 lines - stuff deleted", "......"]
+                        + scrpt[-100:]
                     )
                 else:
                     safertext = safertext + scrpt
@@ -649,7 +651,9 @@ class ScriptRunner:
                     "## Executing Toolfactory generated command line = %s\n" % scl
                 )
             sto.flush()
-            subp = subprocess.run(self.cl, env=self.ourenv, shell=False, stdout=sto, stderr=ste)
+            subp = subprocess.run(
+                self.cl, env=self.ourenv, shell=False, stdout=sto, stderr=ste
+            )
             sto.close()
             ste.close()
             retval = subp.returncode
@@ -662,7 +666,9 @@ class ScriptRunner:
                 sto = open(self.outfiles[0][ONAMEPOS], "wb")
             else:
                 sto = sys.stdout
-            subp = subprocess.run(self.cl, env=self.ourenv, shell=False, stdout=sto, stdin=sti)
+            subp = subprocess.run(
+                self.cl, env=self.ourenv, shell=False, stdout=sto, stdin=sti
+            )
             sto.write("## Executing Toolfactory generated command line = %s\n" % scl)
             retval = subp.returncode
             sto.close()
@@ -676,41 +682,34 @@ class ScriptRunner:
         logging.debug("run done")
         return retval
 
-
     def copy_to_container(self, src, dest, container):
-        """ Recreate the src directory tree at dest - full path included
-        """
+        """Recreate the src directory tree at dest - full path included"""
         idir = os.getcwd()
         workdir = os.path.dirname(src)
         os.chdir(workdir)
         _, tfname = tempfile.mkstemp(suffix=".tar")
-        tar = tarfile.open(tfname, mode='w')
+        tar = tarfile.open(tfname, mode="w")
         srcb = os.path.basename(src)
         tar.add(srcb)
         tar.close()
-        data = open(tfname, 'rb').read()
+        data = open(tfname, "rb").read()
         container.put_archive(dest, data)
         os.unlink(tfname)
         os.chdir(idir)
 
-
     def copy_from_container(self, src, dest, container):
-        """ recreate the src directory tree at dest using docker sdk
-        """
-        os.makedirs(dest,exist_ok=True)
+        """recreate the src directory tree at dest using docker sdk"""
+        os.makedirs(dest, exist_ok=True)
         _, tfname = tempfile.mkstemp(suffix=".tar")
-        tf = open(tfname,'wb')
+        tf = open(tfname, "wb")
         bits, stat = container.get_archive(src)
         for chunk in bits:
             tf.write(chunk)
         tf.close()
-        tar = tarfile.open(tfname,'r')
+        tar = tarfile.open(tfname, "r")
         tar.extractall(dest)
         tar.close()
         os.unlink(tfname)
-
-
-
 
     def planemo_biodocker_test(self):
         """planemo currently leaks dependencies if used in the same container and gets unhappy after a
@@ -720,13 +719,12 @@ class ScriptRunner:
 
 
         """
-        def prun(container,tout,cl,user="biodocker"):
-            rlog = container.exec_run(cl,user=user)
-            slogl = str(rlog).split('\\n')
-            slog = '\n'.join(slogl)
-            tout.write(f"## got rlog {slog} from {cl}\n")
 
-        dgroup = grp.getgrnam('docker')[2]
+        def prun(container, tout, cl, user="biodocker"):
+            rlog = container.exec_run(cl, user=user)
+            slogl = str(rlog).split("\\n")
+            slog = "\n".join(slogl)
+            tout.write(f"## got rlog {slog} from {cl}\n")
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
@@ -734,25 +732,28 @@ class ScriptRunner:
         planemoimage = "quay.io/fubar2/planemo-biocontainer"
         xreal = "%s.xml" % self.tool_name
         repname = f"{self.tool_name}_planemo_test_report.html"
-        ptestrep_path = os.path.join(self.repdir,repname)
+        ptestrep_path = os.path.join(self.repdir, repname)
         tool_name = self.tool_name
         client = docker.from_env()
         tvol = client.volumes.create()
         tvolname = tvol.name
         destdir = "/toolfactory/ptest"
-        imrep  = os.path.join(destdir,repname)
+        imrep = os.path.join(destdir, repname)
         # need to keep the container running so sleep a while - we stop and destroy it when we are done
-        container = client.containers.run(planemoimage,'sleep 30m', detach=True, user="biodocker",
-            volumes={f"{tvolname}": {'bind': '/toolfactory', 'mode': 'rw'}})
-        cl = f"groupmod -g {dgroup} docker"
-        prun(container, tout, cl, user="root")
+        container = client.containers.run(
+            planemoimage,
+            "sleep 30m",
+            detach=True,
+            user="biodocker",
+            volumes={f"{tvolname}": {"bind": "/toolfactory", "mode": "rw"}},
+        )
         cl = f"mkdir -p {destdir}"
         prun(container, tout, cl, user="root")
         cl = f"rm -rf {destdir}/*"
         prun(container, tout, cl, user="root")
-        ptestpath = os.path.join(destdir,'tfout',xreal)
-        self.copy_to_container(self.tooloutdir,destdir,container)
-        cl ='chmod -R a+rwx /toolfactory'
+        ptestpath = os.path.join(destdir, "tfout", xreal)
+        self.copy_to_container(self.tooloutdir, destdir, container)
+        cl = "chown -R biodocker /toolfactory"
         prun(container, tout, cl, user="root")
         rlog = container.exec_run(f"ls -la {destdir}")
         ptestcl = f"planemo test  --update_test_data  --no_cleanup --test_data {destdir}/tfout/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
@@ -764,24 +765,24 @@ class ScriptRunner:
         # fails - used to generate test outputs
         cl = f"planemo test  --test_output {imrep} --no_cleanup --test_data {destdir}/tfout/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
-            prun(container,tout,cl)
+            prun(container, tout, cl)
         except:
             pass
-        testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp",dir=".")
-        self.copy_from_container(destdir,testouts,container)
-        src = os.path.join(testouts,'ptest')
+        testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp", dir=".")
+        self.copy_from_container(destdir, testouts, container)
+        src = os.path.join(testouts, "ptest")
         if os.path.isdir(src):
-            shutil.copytree(src, '.', dirs_exist_ok=True)
+            shutil.copytree(src, ".", dirs_exist_ok=True)
             src = repname
             if os.path.isfile(repname):
-                shutil.copyfile(src,ptestrep_path)
+                shutil.copyfile(src, ptestrep_path)
         else:
             tout.write(f"No output from run to shutil.copytree in {src}\n")
         tout.close()
         container.stop()
         container.remove()
         tvol.remove()
-        #shutil.rmtree(testouts)
+        # shutil.rmtree(testouts)
 
     def shedLoad(self):
         """
@@ -832,10 +833,13 @@ class ScriptRunner:
             tid = rids[i]
         try:
             res = ts.repositories.update_repository(
-                id=tid, tar_ball_path=self.newtarpath, commit_message=None)
+                id=tid, tar_ball_path=self.newtarpath, commit_message=None
+            )
             sto.write(f"#####update res={res}\n")
         except ConnectionError:
-            sto.write("Probably no change to repository - bioblend shed upload failed\n")
+            sto.write(
+                "Probably no change to repository - bioblend shed upload failed\n"
+            )
         sto.close()
 
     def eph_galaxy_load(self):
@@ -862,7 +866,9 @@ class ScriptRunner:
             "ToolFactory",
         ]
         tout.write("running\n%s\n" % " ".join(cll))
-        subp = subprocess.run(cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stderr=tout, stdout=tout)
+        subp = subprocess.run(
+            cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stderr=tout, stdout=tout
+        )
         tout.write(
             "installed %s - got retcode %d\n" % (self.tool_name, subp.returncode)
         )
@@ -893,7 +899,7 @@ class ScriptRunner:
         repos = ts.repositories.get_repositories()
         rnames = [x.get("name", "?") for x in repos]
         rids = [x.get("id", "?") for x in repos]
-        #cat = "ToolFactory generated tools"
+        # cat = "ToolFactory generated tools"
         if self.tool_name not in rnames:
             cll = [
                 "planemo",
@@ -909,7 +915,12 @@ class ScriptRunner:
             ]
             try:
                 subp = subprocess.run(
-                    cll, env=self.ourenv, shell=False, cwd=self.tooloutdir, stdout=tout, stderr=tout
+                    cll,
+                    env=self.ourenv,
+                    shell=False,
+                    cwd=self.tooloutdir,
+                    stdout=tout,
+                    stderr=tout,
                 )
             except:
                 pass
@@ -931,14 +942,15 @@ class ScriptRunner:
             "--tar",
             self.newtarpath,
         ]
-        subp = subprocess.run(cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stdout=tout, stderr=tout)
-        tout.write("Ran %s got %d\n" % (" ".join(cll),subp.returncode))
+        subp = subprocess.run(
+            cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stdout=tout, stderr=tout
+        )
+        tout.write("Ran %s got %d\n" % (" ".join(cll), subp.returncode))
         tout.close()
         return subp.returncode
 
     def eph_test(self, genoutputs=True):
-        """problem getting jobid - ephemeris upload is the job before the one we want - but depends on how many inputs
-        """
+        """problem getting jobid - ephemeris upload is the job before the one we want - but depends on how many inputs"""
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
@@ -958,27 +970,34 @@ class ScriptRunner:
         if genoutputs:
             dummy, tfile = tempfile.mkstemp()
             subp = subprocess.run(
-               cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stderr=dummy, stdout=dummy
+                cll,
+                env=self.ourenv,
+                cwd=self.ourcwd,
+                shell=False,
+                stderr=dummy,
+                stdout=dummy,
             )
 
-            with open('tool_test_output.json','rb') as f:
+            with open("tool_test_output.json", "rb") as f:
                 s = json.loads(f.read())
-                print('read %s' % s)
-                cl = s['tests'][0]['data']['job']['command_line'].split()
-                n = cl.index('--script_path')
-                jobdir = cl[n+1]
-                jobdir = jobdir.replace('"','')
-                jobdir = jobdir.split('/configs')[0]
-                print('jobdir=%s' % jobdir)
+                print("read %s" % s)
+                cl = s["tests"][0]["data"]["job"]["command_line"].split()
+                n = cl.index("--script_path")
+                jobdir = cl[n + 1]
+                jobdir = jobdir.replace('"', "")
+                jobdir = jobdir.split("/configs")[0]
+                print("jobdir=%s" % jobdir)
 
-                #"/home/ross/galthrow/database/jobs_directory/000/649/configs/tmptfxu51gs\"
-            src = os.path.join(jobdir,'working',self.newtarpath)
+                # "/home/ross/galthrow/database/jobs_directory/000/649/configs/tmptfxu51gs\"
+            src = os.path.join(jobdir, "working", self.newtarpath)
             if os.path.exists(src):
                 dest = os.path.join(self.testdir, self.newtarpath)
                 shutil.copyfile(src, dest)
             else:
-                tout.write('No toolshed archive found after first ephemeris test - not a good sign')
-            ephouts = os.path.join(jobdir,'working','tfout','test-data')
+                tout.write(
+                    "No toolshed archive found after first ephemeris test - not a good sign"
+                )
+            ephouts = os.path.join(jobdir, "working", "tfout", "test-data")
             with os.scandir(ephouts) as outs:
                 for entry in outs:
                     if not entry.is_file():
@@ -988,29 +1007,37 @@ class ScriptRunner:
                     shutil.copyfile(src, dest)
         else:
             subp = subprocess.run(
-               cll, env=self.ourenv, cwd=self.ourcwd, shell=False,  stderr=tout, stdout=tout)
+                cll,
+                env=self.ourenv,
+                cwd=self.ourcwd,
+                shell=False,
+                stderr=tout,
+                stdout=tout,
+            )
             tout.write("eph_test Ran %s got %d" % (" ".join(cll), subp.returncode))
         tout.close()
         return subp.returncode
 
     def planemo_test_biocontainer(self, genoutputs=True):
         """planemo is a requirement so is available for testing but testing in a biocontainer
-        requires some fiddling to use the hacked galaxy-central .venv
+                requires some fiddling to use the hacked galaxy-central .venv
 
-        Planemo runs:
-python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
-/export/galaxy-central/database/job_working_directory/000/17/working/TF_run_report_tempdir/tacrev_planemo_test_report.html
---with-xunit --xunit-file /tmp/tmpt90p7f9h/xunit.xml --with-structureddata
---structured-data-file
-/export/galaxy-central/database/job_working_directory/000/17/working/tfout/tool_test_output.json functional.test_toolbox
+                Planemo runs:
+        python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
+        /export/galaxy-central/database/job_working_directory/000/17/working/TF_run_report_tempdir/tacrev_planemo_test_report.html
+        --with-xunit --xunit-file /tmp/tmpt90p7f9h/xunit.xml --with-structureddata
+        --structured-data-file
+        /export/galaxy-central/database/job_working_directory/000/17/working/tfout/tool_test_output.json functional.test_toolbox
 
 
-        for the planemo-biocontainer,
-        planemo test --conda_dependency_resolution --skip_venv --galaxy_root /galthrow/ rgToolFactory2.xml
+                for the planemo-biocontainer,
+                planemo test --conda_dependency_resolution --skip_venv --galaxy_root /galthrow/ rgToolFactory2.xml
 
         """
         xreal = "%s.xml" % self.tool_name
-        tool_test_path = os.path.join(self.repdir,f"{self.tool_name}_planemo_test_report.html")
+        tool_test_path = os.path.join(
+            self.repdir, f"{self.tool_name}_planemo_test_report.html"
+        )
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
@@ -1018,11 +1045,15 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
         if genoutputs:
             dummy, tfile = tempfile.mkstemp()
             cll = [
-                ".", os.path.join(self.args.galaxy_root,'.venv','bin','activate'),"&&",
+                ".",
+                os.path.join(self.args.galaxy_root, ".venv", "bin", "activate"),
+                "&&",
                 "planemo",
                 "test",
-                "--test_data", self.testdir,
-                "--test_output", tool_test_path,
+                "--test_data",
+                self.testdir,
+                "--test_output",
+                tool_test_path,
                 "--skip_venv",
                 "--galaxy_root",
                 self.args.galaxy_root,
@@ -1040,22 +1071,30 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
 
         else:
             cll = [
-                ".", os.path.join(self.args.galaxy_root,'.venv','bin','activate'),"&&",
+                ".",
+                os.path.join(self.args.galaxy_root, ".venv", "bin", "activate"),
+                "&&",
                 "planemo",
                 "test",
-                "--test_data", os.path.self.testdir,
-                "--test_output", os.path.tool_test_path,
+                "--test_data",
+                os.path.self.testdir,
+                "--test_output",
+                os.path.tool_test_path,
                 "--skip_venv",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 xreal,
             ]
             subp = subprocess.run(
-                cll, env=self.ourenv, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                cll,
+                env=self.ourenv,
+                shell=False,
+                cwd=self.tooloutdir,
+                stderr=tout,
+                stdout=tout,
             )
         tout.close()
         return subp.returncode
-
 
     def writeShedyml(self):
         """for planemo"""
@@ -1094,17 +1133,13 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
 
         def exclude_function(tarinfo):
             filename = tarinfo.name
-            return (
-                None
-                if filename.endswith(excludeme)
-                else tarinfo
-            )
+            return None if filename.endswith(excludeme) else tarinfo
 
         for p in self.outfiles:
             oname = p[ONAMEPOS]
             tdest = os.path.join(self.testdir, "%s_sample" % oname)
             if not os.path.isfile(tdest):
-                src = os.path.join(self.testdir,oname)
+                src = os.path.join(self.testdir, oname)
                 if os.path.isfile(src):
                     shutil.copyfile(src, tdest)
                     dest = os.path.join(self.repdir, "%s.sample" % (oname))
@@ -1127,8 +1162,8 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                     continue
                 if "." in entry.name:
                     nayme, ext = os.path.splitext(entry.name)
-                    if ext in ['.yml','.xml','.json','.yaml']:
-                        ext = f'{ext}.txt'
+                    if ext in [".yml", ".xml", ".json", ".yaml"]:
+                        ext = f"{ext}.txt"
                 else:
                     ext = ".txt"
                 ofn = "%s%s" % (entry.name.replace(".", "_"), ext)
@@ -1137,7 +1172,11 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 shutil.copyfile(src, dest)
         with os.scandir(self.testdir) as outs:
             for entry in outs:
-                if (not entry.is_file()) or entry.name.endswith('_sample') or entry.name.endswith("_planemo_test_report.html"):
+                if (
+                    (not entry.is_file())
+                    or entry.name.endswith("_sample")
+                    or entry.name.endswith("_planemo_test_report.html")
+                ):
                     continue
                 if "." in entry.name:
                     nayme, ext = os.path.splitext(entry.name)
@@ -1147,7 +1186,6 @@ python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
                 dest = os.path.join(self.repdir, newname)
                 src = os.path.join(self.testdir, entry.name)
                 shutil.copyfile(src, dest)
-
 
 
 def main():
@@ -1183,8 +1221,7 @@ def main():
     a("--tfout", default="./tfout")
     a("--new_tool", default="new_tool")
     a("--galaxy_url", default="http://localhost:8080")
-    a(
-        "--toolshed_url", default="http://localhost:9009")
+    a("--toolshed_url", default="http://localhost:9009")
     # make sure this is identical to tool_sheds_conf.xml  localhost != 127.0.0.1 so validation fails
     a("--toolshed_api_key", default="fakekey")
     a("--galaxy_api_key", default="fakekey")
@@ -1207,11 +1244,11 @@ def main():
     r.writeShedyml()
     r.makeTool()
     if args.make_Tool == "generate":
-        retcode = r.run() # for testing toolfactory itself
+        retcode = r.run()  # for testing toolfactory itself
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        r.planemo_biodocker_test() # test to make outputs and then test
+        r.planemo_biodocker_test()  # test to make outputs and then test
         r.moveRunOutputs()
         r.makeToolTar()
         if args.make_Tool == "gentestinstall":
