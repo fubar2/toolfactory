@@ -743,7 +743,7 @@ class ScriptRunner:
         imrep  = os.path.join(destdir,repname)
         # need to keep the container running so sleep a while - we stop and destroy it when we are done
         container = client.containers.run(planemoimage,'sleep 30m', detach=True, user="biodocker",
-            network="host", volumes={f"{tvolname}": {'bind': '/toolfactory', 'mode': 'rw'}})
+            volumes={f"{tvolname}": {'bind': '/toolfactory', 'mode': 'rw'}})
         cl = f"groupmod -g {dgroup} docker"
         prun(container, tout, cl, user="root")
         cl = f"mkdir -p {destdir}"
