@@ -295,8 +295,7 @@ class ScriptRunner:
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
-        self.indentedScript = "  %s" % "\n".join([" %s" % cheetah_escape(x) for x in rx])
-        self.escapedScript = "%s" % "\n".join([" %s" % cheetah_escape(x) for x in rx])
+        self.escapedScript = [cheetah_escape(x) for x in rx]
         art = "%s.%s" % (self.tool_name, self.executeme)
         artifact = open(art, "wb")
         artifact.write(bytes(self.escapedScript, "utf8"))
@@ -574,8 +573,7 @@ class ScriptRunner:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
             if self.args.script_path:
-                scr = self.script.split("\n")
-                scrp = [cheetah_escape(x) for x in scr]
+                scr = self.escapedScript
                 scrpt = ['    %s' % x for x in scrpt if x.strip() > ''] # indent
                 scrpt.insert(0,'------\n\nScript::\n')
                 if len(scrpt) > 300:
@@ -615,7 +613,7 @@ class ScriptRunner:
         self.newtool.inputs = self.tinputs
         if self.args.script_path:
             configfiles = gxtp.Configfiles()
-            configfiles.append(gxtp.Configfile(name="runme", text=self.escapedScript))
+            configfiles.append(gxtp.Configfile(name="runme", text="\n".join(self.escapedScript)))
             self.newtool.configfiles = configfiles
         tests = gxtp.Tests()
         test_a = gxtp.Test()
