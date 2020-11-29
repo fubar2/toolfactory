@@ -120,11 +120,11 @@ cheetah_escape_table = {"$": "\$","#":"\#"}
 
 def html_escape(text):
     """Produce entities within text."""
-    return "".join(html_escape_table.get(c, c) for c in text)
+    return "".join([html_escape_table.get(c, c) for c in text])
 
 def cheetah_escape(text):
     """Produce entities within text."""
-    return "".join(cheetah_escape_table.get(c, c) for c in text)
+    return "".join([cheetah_escape_table.get(c, c) for c in text])
 
 
 def html_unescape(text):
@@ -296,9 +296,10 @@ class ScriptRunner:
         tscript.write(self.script)
         tscript.close()
         self.escapedScript = [cheetah_escape(x) for x in rx]
+        self.spacedScript = [f"    {x}" for x in self.escapedScript]
         art = "%s.%s" % (self.tool_name, self.executeme)
         artifact = open(art, "wb")
-        artifact.write(bytes(self.escapedScript, "utf8"))
+        artifact.write(bytes('\n'.join(self.escapedScript),'utf8'))
         artifact.close()
 
     def cleanuppar(self):
@@ -573,18 +574,16 @@ class ScriptRunner:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
             if self.args.script_path:
-                scr = self.escapedScript
-                scrpt = ['    %s' % x for x in scrpt if x.strip() > ''] # indent
-                scrpt.insert(0,'------\n\nScript::\n')
-                if len(scrpt) > 300:
-                    safertext = (
-                        safertext
-                        + scrpt[:100]
-                        + [">500 lines - stuff deleted", "......"]
-                        + scrpt[-100:]
+                scr = [x for x in self.spacedScript if x.strip() > ""]
+                scr.insert(0,'\n------\n\nScript::\n')
+                if len(scr) > 300:
+                    scr = (
+                        scr[:100]
+                        + [">300 lines - stuff deleted", "......"]
+                        + scr[-100:]
                     )
-                else:
-                    safertext = safertext + "\n".join(scrpt)
+                scr.append('\n------\n')
+                safertext = safertext + "\n".join(scr)
             self.newtool.help = safertext
         else:
             self.newtool.help = (
