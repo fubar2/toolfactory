@@ -14,16 +14,11 @@
 # 2. Fix planemo so the toolfactory function works
 # 3. Rewrite bits using galaxyxml functions where that makes sense - done
 #
-# removed all the old complications including making the new tool use this same script
-# galaxyxml now generates the tool xml https://github.com/hexylena/galaxyxml
-# No support for automatic HTML file creation from arbitrary outputs
-# essential problem is to create two command lines - one for the tool xml and a different
-# one to run the executable with the supplied test data and settings
-# Be simpler to write the tool, then run it with planemo and soak up the test outputs.
-# well well. sh run_tests.sh --id rgtf2 --report_file tool_tests_tool_conf.html functional.test_toolbox
-# does the needful. Use GALAXY_TEST_SAVE /foo to save outputs - only the tar.gz - not the rest sadly
-# GALAXY_TEST_NO_CLEANUP GALAXY_TEST_TMP_DIR=wherever
-# planemo test --engine docker_galaxy --test_data ./test-data/ --docker_extra_volume ./test-data rgToolFactory2.xml
+# uses planemo in a biodocker sort of image as a requirement
+# otherwise planemo seems to leak dependencies back into the
+# calling venv. Hilarity ensues.
+
+
 
 import argparse
 import copy
@@ -58,13 +53,9 @@ verbose = True
 debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
 ourdelim = "~~~"
-ALOT = 10000000  # srsly. command or test overrides use read() so just in case
-STDIOXML = """<stdio>
-<exit_code range="100:" level="debug" description="shite happens" />
-</stdio>"""
 
-# --input_files="$input_files~~~$CL~~~$input_formats~~~$input_label
-# ~~~$input_help"
+# --input_files="$intab.input_files~~~$intab.input_CL~~~$intab.input_formats\
+#~~~$intab.input_label~~~$intab.input_help"
 IPATHPOS = 0
 ICLPOS = 1
 IFMTPOS = 2
@@ -266,9 +257,9 @@ class ScriptRunner:
                 if p[OOCLPOS] == "STDOUT":
                     self.lastclredirect = [">", p[ONAMEPOS]]
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
-                else:
-                    clsuffix.append([p[OOCLPOS], p[OCLPOS], p[ONAMEPOS], ""])
-                    xclsuffix.append([p[OOCLPOS], p[OCLPOS], "$%s" % p[ONAMEPOS], ""])
+                else: #   for (o_v, k, v, koverride) in self.xclsuffix:
+                    clsuffix.append([p[ONAMEPOS], p[ONAMEPOS], p[ONAMEPOS], ""])
+                    xclsuffix.append([p[ONAMEPOS], p[ONAMEPOS], "$%s" % p[ONAMEPOS], ""])
             for p in self.addpar:
                 clsuffix.append([p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]])
                 xclsuffix.append(
@@ -296,7 +287,7 @@ class ScriptRunner:
         tscript.write(self.script)
         tscript.close()
         self.escapedScript = [cheetah_escape(x) for x in rx]
-        self.spacedScript = [f"    {x}" for x in self.escapedScript]
+        self.spacedScript = [f"    {x}" for x in rx if x.strip() > ""]
         art = "%s.%s" % (self.tool_name, self.executeme)
         artifact = open(art, "wb")
         artifact.write(bytes('\n'.join(self.escapedScript),'utf8'))
@@ -305,21 +296,23 @@ class ScriptRunner:
     def cleanuppar(self):
         """ positional parameters are complicated by their numeric ordinal"""
         for i, p in enumerate(self.infiles):
+            infp = copy.copy(p)
             if self.args.parampass == "positional":
-                assert p[
+                assert infp[
                     ICLPOS
                 ].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (
-                    p[ICLPOS],
-                    p[ILABPOS],
+                    infp[ICLPOS],
+                    infp[ILABPOS],
                 )
-            p.append(p[ICLPOS])
-            if p[ICLPOS].isdigit() or self.args.parampass == "0":
+            icl = infp[ICLPOS]
+            infp.append(icl)
+            if infp[ICLPOS].isdigit() or self.args.parampass == "0":
                 scl = "input%d" % (i + 1)
-                p[ICLPOS] = scl
-            self.infiles[i] = p
+                infp[ICLPOS] = scl
+            self.infiles[i] = infp
         for i, p in enumerate(
             self.outfiles
-        ):  # trying to automagically gather using extensions
+        ):
             if self.args.parampass == "positional" and p[OCLPOS] != "STDOUT":
                 assert p[
                     OCLPOS
@@ -327,8 +320,8 @@ class ScriptRunner:
                     p[OCLPOS],
                     p[ONAMEPOS],
                 )
-            p.append(p[OCLPOS])
-            if p[OCLPOS].isdigit() or p[OCLPOS] == "STDOUT":
+            p.append(p[OCLPOS]) # keep copy
+            if p[OOCLPOS].isdigit() or p[OOCLPOS] == "STDOUT":
                 scl = p[ONAMEPOS]
                 p[OCLPOS] = scl
             self.outfiles[i] = p
@@ -376,12 +369,20 @@ class ScriptRunner:
         if self.lastxclredirect:
             aXCL(self.lastxclredirect[0])
             aXCL(self.lastxclredirect[1])
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        tout.write(f" #### clpositional: self.clsuffix = {self.clsuffix} and self.xclsuffix = {self.xclsuffix}")
+        tout.close()
+
 
     def clargparse(self):
         """argparse style"""
         aCL = self.cl.append
         aXCL = self.xmlcl.append
         # inputs then params in argparse named form
+
         for (o_v, k, v, koverride) in self.xclsuffix:
             if koverride > "":
                 k = koverride
@@ -400,6 +401,13 @@ class ScriptRunner:
                 k = "--%s" % k
             aCL(k)
             aCL(v)
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        tout.write(f" #### clargparse: self.clsuffix = {self.clsuffix} and self.xclsuffix = {self.xclsuffix}")
+        tout.close()
+
 
     def getNdash(self, newname):
         if self.is_positional:
@@ -412,19 +420,19 @@ class ScriptRunner:
 
     def doXMLparam(self):
         """flake8 made me do this..."""
-        for p in self.outfiles:
+        for p in self.outfiles: # --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
             newname, newfmt, newcl, test, oldcl = p
             test = test.strip()
             ndash = self.getNdash(newcl)
-            aparm = gxtp.OutputData(newcl, format=newfmt, num_dashes=ndash)
+            aparm = gxtp.OutputData(name=newname, format=newfmt, num_dashes=ndash, label=newcl)
             aparm.positional = self.is_positional
             if self.is_positional:
                 if oldcl == "STDOUT":
                     aparm.positional = 9999999
-                    aparm.command_line_override = "> $%s" % newcl
+                    aparm.command_line_override = "> $%s" % newname
                 else:
                     aparm.positional = int(oldcl)
-                    aparm.command_line_override = "$%s" % newcl
+                    aparm.command_line_override = "$%s" % newname
             self.toutputs.append(aparm)
             ld = None
             if test.strip() > "":
@@ -582,7 +590,7 @@ class ScriptRunner:
                         + [">300 lines - stuff deleted", "......"]
                         + scr[-100:]
                     )
-                scr.append('\n------\n')
+                scr.append('\n')
                 safertext = safertext + "\n".join(scr)
             self.newtool.help = safertext
         else:
@@ -843,6 +851,7 @@ class ScriptRunner:
                 category_ids=catID,
             )
             tid = res.get("id", None)
+            sto.write(f"#####create_repository {self.args.tool_name} tid={tid} res={res}\n")
         else:
             i = rnames.index(self.tool_name)
             tid = rids[i]
@@ -850,10 +859,10 @@ class ScriptRunner:
             res = ts.repositories.update_repository(
                 id=tid, tar_ball_path=self.newtarpath, commit_message=None
             )
-            sto.write(f"#####update res={res}\n")
+            sto.write(f"#####update res id {id} ={res}\n")
         except ConnectionError:
             sto.write(
-                "Probably no change to repository - bioblend shed upload failed\n"
+                "Is the toolshed running and the API key correct? Bioblend shed upload failed\n"
             )
         sto.close()
 
@@ -890,226 +899,7 @@ class ScriptRunner:
         tout.close()
         return subp.returncode
 
-    def planemo_shedLoad(self):
-        """
-        planemo shed_create --shed_target testtoolshed
-        planemo shed_init --name=<name>
-                  --owner=<shed_username>
-                  --description=<short description>
-                  [--remote_repository_url=<URL to .shed.yml on github>]
-                  [--homepage_url=<Homepage for tool.>]
-                  [--long_description=<long description>]
-                  [--category=<category name>]*
 
-
-        planemo shed_update --check_diff --shed_target testtoolshed
-        """
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        ts = toolshed.ToolShedInstance(
-            url=self.args.toolshed_url, key=self.args.toolshed_api_key, verify=False
-        )
-        repos = ts.repositories.get_repositories()
-        rnames = [x.get("name", "?") for x in repos]
-        rids = [x.get("id", "?") for x in repos]
-        # cat = "ToolFactory generated tools"
-        if self.tool_name not in rnames:
-            cll = [
-                "planemo",
-                "shed_create",
-                "--shed_target",
-                "local",
-                "--owner",
-                "fubar",
-                "--name",
-                self.tool_name,
-                "--shed_key",
-                self.args.toolshed_api_key,
-            ]
-            try:
-                subp = subprocess.run(
-                    cll,
-                    env=self.ourenv,
-                    shell=False,
-                    cwd=self.tooloutdir,
-                    stdout=tout,
-                    stderr=tout,
-                )
-            except:
-                pass
-            if subp.returncode != 0:
-                tout.write("Repository %s exists\n" % self.tool_name)
-            else:
-                tout.write("initiated %s\n" % self.tool_name)
-        cll = [
-            "planemo",
-            "shed_upload",
-            "--shed_target",
-            "local",
-            "--owner",
-            "fubar",
-            "--name",
-            self.tool_name,
-            "--shed_key",
-            self.args.toolshed_api_key,
-            "--tar",
-            self.newtarpath,
-        ]
-        subp = subprocess.run(
-            cll, env=self.ourenv, cwd=self.ourcwd, shell=False, stdout=tout, stderr=tout
-        )
-        tout.write("Ran %s got %d\n" % (" ".join(cll), subp.returncode))
-        tout.close()
-        return subp.returncode
-
-    def eph_test(self, genoutputs=True):
-        """problem getting jobid - ephemeris upload is the job before the one we want - but depends on how many inputs"""
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        cll = [
-            "shed-tools",
-            "test",
-            "-g",
-            self.args.galaxy_url,
-            "-a",
-            self.args.galaxy_api_key,
-            "--name",
-            self.tool_name,
-            "--owner",
-            "fubar",
-        ]
-        if genoutputs:
-            dummy, tfile = tempfile.mkstemp()
-            subp = subprocess.run(
-                cll,
-                env=self.ourenv,
-                cwd=self.ourcwd,
-                shell=False,
-                stderr=dummy,
-                stdout=dummy,
-            )
-
-            with open("tool_test_output.json", "rb") as f:
-                s = json.loads(f.read())
-                print("read %s" % s)
-                cl = s["tests"][0]["data"]["job"]["command_line"].split()
-                n = cl.index("--script_path")
-                jobdir = cl[n + 1]
-                jobdir = jobdir.replace('"', "")
-                jobdir = jobdir.split("/configs")[0]
-                print("jobdir=%s" % jobdir)
-
-                # "/home/ross/galthrow/database/jobs_directory/000/649/configs/tmptfxu51gs\"
-            src = os.path.join(jobdir, "working", self.newtarpath)
-            if os.path.exists(src):
-                dest = os.path.join(self.testdir, self.newtarpath)
-                shutil.copyfile(src, dest)
-            else:
-                tout.write(
-                    "No toolshed archive found after first ephemeris test - not a good sign"
-                )
-            ephouts = os.path.join(jobdir, "working", "tfout", "test-data")
-            with os.scandir(ephouts) as outs:
-                for entry in outs:
-                    if not entry.is_file():
-                        continue
-                    dest = os.path.join(self.tooloutdir, entry.name)
-                    src = os.path.join(ephouts, entry.name)
-                    shutil.copyfile(src, dest)
-        else:
-            subp = subprocess.run(
-                cll,
-                env=self.ourenv,
-                cwd=self.ourcwd,
-                shell=False,
-                stderr=tout,
-                stdout=tout,
-            )
-            tout.write("eph_test Ran %s got %d" % (" ".join(cll), subp.returncode))
-        tout.close()
-        return subp.returncode
-
-    def planemo_test_biocontainer(self, genoutputs=True):
-        """planemo is a requirement so is available for testing but testing in a biocontainer
-                requires some fiddling to use the hacked galaxy-central .venv
-
-                Planemo runs:
-        python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
-        /export/galaxy-central/database/job_working_directory/000/17/working/TF_run_report_tempdir/tacrev_planemo_test_report.html
-        --with-xunit --xunit-file /tmp/tmpt90p7f9h/xunit.xml --with-structureddata
-        --structured-data-file
-        /export/galaxy-central/database/job_working_directory/000/17/working/tfout/tool_test_output.json functional.test_toolbox
-
-
-                for the planemo-biocontainer,
-                planemo test --conda_dependency_resolution --skip_venv --galaxy_root /galthrow/ rgToolFactory2.xml
-
-        """
-        xreal = "%s.xml" % self.tool_name
-        tool_test_path = os.path.join(
-            self.repdir, f"{self.tool_name}_planemo_test_report.html"
-        )
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        if genoutputs:
-            dummy, tfile = tempfile.mkstemp()
-            cll = [
-                ".",
-                os.path.join(self.args.galaxy_root, ".venv", "bin", "activate"),
-                "&&",
-                "planemo",
-                "test",
-                "--test_data",
-                self.testdir,
-                "--test_output",
-                tool_test_path,
-                "--skip_venv",
-                "--galaxy_root",
-                self.args.galaxy_root,
-                "--update_test_data",
-                xreal,
-            ]
-            subp = subprocess.run(
-                cll,
-                env=self.ourenv,
-                shell=False,
-                cwd=self.tooloutdir,
-                stderr=dummy,
-                stdout=dummy,
-            )
-
-        else:
-            cll = [
-                ".",
-                os.path.join(self.args.galaxy_root, ".venv", "bin", "activate"),
-                "&&",
-                "planemo",
-                "test",
-                "--test_data",
-                os.path.self.testdir,
-                "--test_output",
-                os.path.tool_test_path,
-                "--skip_venv",
-                "--galaxy_root",
-                self.args.galaxy_root,
-                xreal,
-            ]
-            subp = subprocess.run(
-                cll,
-                env=self.ourenv,
-                shell=False,
-                cwd=self.tooloutdir,
-                stderr=tout,
-                stdout=tout,
-            )
-        tout.close()
-        return subp.returncode
 
     def writeShedyml(self):
         """for planemo"""

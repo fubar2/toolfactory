@@ -69,15 +69,15 @@
         </repeat>
         <repeat name="history_outputs" title="Add a tool run output file to the user's history from your tool - Use the '+' button to add as many as needed"
              help="The name will become a history item for users of the new tool you are making containing one of it's outputs">
-            <param name="history_name" type="text" label="Name for this output to appear in new history" optional="false" help=""/>
+            <param name="history_name" type="text" label="Name for this output to appear in new history" optional="false" help="Argparse will also use this name as --[name]"/>
             <param name="history_format" type="select" multiple="false" label="Select the datatype for this output"
               help="If your datatype is not listed here, it has to be added in galaxy's datatypes_conf.xml" value="tabular">
                <options from_parameter="tool.app.datatypes_registry.upload_file_formats">
                 <column name="value" index="0"/>
                </options>
             </param>
-            <param name="history_CL" type="text"  label="Positional: ordinal integer. Argparse: argument name expected for this output parameter. Use STDOUT if '>' required."
-              help="If positional parameters, enter the integer ordinal expected for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value=""/>
+            <param name="history_CL" type="text"  label="Positional: ordinal integer. Use STDOUT if '>' required. Otherwise ignored if argparse because name is used"
+              help="If positional parameters, enter the integer ordinal expected for this parameter. If argparse, ignore unless STDOUT needed" value=""/>
             <param name="history_test" type="text"  label="Test pass decision criterion for this output compared to test generation"
               help="Available options are diff:[lines], sim_size:[delta (integer) or delta_frac (float)" value="sim_size:0.01"/>
         </repeat>
@@ -241,8 +241,8 @@ $tool_name help goes here
     optional="false" help="Use :[ver] for specific version - 'bwa:0.17.0'. Default is latest. Will be used every time the tool is (re)run. Only Conda is currently supported"  />
 
     <conditional name="usescript">
-        <param name="choosescript" type="select" display="radio" label="Supply a script to either a dependency (e.g. python/R/bash) or a system executable such as Bash"
-        help = "For script interpreters like Python or bash. Parameters and i/o specified below must match script's expectations - if you pass parameters, the script must deal with them">
+        <param name="choosescript" type="select" display="radio" label="Supply a script for a dependency (e.g. python/R/bash) or a system executable such as Bash"
+        help = "For script interpreters like Python or bash, parameters and i/o specified below must match script's expectations - if you pass parameters, the script must deal with them">
             <option value="no">No script required for this tool - just pass parameters on the command line to the first dependency listed above</option>
             <option value="yes" selected="true">Yes, a script is ready to be pasted below</option>
         </param>
@@ -251,7 +251,7 @@ $tool_name help goes here
             <param name="scriptrunner" type="hidden"  value="" />
         </when>
         <when value="yes">
-            <param name="scriptrunner" type="text" value=""   label="Interpreter for the script pasted below - eg bash or python. Can be one of the dependencies named above or a system executable"
+            <param name="scriptrunner" type="text" value=""   label="Interpreter for the script - eg bash or python. Can be one of the dependencies named above or a system executable"
              help="Scripts are interpreted by the executable named here. Use bash for bash scripts, or a conda dependency such as R or Python for those scripts">
             <sanitizer invalid_char="">
                 <valid initial="string.letters,string.digits">
@@ -259,7 +259,7 @@ $tool_name help goes here
                 </valid>
             </sanitizer>
             </param>
-            <param name="dynScript" type="text" area="True" value="" label="Script for executable below to interpret. It can be one of the Conda dependency names "
+            <param name="dynScript" type="text" area="True" value="" label="Script for executable above to interpret. It can be one of the Conda dependency names "
              help="Script must handle all i/o and parameters as specified below using the parameters and passing method chosen below">
               <sanitizer>
                  <valid initial="string.printable">
