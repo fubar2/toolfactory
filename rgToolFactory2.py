@@ -574,7 +574,8 @@ class ScriptRunner:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
             if self.args.script_path:
-                scrpt = self.script.split("\n")
+                scr = self.script.split("\n")
+                scrp = [cheetah_escape(x) for x in scr]
                 scrpt = ['    %s' % x for x in scrpt if x.strip() > ''] # indent
                 scrpt.insert(0,'------\n\nScript::\n')
                 if len(scrpt) > 300:
@@ -628,8 +629,7 @@ class ScriptRunner:
         )
         self.newtool.add_comment("Source in git at: %s" % (toolFactoryURL))
         self.newtool.add_comment(
-            "Cite: Creating re-usable tools from scripts doi: \
-            10.1093/bioinformatics/bts573"
+            "Cite: Creating re-usable tools from scripts doi:10.1093/bioinformatics/bts573"
         )
         exml0 = self.newtool.export()
         exml = exml0.replace(FAKEEXE, "")  # temporary work around until PR accepted
@@ -827,8 +827,6 @@ class ScriptRunner:
         repos = ts.repositories.get_repositories()
         rnames = [x.get("name", "?") for x in repos]
         rids = [x.get("id", "?") for x in repos]
-        sto.write(f"############names={rnames} rids={rids}\n")
-        sto.write(f"############names={repos}\n")
         tfcat = "ToolFactory generated tools"
         if self.tool_name not in rnames:
             tscat = ts.categories.get_categories()
@@ -848,7 +846,6 @@ class ScriptRunner:
                 category_ids=catID,
             )
             tid = res.get("id", None)
-            sto.write(f"##########create res={res}\n")
         else:
             i = rnames.index(self.tool_name)
             tid = rids[i]
