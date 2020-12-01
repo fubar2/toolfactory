@@ -369,12 +369,6 @@ class ScriptRunner:
         if self.lastxclredirect:
             aXCL(self.lastxclredirect[0])
             aXCL(self.lastxclredirect[1])
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        tout.write(f" #### clpositional: self.clsuffix = {self.clsuffix} and self.xclsuffix = {self.xclsuffix}")
-        tout.close()
 
 
     def clargparse(self):
@@ -401,12 +395,6 @@ class ScriptRunner:
                 k = "--%s" % k
             aCL(k)
             aCL(v)
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        tout.write(f" #### clargparse: self.clsuffix = {self.clsuffix} and self.xclsuffix = {self.xclsuffix}")
-        tout.close()
 
 
     def getNdash(self, newname):
@@ -751,6 +739,7 @@ class ScriptRunner:
             slogl = str(rlog).split("\\n")
             slog = "\n".join(slogl)
             tout.write(f"## got rlog {slog} from {cl}\n")
+
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
