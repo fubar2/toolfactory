@@ -194,7 +194,7 @@ class ScriptRunner:
         if not os.path.exists(self.tooloutdir):
             os.mkdir(self.tooloutdir)
         if not os.path.exists(self.testdir):
-            os.mkdir(self.testdir)  # make tests directory
+            os.mkdir(self.testdir)
         if not os.path.exists(self.repdir):
             os.mkdir(self.repdir)
         self.tinputs = gxtp.Inputs()
@@ -224,7 +224,7 @@ class ScriptRunner:
                 aXCL(self.executeme)
                 aXCL("$runme")
             else:
-                aCL(self.executeme)  # this little CL will just run
+                aCL(self.executeme)
                 aXCL(self.executeme)
         self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
         self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
@@ -257,7 +257,7 @@ class ScriptRunner:
                 if p[OOCLPOS] == "STDOUT":
                     self.lastclredirect = [">", p[ONAMEPOS]]
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
-                else: #   for (o_v, k, v, koverride) in self.xclsuffix:
+                else:
                     clsuffix.append([p[ONAMEPOS], p[ONAMEPOS], p[ONAMEPOS], ""])
                     xclsuffix.append([p[ONAMEPOS], p[ONAMEPOS], "$%s" % p[ONAMEPOS], ""])
             for p in self.addpar:
@@ -313,7 +313,7 @@ class ScriptRunner:
         for i, p in enumerate(
             self.outfiles
         ):
-            if self.args.parampass == "positional" and p[OCLPOS] != "STDOUT":
+            if self.args.parampass == "positional" and p[OCLPOS].upper() != "STDOUT":
                 assert p[
                     OCLPOS
                 ].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (
@@ -321,7 +321,7 @@ class ScriptRunner:
                     p[ONAMEPOS],
                 )
             p.append(p[OCLPOS]) # keep copy
-            if p[OOCLPOS].isdigit() or p[OOCLPOS] == "STDOUT":
+            if p[OOCLPOS].isdigit() or p[OOCLPOS].upper() == "STDOUT":
                 scl = p[ONAMEPOS]
                 p[OCLPOS] = scl
             self.outfiles[i] = p
@@ -415,7 +415,7 @@ class ScriptRunner:
             aparm = gxtp.OutputData(name=newname, format=newfmt, num_dashes=ndash, label=newcl)
             aparm.positional = self.is_positional
             if self.is_positional:
-                if oldcl == "STDOUT":
+                if oldcl.upper() == "STDOUT":
                     aparm.positional = 9999999
                     aparm.command_line_override = "> $%s" % newname
                 else:
@@ -591,11 +591,13 @@ class ScriptRunner:
         requirements = gxtp.Requirements()
         if self.args.packages:
             for d in self.args.packages.split(","):
+                ver = ''
+                d = d.replace('==',':')
+                d = d.replace('=',':')
                 if ":" in d:
                     packg, ver = d.split(":")
                 else:
                     packg = d
-                    ver = ""
                 requirements.append(
                     gxtp.Requirement("package", packg.strip(), ver.strip())
                 )
@@ -754,16 +756,18 @@ class ScriptRunner:
         tvolname = tvol.name
         destdir = "/toolfactory/ptest"
         imrep = os.path.join(destdir, repname)
-        # need to keep the container running so sleep a while - we stop and destroy it when we are done
+        # need to keep the container running so keep it open with tail -f.
+        # will stop and destroy it when we are done
         container = client.containers.run(
             planemoimage,
-            "sleep 30m",
+            "tail -f /galaxy-central/CITATION",
             detach=True,
             user="biodocker",
             volumes={f"{tvolname}": {"bind": "/toolfactory", "mode": "rw"}},
         )
         cl = f"mkdir -p {destdir}"
         prun(container, tout, cl, user="root")
+        # that's how hard it is to get root on a biodocker container :(
         cl = f"rm -rf {destdir}/*"
         prun(container, tout, cl, user="root")
         ptestpath = os.path.join(destdir, "tfout", xreal)
@@ -774,10 +778,10 @@ class ScriptRunner:
         ptestcl = f"planemo test  --update_test_data  --no_cleanup --test_data {destdir}/tfout/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
             rlog = container.exec_run(ptestcl)
+            # fails because test outputs missing but updates the test-data directory
         except:
             e = sys.exc_info()[0]
             tout.write(f"#### error: {e} from {ptestcl}\n")
-        # fails - used to generate test outputs
         cl = f"planemo test  --test_output {imrep} --no_cleanup --test_data {destdir}/tfout/test-data --galaxy_root /home/biodocker/galaxy-central {ptestpath}"
         try:
             prun(container, tout, cl)
@@ -797,17 +801,12 @@ class ScriptRunner:
         container.stop()
         container.remove()
         tvol.remove()
-        # shutil.rmtree(testouts)
+        # shutil.rmtree(testouts) leave for debugging
 
     def shedLoad(self):
         """
-        {'deleted': False,
-              'description': 'Tools for manipulating data',
-              'id': '175812cd7caaf439',
-              'model_class': 'Category',
-              'name': 'Text Manipulation',
-              'url': '/api/categories/175812cd7caaf439'}]
-
+        use bioblend to create new repository
+        or update existing
 
         """
         if os.path.exists(self.tlog):
@@ -840,7 +839,7 @@ class ScriptRunner:
                 category_ids=catID,
             )
             tid = res.get("id", None)
-            sto.write(f"#####create_repository {self.args.tool_name} tid={tid} res={res}\n")
+            sto.write(f"#create_repository {self.args.tool_name} tid={tid} res={res}\n")
         else:
             i = rnames.index(self.tool_name)
             tid = rids[i]
@@ -848,15 +847,17 @@ class ScriptRunner:
             res = ts.repositories.update_repository(
                 id=tid, tar_ball_path=self.newtarpath, commit_message=None
             )
-            sto.write(f"#####update res id {id} ={res}\n")
+            sto.write(f"#update res id {id} ={res}\n")
         except ConnectionError:
             sto.write(
-                "Is the toolshed running and the API key correct? Bioblend shed upload failed\n"
+                "####### Is the toolshed running and the API key correct? Bioblend shed upload failed\n"
             )
         sto.close()
 
     def eph_galaxy_load(self):
-        """load the new tool from the local toolshed after planemo uploads it"""
+        """
+        use ephemeris to load the new tool from the local toolshed after planemo uploads it
+        """
         if os.path.exists(self.tlog):
             tout = open(self.tlog, "a")
         else:
@@ -1023,7 +1024,7 @@ def main():
     a("--galaxy_venv", default="/galaxy_venv")
     args = parser.parse_args()
     assert not args.bad_user, (
-        'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the Galaxy configuration file'
+        'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy admin adds %s to "admin_users" in the galaxy.yml Galaxy configuration file'
         % (args.bad_user, args.bad_user)
     )
     assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"

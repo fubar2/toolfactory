@@ -238,7 +238,7 @@ $tool_name help goes here
         </sanitizer>
     </param>
     <param name="packages" type="text" value="" label="Conda dependencies as package name[:version, name:version...]. These will always be available when this tool executes"
-    optional="false" help="Use :[ver] for specific version - 'bwa:0.17.0'. Default is latest. Will be used every time the tool is (re)run. Only Conda is currently supported"  />
+    optional="false" help="Use =[ver] or :[ver] for specific version - 'bwa=0.17.0'. Default is latest. Will be used every time the tool is (re)run. Only Conda is currently supported"  />
 
     <conditional name="usescript">
         <param name="choosescript" type="select" display="radio" label="Supply a script for a dependency (e.g. python/R/bash) or a system executable such as Bash"
