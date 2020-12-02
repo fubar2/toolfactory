@@ -760,7 +760,7 @@ class ScriptRunner:
         # will stop and destroy it when we are done
         container = client.containers.run(
             planemoimage,
-            "tail -f /galaxy-central/CITATION",
+            "sleep 120m",
             detach=True,
             user="biodocker",
             volumes={f"{tvolname}": {"bind": "/toolfactory", "mode": "rw"}},
