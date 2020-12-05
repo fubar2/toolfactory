@@ -803,6 +803,55 @@ class ScriptRunner:
         tvol.remove()
         shutil.rmtree(testouts) # leave for debugging
 
+    def planemo_test(self, genoutputs=True):
+        """planemo is a requirement so is available for testing
+        and for generating test outputs if command or test overrides are supplied
+        test outputs are sent to repdir for display
+        planemo test --engine docker_galaxy --database_type docker_postgres --galaxy_root /galaxy-central pyrevpos/pyrevpos.xml
+        """
+        xreal = "%s.xml" % self.tool_name
+        tool_test_path = os.path.join(self.repdir,f"{self.tool_name}_planemo_test_report.html")
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        if genoutputs:
+            dummy, tfile = tempfile.mkstemp()
+            cll = [
+                "planemo",
+                "test",
+                "--test_data", os.path.abspath(self.testdir),
+                "--test_output", os.path.abspath(tool_test_path),
+                "--galaxy_root",
+                self.args.galaxy_root,
+                "--update_test_data",
+                os.path.abspath(xreal),
+            ]
+            p = subprocess.run(
+                cll,
+                shell=False,
+                cwd=self.tooloutdir,
+                stderr=dummy,
+                stdout=dummy,
+            )
+
+        else:
+            cll = [
+                "planemo",
+                "test",
+                "--test_data", os.path.abspath(self.testdir),
+                "--test_output", os.path.abspath(tool_test_path),
+                "--galaxy_root",
+                self.args.galaxy_root,
+                os.path.abspath(xreal),
+            ]
+            p = subprocess.run(
+                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+            )
+        tout.close()
+        return p.returncode
+
+
     def shedLoad(self):
         """
         use bioblend to create new repository
@@ -983,6 +1032,27 @@ class ScriptRunner:
                 shutil.copyfile(src, dest)
 
 
+def real_planemo(r):
+        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
+        r.moveRunOutputs()
+        r.makeToolTar()
+        retcode = r.planemo_test(genoutputs=False)
+        r.moveRunOutputs()
+        r.makeToolTar()
+        print(f"second planemo_test returned {retcode}")
+        if args.make_Tool == "gentestinstall":
+            r.shedLoad()
+            r.eph_galaxy_load()
+
+def docker_planemo(r):
+        r.planemo_biodocker_test()  # test to make outputs and then test
+        r.moveRunOutputs()
+        r.makeToolTar()
+        if args.make_Tool == "gentestinstall":
+        r.shedLoad()
+        r.eph_galaxy_load()
+
+
 def main():
     """
     This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml as:
@@ -1043,12 +1113,6 @@ def main():
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        r.planemo_biodocker_test()  # test to make outputs and then test
-        r.moveRunOutputs()
-        r.makeToolTar()
-        if args.make_Tool == "gentestinstall":
-            r.shedLoad()
-            r.eph_galaxy_load()
 
 
 if __name__ == "__main__":
