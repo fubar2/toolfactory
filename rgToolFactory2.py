@@ -39,7 +39,7 @@ import time
 from bioblend import ConnectionError
 from bioblend import toolshed
 
-import docker
+#import docker
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
@@ -1033,22 +1033,22 @@ class ScriptRunner:
 
 
 def real_planemo(r):
-        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
-        r.moveRunOutputs()
-        r.makeToolTar()
-        retcode = r.planemo_test(genoutputs=False)
-        r.moveRunOutputs()
-        r.makeToolTar()
-        print(f"second planemo_test returned {retcode}")
-        if args.make_Tool == "gentestinstall":
-            r.shedLoad()
-            r.eph_galaxy_load()
+    retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
+    r.moveRunOutputs()
+    r.makeToolTar()
+    retcode = r.planemo_test(genoutputs=False)
+    r.moveRunOutputs()
+    r.makeToolTar()
+    print(f"second planemo_test returned {retcode}")
+    if r.args.make_Tool == "gentestinstall":
+        r.shedLoad()
+        r.eph_galaxy_load()
 
 def docker_planemo(r):
-        r.planemo_biodocker_test()  # test to make outputs and then test
-        r.moveRunOutputs()
-        r.makeToolTar()
-        if args.make_Tool == "gentestinstall":
+    r.planemo_biodocker_test()  # test to make outputs and then test
+    r.moveRunOutputs()
+    r.makeToolTar()
+    if r.args.make_Tool == "gentestinstall":
         r.shedLoad()
         r.eph_galaxy_load()
 
@@ -1113,7 +1113,7 @@ def main():
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-
+        real_planemo(r)
 
 if __name__ == "__main__":
     main()
