@@ -801,7 +801,7 @@ class ScriptRunner:
         container.stop()
         container.remove()
         tvol.remove()
-        # shutil.rmtree(testouts) leave for debugging
+        shutil.rmtree(testouts) # leave for debugging
 
     def shedLoad(self):
         """
