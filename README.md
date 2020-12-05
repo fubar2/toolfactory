@@ -131,8 +131,10 @@ toolshed at https://toolshed.g2.bx.psu.edu/ and search for the toolfactory
 repository in the Tool Maker section. Open it and review the code and select the option to install it.
 
 If not already there please add:
+
 ```
-<datatype extension="tgz" type="galaxy.datatypes.binary:Binary" mimetype="multipart/x-gzip" subclass="True" />```
+<datatype extension="tgz" type="galaxy.datatypes.binary:Binary" mimetype="multipart/x-gzip" subclass="True" />
+```
 
 to your local config/data_types_conf.xml.
 
@@ -142,7 +144,7 @@ to your local config/data_types_conf.xml.
 The tool factory tool itself will ONLY run for admin users -
 people with IDs in config/galaxy.yml "admin_users".
 
-**Yes, that's right. ONLY admin_users can run this tool**
+** ONLY admin_users can run this tool**
 That doesn't mean it's safe to install on a shared instance - please don't.
 
 ## Generated tool Security
