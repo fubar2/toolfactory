@@ -571,11 +571,11 @@ class ScriptRunner:
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
             if self.args.script_path:
                 scr = [x for x in self.spacedScript if x.strip() > ""]
-                scr.insert(0,'\n------\n\nScript::\n')
+                scr.insert(0,'\n------\nScript::\n')
                 if len(scr) > 300:
                     scr = (
                         scr[:100]
-                        + [">300 lines - stuff deleted", "......"]
+                        + ["    >300 lines - stuff deleted", "    ......"]
                         + scr[-100:]
                     )
                 scr.append('\n')
