@@ -1,9 +1,8 @@
-﻿**Breaking news! Docker container at https://github.com/fubar2/toolfactory-galaxy-docker
-recommended as at December 2020**
+﻿## Breaking news! Docker container at https://github.com/fubar2/toolfactory-galaxy-docker recommended as at December 2020
 
 # WARNING
 
-Install this tool on a throw-away private Galaxy or Docker container ONLY!
+Install this tool to a throw-away private Galaxy or Docker container ONLY!
 
 Please NEVER on a public or production instance where a hostile user may
 be able to gain access if they can acquire an administrative account login.
@@ -144,8 +143,9 @@ to your local config/data_types_conf.xml.
 The tool factory tool itself will ONLY run for admin users -
 people with IDs in config/galaxy.yml "admin_users".
 
-** ONLY admin_users can run this tool**
-That doesn't mean it's safe to install on a shared instance - please don't.
+*ONLY admin_users can run this tool*
+
+That doesn't mean it's safe to install on a shared or exposed instance - please don't.
 
 ## Generated tool Security
 

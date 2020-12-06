@@ -635,7 +635,7 @@ class ScriptRunner:
             part2 = exml.split("</tests>")[1]
             fixed = "%s\n%s\n%s" % (part1, self.test_override, part2)
             exml = fixed
-        exml = exml.replace('range="1:"', 'range="1000:"')
+        #exml = exml.replace('range="1:"', 'range="1000:"')
         xf = open("%s.xml" % self.tool_name, "w")
         xf.write(exml)
         xf.write("\n")
@@ -756,7 +756,7 @@ class ScriptRunner:
         tvolname = tvol.name
         destdir = "/toolfactory/ptest"
         imrep = os.path.join(destdir, repname)
-        # need to keep the container running so keep it open with tail -f.
+        # need to keep the container running so keep it open with sleep
         # will stop and destroy it when we are done
         container = client.containers.run(
             planemoimage,
@@ -786,7 +786,8 @@ class ScriptRunner:
         try:
             prun(container, tout, cl)
         except:
-            pass
+            e = sys.exc_info()[0]
+            tout.write(f"#### error: {e} from {ptestcl}\n")
         testouts = tempfile.mkdtemp(suffix=None, prefix="tftemp", dir=".")
         self.copy_from_container(destdir, testouts, container)
         src = os.path.join(testouts, "ptest")
@@ -930,6 +931,10 @@ class ScriptRunner:
             filename = tarinfo.name
             return None if filename.endswith(excludeme) else tarinfo
 
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
         for p in self.outfiles:
             oname = p[ONAMEPOS]
             tdest = os.path.join(self.testdir, "%s_sample" % oname)
@@ -940,8 +945,8 @@ class ScriptRunner:
                     dest = os.path.join(self.repdir, "%s.sample" % (oname))
                     shutil.copyfile(src, dest)
                 else:
-                    print(
-                        "### problem - output file %s not found in testdir %s"
+                    tout.write(
+                        "###Output file %s not found in testdir %s. This is normal during the first Planemo run that generates test outputs"
                         % (tdest, self.testdir)
                     )
         tf = tarfile.open(self.newtarpath, "w:gz")
