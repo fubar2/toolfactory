@@ -2,7 +2,7 @@
   <description>Scripts into tools v2.0</description>
   <macros>
      <xml name="tool_metadata">
-     <section name="tool" title="Description, citation" expanded="false">
+     <section name="tool" title="New tool description and citation" expanded="false">
          <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
             help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
             <param name="tool_desc" label="Tool Description" type="text" value=""
@@ -41,7 +41,7 @@
       </section>
      </xml>
      <xml name="io">
-     <section name="io" title="Input and output files" expanded="false">
+     <section name="io" title="Input and output files" expanded="true">
         <repeat name="history_inputs" title="zero or more input data file parameters to appear on the tool form to be passed to the executable"
              help="USE SMALL SAMPLES for the new tool's test. Prompts will form a history item selector as input for users of this new tool">
             <param name="input_files" type="data" format="data" label="Select an input file from your history" optional="true" multiple="false"
@@ -93,7 +93,7 @@
         </section>
      </xml>
      <xml name="additparam">
-     <section name="addparam" title="Parameters other than I/O files" expanded="false">
+     <section name="addparam" title="Parameters other than I/O files" expanded="true">
         <param name="edit_params" type="select" display="radio" label="Make parameters on the generated tool form user editable?"
              help="If no (default), users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
             <option value="yes" selected="true">Yes, allow user to edit all additional parameters on the generated tool form</option>
@@ -171,35 +171,35 @@ python3 $__tool_directory__/rgToolFactory2.py
        #end if
     #end if
 --packages "$deps.packages"
-   #if $usescript.choosescript == "yes":
+   #if $deps.usescript.choosescript == "yes":
 --script_path "$runme"
---sysexe "$usescript.scriptrunner"
+--sysexe "$deps.usescript.scriptrunner"
     #end if
---tool_name "$tool_name"  --user_email "$__user_email__" --citations "$citeme"  --parampass "$ppass.parampass"
+--tool_name "$tool_name"  --user_email "$__user_email__" --citations "$citeme"  --parampass "$io_param.ppass.parampass"
 
-   #if str($makeMode.make_Tool)!="runonly":
---make_Tool "$makeMode.make_Tool"
---tool_desc "$makeMode.tool.tool_desc"
---tool_version "$makeMode.tool.tool_version"
+   #if str($make.makeMode.make_Tool)!="runonly":
+--make_Tool "$make.makeMode.make_Tool"
+--tool_desc "$make.makeMode.tool.tool_desc"
+--tool_version "$make.makeMode.tool.tool_version"
 --help_text "$helpme"
 --new_tool "$new_tool"
---toolshed_api_key "$makeMode.toolshed_apikey"
---galaxy_api_key "$makeMode.galaxy_apikey"
---toolshed_url "$makeMode.toolshed_url"
---galaxy_url "$makeMode.galaxy_url"
+--toolshed_api_key "$make.makeMode.toolshed_apikey"
+--galaxy_api_key "$make.makeMode.galaxy_apikey"
+--toolshed_url "$make.makeMode.toolshed_url"
+--galaxy_url "$make.makeMode.galaxy_url"
    #end if
-   #if $ppass.parampass != '0':
-     #if str($ppass.edit_params) == "yes":
+   #if $io_param.ppass.parampass != '0':
+     #if str($io_param.ppass.addparam.edit_params) == "yes":
 --edit_additional_parameters
      #end if
-     #for apar in $addparam.ppass.additional_parameters:
+     #for apar in $io_param.ppass.addparam.additional_parameters:
 --additional_parameters "$apar.param_name~~~$apar.param_value~~~$apar.param_label~~~$apar.param_help~~~$apar.param_type~~~$apar.param_CL~~~$apar.param_CLprefixed"
      #end for
    #end if
-     #for $intab in $addparam.ppass.history_inputs:
+     #for $intab in $io_param.ppass.io.history_inputs:
 --input_files "$intab.input_files~~~$intab.input_CL~~~$intab.input_formats~~~$intab.input_label~~~$intab.input_help"
      #end for
-     #for $otab in $addparam.ppass.history_outputs:
+     #for $otab in $io_param.ppass.io.history_outputs:
 --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
      #end for
 --galaxy_root "$__root_dir__"
@@ -208,28 +208,28 @@ python3 $__tool_directory__/rgToolFactory2.py
 ]]></command>
  <configfiles>
   <configfile name="runme">
-$usescript.dynScript
+$deps.usescript.dynScript
  </configfile>
  <configfile name="commandoverride">
-#if $cover.commover == "yes" and len(str($cover.command_override).strip()) > 1:
-$cover.command_override
+#if $special.cover.commover == "yes" and len(str($special.cover.command_override).strip()) > 1:
+$special.cover.command_override
 #end if
  </configfile>
  <configfile name="testoverride">
-#if $cover.commover == "yes" and len(str($cover.test_override).strip()) > 1:
-$cover.test_override
+#if $special.cover.commover == "yes" and len(str($special.cover.test_override).strip()) > 1:
+$special.cover.test_override
 #end if
  </configfile>
  <configfile name="helpme">
-    #if $makeMode.make_Tool != "runonly":
-${makeMode.tool.help_text}
+    #if $make.makeMode.make_Tool != "runonly":
+${make.makeMode.tool.help_text}
     #else
 $tool_name help goes here
     #end if
  </configfile>
  <configfile name="citeme">
-#if $makeMode.make_Tool != "runonly":
-    #for $citation in $makeMode.tool.citations:
+#if $make.makeMode.make_Tool != "runonly":
+    #for $citation in $make.makeMode.tool.citations:
         #if $citation.citation_type.type == "bibtex":
             **ENTRY**bibtex
             ${citation.citation_type.bibtex}
@@ -251,7 +251,7 @@ $tool_name help goes here
         </sanitizer>
     </param>
 
-    <section name="deps" title="Dependencies, script and script interpreter" expanded="false">
+    <section name="deps" title="Dependencies, script and script interpreter" expanded="true">
 
     <param name="packages" type="text" value="" label="Conda dependencies as package name[:version, name:version...]. These will always be available when this tool executes"
     optional="false" help="Use =[ver] or :[ver] for specific version - 'bwa=0.17.0'. Default is latest. Will be used every time the tool is (re)run. Only Conda is currently supported"  />
@@ -286,6 +286,7 @@ $tool_name help goes here
         </when>
     </conditional>
     </section>
+    <section name="io_param" title="Data file input, output and parameters" expanded="true">
     <conditional name="ppass">
         <param name="parampass"  type="select" display="radio" label="Command line parameter passing method to use">
             <option value="argparse" selected="true">Argparse: passed in the form of --clname value</option>
@@ -304,7 +305,8 @@ $tool_name help goes here
              <expand macro="io"/>
         </when>
     </conditional>
-     <section name="special" title="Advanced options" expanded="false">
+    </section>
+     <section name="special" title="Optional advanced XML over-rides" expanded="false">
     <param name="cl_prefix" type="text" value="" label="Prefix for generated command line. Prepends generated i/o and parameter CL. Use override below to replace completely"
             help="Text will replace generated executable/script elements. Sometimes required before i/o and parameters in the generated command line." />
     <conditional name="cover">
@@ -337,7 +339,7 @@ $tool_name help goes here
         </when>
     </conditional>
     </section>
-     <section name="make" title="Make, toolshed and local Galaxy install options" expanded="false">
+     <section name="make" title="Make, toolshed and local Galaxy install options" expanded="true">
     <conditional name="makeMode">
         <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
           help="Installation in this Galaxy is optional" >
