@@ -571,7 +571,7 @@ class ScriptRunner:
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
             if self.args.script_path:
                 scr = [x for x in self.spacedScript if x.strip() > ""]
-                scr.insert(0,'\n------\nScript::\n')
+                scr.insert(0,'\n------\n\n\nScript::\n')
                 if len(scr) > 300:
                     scr = (
                         scr[:100]
@@ -990,10 +990,8 @@ class ScriptRunner:
 
 def main():
     """
-    This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml as:
-    <command interpreter="python">rgBaseScriptWrapper.py --script_path "$scriptPath"
-    --tool_name "foo" --interpreter "Rscript"
-    </command>
+    This is a Galaxy wrapper. It expects to be called by a special purpose tool.xml
+
     """
     parser = argparse.ArgumentParser()
     a = parser.add_argument
