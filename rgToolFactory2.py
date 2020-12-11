@@ -1042,16 +1042,32 @@ def main():
     r.writeShedyml()
     r.makeTool()
     if args.make_Tool == "generate":
-        retcode = r.run()  # for testing toolfactory itself
+        retcode = r.run()
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        r.planemo_biodocker_test()  # test to make outputs and then test
+        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
         r.moveRunOutputs()
         r.makeToolTar()
+        retcode = r.planemo_test(genoutputs=False)
+        r.moveRunOutputs()
+        r.makeToolTar()
+        print(f"second planemo_test returned {retcode}")
         if args.make_Tool == "gentestinstall":
             r.shedLoad()
             r.eph_galaxy_load()
+    # for the docker version use this
+    # if args.make_Tool == "generate":
+        # retcode = r.run()  # for testing toolfactory itself
+        # r.moveRunOutputs()
+        # r.makeToolTar()
+    # else:
+        # r.planemo_biodocker_test()  # test to make outputs and then test
+        # r.moveRunOutputs()
+        # r.makeToolTar()
+        # if args.make_Tool == "gentestinstall":
+            # r.shedLoad()
+            # r.eph_galaxy_load()
 
 
 if __name__ == "__main__":

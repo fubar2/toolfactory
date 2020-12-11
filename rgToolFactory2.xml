@@ -145,7 +145,6 @@
    <requirement type="package" version="0.4.11">galaxyxml</requirement>
    <requirement type="package" version="0.14.0">bioblend</requirement>
    <requirement type="package" version="0.10.6">ephemeris</requirement>
-   <requirement type="package" version="4.4.0">docker-py</requirement>
    <requirement type="package" version="0.72.0">planemo</requirement>
 </requirements>
 
