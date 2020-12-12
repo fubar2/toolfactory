@@ -1057,18 +1057,6 @@ or an executable package in --sysexe or --packages"
         if args.make_Tool == "gentestinstall":
             r.shedLoad()
             r.eph_galaxy_load()
-    # for the docker version use this
-    # if args.make_Tool == "generate":
-    # retcode = r.run()  # for testing toolfactory itself
-    # r.moveRunOutputs()
-    # r.makeToolTar()
-    # else:
-    # r.planemo_biodocker_test()  # test to make outputs and then test
-    # r.moveRunOutputs()
-    # r.makeToolTar()
-    # if args.make_Tool == "gentestinstall":
-    # r.shedLoad()
-    # r.eph_galaxy_load()
 
 
 if __name__ == "__main__":
