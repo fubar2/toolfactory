@@ -39,7 +39,6 @@ import time
 from bioblend import ConnectionError
 from bioblend import toolshed
 
-import docker
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
@@ -728,7 +727,8 @@ class ScriptRunner:
         os.unlink(tfname)
 
     def planemo_biodocker_test(self):
-        """planemo currently leaks dependencies if used in the same container and gets unhappy after a
+        """
+        planemo currently leaks dependencies if used in the same container and gets unhappy after a
         first successful run. https://github.com/galaxyproject/planemo/issues/1078#issuecomment-731476930
 
         Docker biocontainer has planemo with caches filled to save repeated downloads
@@ -803,6 +803,67 @@ class ScriptRunner:
         container.remove()
         tvol.remove()
         shutil.rmtree(testouts) # leave for debugging
+
+    def planemo_test(self, genoutputs=True):
+            """planemo is a requirement so is available for testing but needs a different call if
+            in the biocontainer - see above
+            and for generating test outputs if command or test overrides are supplied
+            test outputs are sent to repdir for display
+            planemo test --engine docker_galaxy  --galaxy_root /galaxy-central pyrevpos/pyrevpos.xml
+            Planemo runs:
+    python ./scripts/functional_tests.py -v --with-nosehtml --html-report-file
+    /export/galaxy-central/database/job_working_directory/000/17/working/TF_run_report_tempdir/tacrev_planemo_test_report.html
+    --with-xunit --xunit-file /tmp/tmpt90p7f9h/xunit.xml --with-structureddata
+    --structured-data-file
+    /export/galaxy-central/database/job_working_directory/000/17/working/tfout/tool_test_output.json functional.test_toolbox
+            for the planemo-biocontainer,
+            planemo test --conda_dependency_resolution --skip_venv --galaxy_root /galthrow/ rgToolFactory2.xml
+            """
+            xreal = "%s.xml" % self.tool_name
+            tool_test_path = os.path.join(self.repdir,f"{self.tool_name}_planemo_test_report.html")
+            if os.path.exists(self.tlog):
+                tout = open(self.tlog, "a")
+            else:
+                tout = open(self.tlog, "w")
+            if genoutputs:
+                dummy, tfile = tempfile.mkstemp()
+                cll = [
+                    "planemo",
+                    "test",
+                    "--test_data", os.path.abspath(self.testdir),
+                    "--test_output", os.path.abspath(tool_test_path),
+                    "--skip_venv",
+                    "--galaxy_root",
+                    self.args.galaxy_root,
+                    "--update_test_data",
+                    os.path.abspath(xreal),
+                ]
+                p = subprocess.run(
+                    cll,
+                    shell=False,
+                    cwd=self.tooloutdir,
+                    stderr=dummy,
+                    stdout=dummy,
+                )
+
+            else:
+                cll = [
+                    "planemo",
+                    "test",
+                    "--test_data", os.path.abspath(self.testdir),
+                    "--test_output", os.path.abspath(tool_test_path),
+                    "--skip_venv",
+                    "--galaxy_root",
+                    self.args.galaxy_root,
+                    os.path.abspath(xreal),
+                ]
+                p = subprocess.run(
+                    cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                )
+            tout.close()
+            return p.returncode
+
+
 
     def shedLoad(self):
         """

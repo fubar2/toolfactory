@@ -134,7 +134,7 @@
           </param>
           <param name="param_CL" type="text" label="Positional ordinal | argparse argument name"
               help="Using positional parameters, enter the integer ordinal for this parameter on the command line. Using Argparse style, '--' will be prepended on the CL" value="" />
-          <param name="param_CLprefixed" type="text" label="Override the generated default argparse name prefix if not empty - eg ----foo if needed"
+          <param name="param_CLprefixed" type="text" label="Override the generated default argparse name prefix if not empty - eg ~~--foo if needed"
               help="Some targets like Planemo expect an unadorned action like 'test' before --galaxy_root." value="" />
         </repeat>
         </section>
@@ -338,8 +338,8 @@ $tool_name help goes here
         <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
           help="Installation in this Galaxy is optional" >
         <option value="generate" >Run to generate tests only. Should fail if dependencies needed.</option>
-        <option value="gentest">Test with planemo after generating.</option>
-        <option value="gentestinstall" selected="true">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
+        <option value="gentest" selected="true">Test with planemo after generating.</option>
+        <option value="gentestinstall">Install in Galaxy after generation and testing. URLs and matching API keys are required for this step! </option>
         </param>
        <when value="generate">
            <param name="galaxy_apikey" value="" type="hidden"  ></param>
