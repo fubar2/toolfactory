@@ -28,12 +28,9 @@ import time
 
 from bioblend import ConnectionError
 from bioblend import toolshed
-
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
-
 import lxml
-
 import yaml
 
 myversion = "V2.1 July 2020"
@@ -226,53 +223,57 @@ class ScriptRunner:
         if self.args.parampass == "0":
             self.clsimple()
         else:
-            clsuffix = []
-            xclsuffix = []
-            for i, p in enumerate(self.infiles):
-                if p[IOCLPOS] == "STDIN":
-                    appendme = [
-                        p[IOCLPOS],
-                        p[ICLPOS],
-                        p[IPATHPOS],
-                        "< %s" % p[IPATHPOS],
-                    ]
-                    xappendme = [
-                        p[IOCLPOS],
-                        p[ICLPOS],
-                        p[IPATHPOS],
-                        "< $%s" % p[ICLPOS],
-                    ]
-                else:
-                    appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS], ""]
-                    xappendme = [p[IOCLPOS], p[ICLPOS], "$%s" % p[ICLPOS], ""]
-                clsuffix.append(appendme)
-                xclsuffix.append(xappendme)
-            for i, p in enumerate(self.outfiles):
-                if p[OOCLPOS] == "STDOUT":
-                    self.lastclredirect = [">", p[ONAMEPOS]]
-                    self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
-                else:
-                    clsuffix.append(
-                        [p[ONAMEPOS], p[ONAMEPOS], p[ONAMEPOS], ""]
-                    )
-                    xclsuffix.append(
-                        [p[ONAMEPOS], p[ONAMEPOS], "$%s" % p[ONAMEPOS], ""]
-                    )
-            for p in self.addpar:
+            self.moreinit()
+
+    def moreinit(self):
+        # flake8 wants this. Never argue with a linter.
+        clsuffix = []
+        xclsuffix = []
+        for i, p in enumerate(self.infiles):
+            if p[IOCLPOS] == "STDIN":
+                appendme = [
+                    p[IOCLPOS],
+                    p[ICLPOS],
+                    p[IPATHPOS],
+                    "< %s" % p[IPATHPOS],
+                ]
+                xappendme = [
+                    p[IOCLPOS],
+                    p[ICLPOS],
+                    p[IPATHPOS],
+                    "< $%s" % p[ICLPOS],
+                ]
+            else:
+                appendme = [p[IOCLPOS], p[ICLPOS], p[IPATHPOS], ""]
+                xappendme = [p[IOCLPOS], p[ICLPOS], "$%s" % p[ICLPOS], ""]
+            clsuffix.append(appendme)
+            xclsuffix.append(xappendme)
+        for i, p in enumerate(self.outfiles):
+            if p[OOCLPOS] == "STDOUT":
+                self.lastclredirect = [">", p[ONAMEPOS]]
+                self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
+            else:
                 clsuffix.append(
-                    [p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]]
+                    [p[ONAMEPOS], p[ONAMEPOS], p[ONAMEPOS], ""]
                 )
                 xclsuffix.append(
-                    [p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]]
+                    [p[ONAMEPOS], p[ONAMEPOS], "$%s" % p[ONAMEPOS], ""]
                 )
-            clsuffix.sort()
-            xclsuffix.sort()
-            self.xclsuffix = xclsuffix
-            self.clsuffix = clsuffix
-            if self.args.parampass == "positional":
-                self.clpositional()
-            else:
-                self.clargparse()
+        for p in self.addpar:
+            clsuffix.append(
+                [p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]]
+            )
+            xclsuffix.append(
+                [p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]]
+            )
+        clsuffix.sort()
+        xclsuffix.sort()
+        self.xclsuffix = xclsuffix
+        self.clsuffix = clsuffix
+        if self.args.parampass == "positional":
+            self.clpositional()
+        else:
+            self.clargparse()
 
     def prepScript(self):
         rx = open(self.args.script_path, "r").readlines()
@@ -405,8 +406,43 @@ class ScriptRunner:
                 ndash = 1
         return ndash
 
+    def has_test_doxml(self, test, newcl, newfmt):
+        """ forced to split because of flake8 tyrrany.
+        """
+        if test.startswith("diff"):
+            c = "diff"
+            ld = 0
+            if test.split(":")[1].isdigit:
+                ld = int(test.split(":")[1])
+            tp = gxtp.TestOutput(
+                name=newcl,
+                value="%s_sample" % newcl,
+                format=newfmt,
+                compare=c,
+                lines_diff=ld,
+            )
+        elif test.startswith("sim_size"):
+            c = "sim_size"
+            tn = test.split(":")[1].strip()
+            if tn > "":
+                if "." in tn:
+                    delta = None
+                    delta_frac = min(1.0, float(tn))
+                else:
+                    delta = int(tn)
+                    delta_frac = None
+            tp = gxtp.TestOutput(
+                name=newcl,
+                value="%s_sample" % newcl,
+                format=newfmt,
+                compare=c,
+                delta=delta,
+                delta_frac=delta_frac,
+            )
+        self.testparam.append(tp)
+
     def doXMLparam(self):
-        """flake8 made me do this..."""
+        """flake8 is a bastard"""
         for p in self.outfiles:
             newname, newfmt, newcl, test, oldcl = p
             test = test.strip()
@@ -426,39 +462,8 @@ class ScriptRunner:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newname
             self.toutputs.append(aparm)
-            ld = None
             if test.strip() > "":
-                if test.startswith("diff"):
-                    c = "diff"
-                    ld = 0
-                    if test.split(":")[1].isdigit:
-                        ld = int(test.split(":")[1])
-                    tp = gxtp.TestOutput(
-                        name=newcl,
-                        value="%s_sample" % newcl,
-                        format=newfmt,
-                        compare=c,
-                        lines_diff=ld,
-                    )
-                elif test.startswith("sim_size"):
-                    c = "sim_size"
-                    tn = test.split(":")[1].strip()
-                    if tn > "":
-                        if "." in tn:
-                            delta = None
-                            delta_frac = min(1.0, float(tn))
-                        else:
-                            delta = int(tn)
-                            delta_frac = None
-                    tp = gxtp.TestOutput(
-                        name=newcl,
-                        value="%s_sample" % newcl,
-                        format=newfmt,
-                        compare=c,
-                        delta=delta,
-                        delta_frac=delta_frac,
-                    )
-                self.testparam.append(tp)
+                self.has_test_doxml(self, test, newcl)
         for p in self.infiles:
             newname = p[ICLPOS]
             newfmt = p[IFMTPOS]
