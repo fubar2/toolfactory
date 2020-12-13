@@ -316,7 +316,7 @@ class ScriptRunner:
             self.infiles[i] = infp
         for i, p in enumerate(self.outfiles):
             if (
-                self.args.parampass == "positional" \
+                self.args.parampass == "positional"
                 and p[OCLPOS].upper() != "STDOUT"
             ):
                 assert p[
@@ -596,8 +596,8 @@ class ScriptRunner:
                 scr.insert(0, "\n------\n\n\nScript::\n")
                 if len(scr) > 300:
                     scr = (
-                        scr[:100] + \
-                        ["    >300 lines - stuff deleted", "    ......"] + \
+                        scr[:100] +
+                        ["    >300 lines - stuff deleted", "    ......"] +
                         scr[-100:]
                     )
                 scr.append("\n")
@@ -972,8 +972,8 @@ This is normal during the first Planemo run that generates test outputs"
         with os.scandir(self.testdir) as outs:
             for entry in outs:
                 if (
-                    (not entry.is_file()) or \
-                    entry.name.endswith("_sample") or \
+                    (not entry.is_file()) or
+                    entry.name.endswith("_sample") or
                     entry.name.endswith("_planemo_test_report.html")
                 ):
                     continue
