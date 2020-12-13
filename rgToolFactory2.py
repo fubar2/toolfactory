@@ -26,8 +26,7 @@ import tarfile
 import tempfile
 import time
 
-from bioblend import ConnectionError
-from bioblend import toolshed
+from bioblend import ConnectionError, toolshed
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
@@ -409,14 +408,14 @@ class ScriptRunner:
                 ndash = 1
         return ndash
 
-    def has_test_doxml(self, test, newcl, newfmt):
+    def has_test_doxml(self, atest, newcl, newfmt):
         """ forced to split because of flake8 tyrrany.
         """
-        if test.startswith("diff"):
+        if atest.startswith("diff"):
             c = "diff"
             ld = 0
-            if test.split(":")[1].isdigit:
-                ld = int(test.split(":")[1])
+            if atest.split(":")[1].isdigit:
+                ld = int(atest.split(":")[1])
             tp = gxtp.TestOutput(
                 name=newcl,
                 value="%s_sample" % newcl,
@@ -424,9 +423,9 @@ class ScriptRunner:
                 compare=c,
                 lines_diff=ld,
             )
-        elif test.startswith("sim_size"):
+        elif atest.startswith("sim_size"):
             c = "sim_size"
-            tn = test.split(":")[1].strip()
+            tn = atest.split(":")[1].strip()
             if tn > "":
                 if "." in tn:
                     delta = None
@@ -447,8 +446,8 @@ class ScriptRunner:
     def doXMLparam(self):
         """flake8 is a bastard"""
         for p in self.outfiles:
-            newname, newfmt, newcl, test, oldcl = p
-            test = test.strip()
+            newname, newfmt, newcl, atest, oldcl = p
+            atest = atest.strip()
             ndash = self.getNdash(newcl)
             aparm = gxtp.OutputData(
                 name=newname,
@@ -465,8 +464,8 @@ class ScriptRunner:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newname
             self.toutputs.append(aparm)
-            if test.strip() > "":
-                self.has_test_doxml(self, test, newcl)
+            if atest.strip() > "":
+                self.has_test_doxml(atest, newcl, newfmt)
         for p in self.infiles:
             newname = p[ICLPOS]
             newfmt = p[IFMTPOS]
