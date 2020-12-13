@@ -1,8 +1,6 @@
 ﻿## Breaking news! Docker container at https://github.com/fubar2/toolfactory-galaxy-docker recommended as at December 2020
 
-## This is the original ToolFactory suitable for non-docker situations
-## Please use the docker container if you can for a much better user experience
-## because it's already integrated with a Toolshed and Galaxy...
+## This is the original ToolFactory suitable for non-docker situations. Please use the docker container if you can because it's integrated with a Toolshed...
 
 # WARNING
 
