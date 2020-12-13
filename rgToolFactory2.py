@@ -26,12 +26,12 @@ import tarfile
 import tempfile
 import time
 
-from bioblend import ConnectionError
-from bioblend import toolshed
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
 import lxml
 import yaml
+from bioblend import ConnectionError
+from bioblend import toolshed
 
 myversion = "V2.1 July 2020"
 verbose = True
