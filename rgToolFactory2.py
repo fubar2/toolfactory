@@ -26,11 +26,11 @@ import tarfile
 import tempfile
 import time
 
-import galaxyxml.tool as gxt
-import galaxyxml.tool.parameters as gxtp
-
 from bioblend import ConnectionError
 from bioblend import toolshed
+
+import galaxyxml.tool as gxt
+import galaxyxml.tool.parameters as gxtp
 
 import lxml
 
