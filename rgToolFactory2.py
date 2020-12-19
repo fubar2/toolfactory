@@ -228,7 +228,7 @@ class ScriptRunner:
             self.moreinit()
 
     def moreinit(self):
-        # flake8 wants this. Never argue with a linter.
+        # flake8 wants this. Never argue with a linter. Onlookers might not be able to tell the difference.
         clsuffix = []
         xclsuffix = []
         for i, p in enumerate(self.infiles):
