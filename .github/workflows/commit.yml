@@ -52,7 +52,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: flake8 *.py
-      run: flake8 --ignore=E501,E203
+      run: flake8 --ignore=E501,E203,W503
     - name: Planemo lint
       run: planemo lint .
     - name: Planemo test tool
