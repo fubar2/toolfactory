@@ -142,7 +142,8 @@ class ScriptRunner:
         and prepare elements needed for galaxyxml tool generation
         """
         self.ourcwd = os.getcwd()
-        self.ourenv = copy.deepcopy(os.environ)
+        self.ourenv = dict(os.environ)
+        self.ourenv['__tool_directory__'] = args.tool_dir  # inject for planemo
         self.infiles = [x.split(ourdelim) for x in args.input_files]
         self.outfiles = [x.split(ourdelim) for x in args.output_files]
         self.addpar = [x.split(ourdelim) for x in args.additional_parameters]
@@ -466,6 +467,9 @@ class ScriptRunner:
                 else:
                     aparm.positional = int(oldcl)
                     aparm.command_line_override = "$%s" % newname
+            else:
+                if oldcl.upper() == "STDOUT":
+                    aparm.command_line_override = "> $%S" % newname
             self.toutputs.append(aparm)
             if atest.strip() > "":
                 self.has_test_doxml(atest, newcl, newfmt)
@@ -765,6 +769,7 @@ class ScriptRunner:
             ]
             p = subprocess.run(
                 cll,
+                env=self.ourenv,
                 shell=False,
                 cwd=self.tooloutdir,
                 stderr=dummy,
@@ -785,7 +790,7 @@ class ScriptRunner:
                 os.path.abspath(xreal),
             ]
             p = subprocess.run(
-                cll, shell=False, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                cll, shell=False, env=self.ourenv, cwd=self.tooloutdir, stderr=tout, stdout=tout
             )
         tout.close()
         return p.returncode

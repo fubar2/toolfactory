@@ -47,7 +47,7 @@ new output files to the history as specified when the tool builder completed the
 That tool can contain instructions to run any Conda dependency or a system executable like bash. Whether a bash script you have written or
 a Conda package like bwa, the executable will expect to find settings for input, output and parameters on a command line.
 
-IThese are often passed as "--name value" (argparse style) or in a fixed order (positional style).
+These are often passed as "--name value" (argparse style) or in a fixed order (positional style).
 
 The ToolFactory allows either, or for "filter" applications that process input from STDIN and write processed output to STDOUT.
 
@@ -57,7 +57,7 @@ to a bash script. The bash script runs the unix tac utility (reverse cat) piped 
 
 `tac | rev`
 
-The tool building form allows naming zero or more Conda package name(s) and version(s) and the supply of a script to be executed by either a system
+The tool building form allows zero or more Conda package name(s) and version(s) and an optional script to be executed by either a system
 executable like ``bash`` or the first of any named Conda dependency package/version. Tacrev uses a tiny bash script shown above and uses the system
 bash. Conda bash can be specified if it is important to use the same version consistently for the tool.
 
@@ -83,6 +83,9 @@ result. Some tool builders may find the bash version more familiar and cleaner b
 
 ## Overview
 
+![IHello example ToolFactory tool form](files/hello_toolfactory_form.png?raw=true "Part of the Hello world example ToolFactory tool form")
+
+
 Steps in building a new Galaxy tool are all conducted through Galaxy running in the docker container:
 
 1. Login to the Galaxy running in the container at http://localhost:8080 using an admin account. They are specified in config/galaxy.yml and
@@ -98,8 +101,9 @@ Steps in building a new Galaxy tool are all conducted through Galaxy running in 
 
 4. If the test fails, rerun the failed history job and correct errors on the tool form before rerunning until everything works correctly.
 
-![IHello example ToolFactory tool form](files/hello_toolfactory_form.png?raw=true "Part of the Hello world example ToolFactory tool form")
 
+
+![How it works](files/TFasIDE.png?raw=true "Overview of the ToolFactory as an Integrated Development Environment")
 
 ## Planning and building new Galaxy tool wrappers.
 
