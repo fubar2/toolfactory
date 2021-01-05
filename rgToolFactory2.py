@@ -125,9 +125,7 @@ def parse_citations(citations_text):
         if citation.startswith("doi"):
             citation_tuples.append(("doi", citation[len("doi") :].strip()))
         else:
-            citation_tuples.append(
-                ("bibtex", citation[len("bibtex") :].strip())
-            )
+            citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
 
@@ -158,9 +156,7 @@ class ScriptRunner:
             self.executeme = self.args.sysexe
         else:
             if self.args.packages:
-                self.executeme = (
-                    self.args.packages.split(",")[0].split(":")[0].strip()
-                )
+                self.executeme = self.args.packages.split(",")[0].split(":")[0].strip()
             else:
                 self.executeme = None
         aCL = self.cl.append
@@ -218,12 +214,8 @@ class ScriptRunner:
             else:
                 aCL(self.executeme)
                 aXCL(self.executeme)
-        self.elog = os.path.join(
-            self.repdir, "%s_error_log.txt" % self.tool_name
-        )
-        self.tlog = os.path.join(
-            self.repdir, "%s_runner_log.txt" % self.tool_name
-        )
+        self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
+        self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
 
         if self.args.parampass == "0":
             self.clsimple()
@@ -255,13 +247,9 @@ class ScriptRunner:
                     self.lastxclredirect = [">", "$%s" % p[OCLPOS]]
                 else:
                     clsuffix.append([p[OCLPOS], p[ONAMEPOS], p[ONAMEPOS], ""])
-                    xclsuffix.append(
-                        [p[OCLPOS], p[ONAMEPOS], "$%s" % p[ONAMEPOS], ""]
-                    )
+                    xclsuffix.append([p[OCLPOS], p[ONAMEPOS], "$%s" % p[ONAMEPOS], ""])
             for p in self.addpar:
-                clsuffix.append(
-                    [p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]]
-                )
+                clsuffix.append([p[AOCLPOS], p[ACLPOS], p[AVALPOS], p[AOVERPOS]])
                 xclsuffix.append(
                     [p[AOCLPOS], p[ACLPOS], '"$%s"' % p[ANAMEPOS], p[AOVERPOS]]
                 )
@@ -305,8 +293,7 @@ class ScriptRunner:
                 )
             for i, p in enumerate(self.outfiles):
                 assert (
-                    p[OCLPOS].isdigit()
-                    or p[OCLPOS].strip().upper() == "STDOUT"
+                    p[OCLPOS].isdigit() or p[OCLPOS].strip().upper() == "STDOUT"
                 ), "Positional parameters must be ordinal integers - got %s for %s" % (
                     p[OCLPOS],
                     p[ONAMEPOS],
@@ -332,9 +319,9 @@ class ScriptRunner:
             self.infiles[i] = infp
         for i, p in enumerate(self.outfiles):
             p.append(p[OCLPOS])  # keep copy
-            if (
-                p[OOCLPOS].isdigit() and self.args.parampass != "positional"
-            ) or p[OOCLPOS].strip().upper() == "STDOUT":
+            if (p[OOCLPOS].isdigit() and self.args.parampass != "positional") or p[
+                OOCLPOS
+            ].strip().upper() == "STDOUT":
                 scl = p[ONAMEPOS]
                 p[OCLPOS] = scl
             self.outfiles[i] = p
@@ -459,7 +446,6 @@ class ScriptRunner:
                     tp = gxtp.TestOutput(
                         name=newname,
                         value="%s_sample" % newname,
-                        format=newfmt,
                         compare=c,
                         delta=delta,
                         delta_frac=delta_frac,
@@ -478,7 +464,6 @@ class ScriptRunner:
                 optional=False,
                 label=alab,
                 help=p[IHELPOS],
-                format=newfmt,
                 multiple=False,
                 num_dashes=ndash,
             )
@@ -582,33 +567,37 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.command_override:
-            self.newtool.command_override = (
-                self.command_override
-            )  # config file
+            self.newtool.command_override = self.command_override  # config file
         else:
             self.newtool.command_override = self.xmlcl
+        cite = gxtp.Citations()
+        acite = gxtp.Citation(type="doi", value="10.1093/bioinformatics/bts573")
+        cite.append(acite)
+        self.newtool.citations = cite
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
-            if self.args.script_path:
-                scr = [x for x in self.spacedScript if x.strip() > ""]
-                scr.insert(0, "\n------\n\n\nScript::\n")
-                if len(scr) > 300:
-                    scr = (
-                        scr[:100]
-                        + ["    >300 lines - stuff deleted", "    ......"]
-                        + scr[-100:]
-                    )
-                scr.append("\n")
-                safertext = safertext + "\n".join(scr)
-            self.newtool.help = safertext
         else:
-            self.newtool.help = (
+            safertext = (
                 "Please ask the tool author (%s) for help \
-              as none was supplied at tool generation\n"
+          as none was supplied at tool generation\n"
                 % (self.args.user_email)
             )
-        self.newtool.version_command = None  # do not want
+        if len(safertext) > 0:
+            safertext = safertext + "\n\n------\n"  # transition allowed!
+        if self.args.script_path:
+            scr = [x for x in self.spacedScript if x.strip() > ""]
+            scr.insert(0, "\n\n------\n\n\nScript::\n")
+            if len(scr) > 300:
+                scr = (
+                    scr[:100]
+                    + ["    >300 lines - stuff deleted", "    ......"]
+                    + scr[-100:]
+                )
+            scr.append("\n")
+            safertext = safertext + "\n".join(scr)
+        self.newtool.help = safertext
+        self.newtool.version_command = f"echo {self.args.tool_version}"
         requirements = gxtp.Requirements()
         if self.args.packages:
             for d in self.args.packages.split(","):
@@ -632,9 +621,7 @@ class ScriptRunner:
         if self.args.script_path:
             configfiles = gxtp.Configfiles()
             configfiles.append(
-                gxtp.Configfile(
-                    name="runme", text="\n".join(self.escapedScript)
-                )
+                gxtp.Configfile(name="runme", text="\n".join(self.escapedScript))
             )
             self.newtool.configfiles = configfiles
         tests = gxtp.Tests()
@@ -648,13 +635,8 @@ class ScriptRunner:
             % (self.args.user_email, timenow())
         )
         self.newtool.add_comment("Source in git at: %s" % (toolFactoryURL))
-        self.newtool.add_comment(
-            "Cite: Creating re-usable tools from scripts doi:10.1093/bioinformatics/bts573"
-        )
         exml0 = self.newtool.export()
-        exml = exml0.replace(
-            FAKEEXE, ""
-        )  # temporary work around until PR accepted
+        exml = exml0.replace(FAKEEXE, "")  # temporary work around until PR accepted
         if (
             self.test_override
         ):  # cannot do this inside galaxyxml as it expects lxml objects for tests
@@ -684,17 +666,14 @@ class ScriptRunner:
             else:
                 ste = open(self.elog, "w")
             if self.lastclredirect:
-                sto = open(
-                    self.lastclredirect[1], "wb"
-                )  # is name of an output file
+                sto = open(self.lastclredirect[1], "wb")  # is name of an output file
             else:
                 if os.path.exists(self.tlog):
                     sto = open(self.tlog, "a")
                 else:
                     sto = open(self.tlog, "w")
                 sto.write(
-                    "## Executing Toolfactory generated command line = %s\n"
-                    % scl
+                    "## Executing Toolfactory generated command line = %s\n" % scl
                 )
             sto.flush()
             subp = subprocess.run(
@@ -715,9 +694,7 @@ class ScriptRunner:
             subp = subprocess.run(
                 self.cl, env=self.ourenv, shell=False, stdout=sto, stdin=sti
             )
-            sto.write(
-                "## Executing Toolfactory generated command line = %s\n" % scl
-            )
+            sto.write("## Executing Toolfactory generated command line = %s\n" % scl)
             retval = subp.returncode
             sto.close()
             sti.close()
@@ -729,7 +706,6 @@ class ScriptRunner:
             sys.stderr.write(err)
         logging.debug("run done")
         return retval
-
 
     def shedLoad(self):
         """
@@ -769,9 +745,7 @@ class ScriptRunner:
                 category_ids=catID,
             )
             tid = res.get("id", None)
-            sto.write(
-                f"#create_repository {self.args.tool_name} tid={tid} res={res}\n"
-            )
+            sto.write(f"#create_repository {self.args.tool_name} tid={tid} res={res}\n")
         else:
             i = rnames.index(self.tool_name)
             tid = rids[i]
@@ -821,8 +795,7 @@ class ScriptRunner:
             stdout=tout,
         )
         tout.write(
-            "installed %s - got retcode %d\n"
-            % (self.tool_name, subp.returncode)
+            "installed %s - got retcode %d\n" % (self.tool_name, subp.returncode)
         )
         tout.close()
         return subp.returncode
@@ -978,10 +951,16 @@ class ScriptRunner:
                 os.path.abspath(xreal),
             ]
             p = subprocess.run(
-                cll, shell=False, env=self.ourenv, cwd=self.tooloutdir, stderr=tout, stdout=tout
+                cll,
+                shell=False,
+                env=self.ourenv,
+                cwd=self.tooloutdir,
+                stderr=tout,
+                stdout=tout,
             )
         tout.close()
         return p.returncode
+
 
 def main():
     """
@@ -1028,21 +1007,15 @@ def main():
 admin adds %s to "admin_users" in the galaxy.yml Galaxy configuration file'
         % (args.bad_user, args.bad_user)
     )
-    assert (
-        args.tool_name
-    ), "## Tool Factory expects a tool name - eg --tool_name=DESeq"
+    assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"
     assert (
         args.sysexe or args.packages
     ), "## Tool Factory wrapper expects an interpreter \
 or an executable package in --sysexe or --packages"
-    args.input_files = [
-        x.replace('"', "").replace("'", "") for x in args.input_files
-    ]
+    args.input_files = [x.replace('"', "").replace("'", "") for x in args.input_files]
     # remove quotes we need to deal with spaces in CL params
     for i, x in enumerate(args.additional_parameters):
-        args.additional_parameters[i] = args.additional_parameters[i].replace(
-            '"', ""
-        )
+        args.additional_parameters[i] = args.additional_parameters[i].replace('"', "")
     r = ScriptRunner(args)
     r.writeShedyml()
     r.makeTool()
