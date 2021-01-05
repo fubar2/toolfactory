@@ -73,7 +73,7 @@
             <param name="history_name" type="text" label="Name for this output to appear in new history" optional="false"
               help="No spaces! Argparse will also use this name as --[name]">
               <sanitizer invalid_char="_">
-                <valid initial="string.letters,string.digits">
+                <valid initial="string.ascii_letters,string.digits">
                    <add value="_" />
                  </valid>
               </sanitizer>
@@ -173,7 +173,6 @@ python3 $__tool_directory__/rgToolFactory2.py
 --sysexe "$deps.usescript.scriptrunner"
     #end if
 --tool_name "$tool_name"  --user_email "$__user_email__" --citations "$citeme"  --parampass "$io_param.ppass.parampass"
-
    #if str($make.makeMode.make_Tool)!="runonly":
 --make_Tool "$make.makeMode.make_Tool"
 --tool_desc "$make.makeMode.tool_desc"
@@ -267,7 +266,7 @@ $tool_name help goes here
             <param name="scriptrunner" type="text" value=""   label="Interpreter for the script - eg bash or python. Can be one of the dependencies named above or a system executable"
              help="Scripts are interpreted by the executable named here. Use bash for bash scripts, or a conda dependency such as R or Python for those scripts">
             <sanitizer invalid_char="">
-                <valid initial="string.letters,string.digits">
+                <valid initial="string.ascii_letters,string.digits">
                     <add value="_"/>
                 </valid>
             </sanitizer>
