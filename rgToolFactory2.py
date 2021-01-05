@@ -117,17 +117,6 @@ def cheetah_escape(text):
     return "".join([cheetah_escape_table.get(c, c) for c in text])
 
 
-def html_unescape(text):
-    """Revert entities within text. Multiple character targets so use replace"""
-    t = text.replace("&amp;", "&")
-    t = t.replace("&gt;", ">")
-    t = t.replace("&lt;", "<")
-    t = t.replace("\\$", "$")
-    t = t.replace("&#36;", "$")
-    t = t.replace("&#35;", "#")
-    return t
-
-
 def parse_citations(citations_text):
     """"""
     citations = [c for c in citations_text.split("**ENTRY**") if c.strip()]
@@ -633,7 +622,7 @@ class ScriptRunner:
                 requirements.append(
                     gxtp.Requirement("package", packg.strip(), ver.strip())
                 )
-        self.newtool.requirements = requirements
+            self.newtool.requirements = requirements
         if self.args.parampass == "0":
             self.doNoXMLparam()
         else:
@@ -740,6 +729,7 @@ class ScriptRunner:
             sys.stderr.write(err)
         logging.debug("run done")
         return retval
+
 
     def shedLoad(self):
         """
@@ -936,6 +926,62 @@ class ScriptRunner:
                 src = os.path.join(self.testdir, entry.name)
                 shutil.copyfile(src, dest)
 
+    def planemo_test(self, genoutputs=True):
+        """planemo is a requirement so is available for testing but needs a
+        different call if in the biocontainer - see above
+        and for generating test outputs if command or test overrides are
+        supplied test outputs are sent to repdir for display
+        """
+        xreal = "%s.xml" % self.tool_name
+        tool_test_path = os.path.join(
+            self.repdir, f"{self.tool_name}_planemo_test_report.html"
+        )
+        if os.path.exists(self.tlog):
+            tout = open(self.tlog, "a")
+        else:
+            tout = open(self.tlog, "w")
+        if genoutputs:
+            dummy, tfile = tempfile.mkstemp()
+            cll = [
+                "planemo",
+                "test",
+                "--test_data",
+                os.path.abspath(self.testdir),
+                "--test_output",
+                os.path.abspath(tool_test_path),
+                "--skip_venv",
+                "--galaxy_root",
+                self.args.galaxy_root,
+                "--update_test_data",
+                os.path.abspath(xreal),
+            ]
+            p = subprocess.run(
+                cll,
+                env=self.ourenv,
+                shell=False,
+                cwd=self.tooloutdir,
+                stderr=dummy,
+                stdout=dummy,
+            )
+
+        else:
+            cll = [
+                "planemo",
+                "test",
+                "--test_data",
+                os.path.abspath(self.testdir),
+                "--test_output",
+                os.path.abspath(tool_test_path),
+                "--skip_venv",
+                "--galaxy_root",
+                self.args.galaxy_root,
+                os.path.abspath(xreal),
+            ]
+            p = subprocess.run(
+                cll, shell=False, env=self.ourenv, cwd=self.tooloutdir, stderr=tout, stdout=tout
+            )
+        tout.close()
+        return p.returncode
 
 def main():
     """

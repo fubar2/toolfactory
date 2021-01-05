@@ -103,7 +103,7 @@
              help="See examples below to see how these can be parsed by scripts in the various languages">
           <param name="param_name" type="text" value="" label="Choose the name for this parameter - MUST not be blank!">
             <sanitizer invalid_char="">
-              <valid initial="string.letters,string.digits"/>
+              <valid initial="string.ascii_letters,string.digits"/>
               <mapping initial="none"/>
             </sanitizer>
           </param>
@@ -367,7 +367,7 @@ $tool_name help goes here
           <param name="galaxy_apikey" type="text" value="fakekey" label="API key for the Galaxy to install the new tool"
              help="Cut and paste from the admin user properties screen">
               <sanitizer>
-                 <valid initial="string.letters,string.digits">
+                 <valid initial="string.ascii_letters,string.digits">
                  </valid>
                  <mapping initial="none"/>
               </sanitizer>
@@ -383,7 +383,7 @@ $tool_name help goes here
            <param name="toolshed_apikey" type="text" value="fakekey" label="API key for the local toolshed to use when installing the tool"
              help="Cut and paste from the admin user properties screen">
               <sanitizer>
-                 <valid initial="string.letters,string.digits">
+                 <valid initial="string.ascii_letters,string.digits">
                  </valid>
                  <mapping initial="none"/>
               </sanitizer>
