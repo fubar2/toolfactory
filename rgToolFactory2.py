@@ -429,7 +429,6 @@ class ScriptRunner:
                     tp = gxtp.TestOutput(
                         name=newname,
                         value="%s_sample" % newname,
-                        format=newfmt,
                         compare=c,
                         lines_diff=ld,
                     )
@@ -556,7 +555,7 @@ class ScriptRunner:
             anout.positional = self.is_positional
             self.toutputs.append(anout)
             tp = gxtp.TestOutput(
-                name=newname, value="%s_sample" % newname, format=newfmt
+                name=newname, value="%s_sample" % newname
             )
             self.testparam.append(tp)
 
@@ -587,7 +586,7 @@ class ScriptRunner:
             safertext = safertext + "\n\n------\n"  # transition allowed!
         if self.args.script_path:
             scr = [x for x in self.spacedScript if x.strip() > ""]
-            scr.insert(0, "\n\n------\n\n\nScript::\n")
+            scr.insert(0, "\n\nScript::\n")
             if len(scr) > 300:
                 scr = (
                     scr[:100]
