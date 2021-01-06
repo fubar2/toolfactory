@@ -399,11 +399,8 @@ class ScriptRunner:
 
     def doXMLparam(self):
         """flake8 made me do this..."""
-        for (
-            p
-        ) in (
-            self.outfiles
-        ):  # --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
+        for p in self.outfiles:
+            # --output_files "$otab.history_name~~~$otab.history_format~~~$otab.history_CL~~~$otab.history_test"
             newname, newfmt, newcl, test, oldcl = p
             test = test.strip()
             ndash = self.getNdash(newcl)
@@ -463,6 +460,7 @@ class ScriptRunner:
                 optional=False,
                 label=alab,
                 help=p[IHELPOS],
+                format=newfmt,
                 multiple=False,
                 num_dashes=ndash,
             )
@@ -573,18 +571,18 @@ class ScriptRunner:
         acite = gxtp.Citation(type="doi", value="10.1093/bioinformatics/bts573")
         cite.append(acite)
         self.newtool.citations = cite
+        safertext = ""
         if self.args.help_text:
             helptext = open(self.args.help_text, "r").readlines()
             safertext = "\n".join([cheetah_escape(x) for x in helptext])
-        else:
+        if len(safertext.strip()) == 0:
             safertext = (
-                "Please ask the tool author (%s) for help \
-          as none was supplied at tool generation\n"
+                "Ask the tool author (%s) to rebuild with help text please\n"
                 % (self.args.user_email)
             )
-        if len(safertext) > 0:
-            safertext = safertext + "\n\n------\n"  # transition allowed!
         if self.args.script_path:
+            if len(safertext) > 0:
+                safertext = safertext + "\n\n------\n"  # transition allowed!
             scr = [x for x in self.spacedScript if x.strip() > ""]
             scr.insert(0, "\n\nScript::\n")
             if len(scr) > 300:
