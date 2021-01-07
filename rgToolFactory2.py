@@ -310,8 +310,8 @@ class ScriptRunner:
             icl = infp[ICLPOS]
             infp.append(icl)
             if (
-                infp[ICLPOS].isdigit()
-                or self.args.parampass == "0"
+                infp[ICLPOS].isdigit() \
+                or self.args.parampass == "0" \
                 or infp[ICLPOS].strip().upper() == "STDOUT"
             ):
                 scl = "input%d" % (i + 1)
@@ -587,14 +587,14 @@ class ScriptRunner:
             scr.insert(0, "\n\nScript::\n")
             if len(scr) > 300:
                 scr = (
-                    scr[:100]
-                    + ["    >300 lines - stuff deleted", "    ......"]
+                    scr[:100] \
+                    + ["    >300 lines - stuff deleted", "    ......"] \
                     + scr[-100:]
                 )
             scr.append("\n")
             safertext = safertext + "\n".join(scr)
         self.newtool.help = safertext
-        self.newtool.version_command = f"echo {self.args.tool_version}"
+        self.newtool.version_command = f'echo "{self.args.tool_version}"'
         requirements = gxtp.Requirements()
         if self.args.packages:
             for d in self.args.packages.split(","):
@@ -882,8 +882,8 @@ class ScriptRunner:
         with os.scandir(self.testdir) as outs:
             for entry in outs:
                 if (
-                    (not entry.is_file())
-                    or entry.name.endswith("_sample")
+                    (not entry.is_file()) \
+                    or entry.name.endswith("_sample") \
                     or entry.name.endswith("_planemo_test_report.html")
                 ):
                     continue
