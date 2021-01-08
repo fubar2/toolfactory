@@ -405,7 +405,7 @@ class ScriptRunner:
             test = test.strip()
             ndash = self.getNdash(newcl)
             aparm = gxtp.OutputData(
-                name=newname, format=newfmt, num_dashes=ndash, label=newcl
+                name=newname, format=newfmt, num_dashes=ndash, label=newname
             )
             aparm.positional = self.is_positional
             if self.is_positional:
