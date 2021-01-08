@@ -1,5 +1,7 @@
 ﻿## Breaking news! Docker container at https://github.com/fubar2/toolfactory-galaxy-docker recommended as at December 2020
 
+### New demonstration of planemo tool_factory command ![Planemo ToolFactory demonstration](images/lintplanemo-2021-01-08_18.02.45.mkv?raw=true "Demonstration inside Planemo")
+
 ## This is the original ToolFactory suitable for non-docker situations. Please use the docker container if you can because it's integrated with a Toolshed...
 
 # WARNING
@@ -100,8 +102,6 @@ Steps in building a new Galaxy tool are all conducted through Galaxy running in 
     to the toolshed running in the same container (http://localhost:9009) and then installed inside the Galaxy in the container for further testing.
 
 4. If the test fails, rerun the failed history job and correct errors on the tool form before rerunning until everything works correctly.
-
-
 
 ![How it works](files/TFasIDE.png?raw=true "Overview of the ToolFactory as an Integrated Development Environment")
 
