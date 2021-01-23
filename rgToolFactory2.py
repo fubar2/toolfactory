@@ -112,25 +112,45 @@ class ScriptRunner:
         self.collections = []
         if len(args.collection) > 0:
             try:
-                self.collections = [json.loads(x) for x in args.collection if len(x.strip()) > 1]
+                self.collections = [
+                    json.loads(x) for x in args.collection if len(x.strip()) > 1
+                ]
             except Exception:
-               print(f'--collections parameter {str(args.collection)} is malformed - should be a dictionary')
+                print(
+                    f"--collections parameter {str(args.collection)} is malformed - should be a dictionary"
+                )
         try:
-            self.infiles = [json.loads(x) for x in args.input_files if len(x.strip()) > 1]
+            self.infiles = [
+                json.loads(x) for x in args.input_files if len(x.strip()) > 1
+            ]
         except Exception:
-           print(f'--input_files parameter {str(args.input_files)} is malformed - should be a dictionary')
+            print(
+                f"--input_files parameter {str(args.input_files)} is malformed - should be a dictionary"
+            )
         try:
-            self.outfiles = [json.loads(x) for x in args.output_files if len(x.strip()) > 1]
+            self.outfiles = [
+                json.loads(x) for x in args.output_files if len(x.strip()) > 1
+            ]
         except Exception:
-            print(f'--output_files parameter {args.output_files} is malformed - should be a dictionary')
+            print(
+                f"--output_files parameter {args.output_files} is malformed - should be a dictionary"
+            )
         try:
-            self.addpar = [json.loads(x) for x in args.additional_parameters if len(x.strip()) > 1]
+            self.addpar = [
+                json.loads(x) for x in args.additional_parameters if len(x.strip()) > 1
+            ]
         except Exception:
-            print(f'--additional_parameters {args.additional_parameters} is malformed - should be a dictionary')
+            print(
+                f"--additional_parameters {args.additional_parameters} is malformed - should be a dictionary"
+            )
         try:
-            self.selpar = [json.loads(x) for x in args.selecttext_parameters if len(x.strip()) > 1]
+            self.selpar = [
+                json.loads(x) for x in args.selecttext_parameters if len(x.strip()) > 1
+            ]
         except Exception:
-            print(f'--selecttext_parameters {args.selecttext_parameters} is malformed - should be a dictionary')
+            print(
+                f"--selecttext_parameters {args.selecttext_parameters} is malformed - should be a dictionary"
+            )
         self.args = args
         self.cleanuppar()
         self.lastclredirect = None
@@ -206,47 +226,103 @@ class ScriptRunner:
         if self.args.parampass == "0":
             self.clsimple()
         else:
-            clsuffix = []
-            xclsuffix = []
-            for i, p in enumerate(self.infiles):
-                if p['CL'].upper() == "STDIN":
-                    appendme = [
-                        p['CL'],
-                        p['CL'],
-                        p['name'],
-                        "< %s" % p['name'],
-                    ]
-                    xappendme = [
-                        p['CL'],
-                        p['CL'],
-                        p['name'],
-                        "< $%s" % p['CL'],
-                    ]
-                else:
-                    appendme = [p['origCL'], p['CL'], p['name'], ""]
-                    xappendme = [p['origCL'], p['CL'], "$%s" % p['CL'], ""]
-                clsuffix.append(appendme)
-                xclsuffix.append(xappendme)
-            for i, p in enumerate(self.outfiles):
-                if p['origCL'] == "STDOUT":
-                    self.lastclredirect = [">", p['name']]
-                    self.lastxclredirect = [">", "$%s" % p['CL']]
-                else:
-                    clsuffix.append([p['CL'], p['name'], p['name'], ""])
-                    xclsuffix.append([p['CL'], p['name'], "$%s" % p['name'], ""])
-            for p in self.addpar:
-                clsuffix.append([p['origCL'], p['CL'], p['value'], p['override']])
-                xclsuffix.append(
-                    [p['CL'], p['CL'], '"$%s"' % p['name'], p['override']]
-                )
-            clsuffix.sort()
-            xclsuffix.sort()
-            self.xclsuffix = xclsuffix
-            self.clsuffix = clsuffix
             if self.args.parampass == "positional":
+                self.prepclpos()
                 self.clpositional()
             else:
+                self.prepargp()
                 self.clargparse()
+
+    def clsimple(self):
+        """no parameters - uses < and > for i/o"""
+        aCL = self.cl.append
+        aXCL = self.xmlcl.append
+        if len(self.infiles) > 0:
+            aCL("<")
+            aCL(self.infiles[0]["infilename"])
+            aXCL("<")
+            aXCL("$%s" % self.infiles[0]["infilename"])
+        if len(self.outfiles) > 0:
+            aCL(">")
+            aCL(self.outfiles[0]["name"])
+            aXCL(">")
+            aXCL("$%s" % self.outfiles[0]["name"])
+
+    def prepargp(self):
+        clsuffix = []
+        xclsuffix = []
+        for i, p in enumerate(self.infiles):
+            if p["origCL"].strip().upper() == "STDIN":
+                appendme = [
+                    p["infilename"],
+                    p["infilename"],
+                    "< %s" % p["infilename"],
+                ]
+                xappendme = [
+                    p["infilename"],
+                    p["infilename"],
+                    "< $%s" % p["infilename"],
+                ]
+            else:
+                appendme = [p["CL"], p["CL"], ""]
+                xappendme = [p["CL"], "$%s" % p["CL"], ""]
+            clsuffix.append(appendme)
+            xclsuffix.append(xappendme)
+        for i, p in enumerate(self.outfiles):
+            if p["origCL"].strip().upper() == "STDOUT":
+                self.lastclredirect = [">", p["name"]]
+                self.lastxclredirect = [">", "$%s" % p["name"]]
+            else:
+                clsuffix.append([p["name"], p["name"], ""])
+                xclsuffix.append([p["name"], "$%s" % p["name"], ""])
+        for p in self.addpar:
+            clsuffix.append([p["CL"], p["name"], p["override"]])
+            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
+        for p in self.selpar:
+            clsuffix.append([p["CL"], p["name"], p["override"]])
+            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
+        clsuffix.sort()
+        xclsuffix.sort()
+        self.xclsuffix = xclsuffix
+        self.clsuffix = clsuffix
+
+    def prepclpos(self):
+        clsuffix = []
+        xclsuffix = []
+        for i, p in enumerate(self.infiles):
+            if p["origCL"].strip().upper() == "STDIN":
+                appendme = [
+                    "999",
+                    p["infilename"],
+                    "< $%s" % p["infilename"],
+                ]
+                xappendme = [
+                    "999",
+                    p["infilename"],
+                    "< $%s" % p["infilename"],
+                ]
+            else:
+                appendme = [p["CL"], p["infilename"], ""]
+                xappendme = [p["CL"], "$%s" % p["infilename"], ""]
+            clsuffix.append(appendme)
+            xclsuffix.append(xappendme)
+        for i, p in enumerate(self.outfiles):
+            if p["origCL"].strip().upper() == "STDOUT":
+                self.lastclredirect = [">", p["name"]]
+                self.lastxclredirect = [">", "$%s" % p["name"]]
+            else:
+                clsuffix.append([p["CL"], p["name"], ""])
+                xclsuffix.append([p["CL"], "$%s" % p["name"], ""])
+        for p in self.addpar:
+            clsuffix.append([p["CL"], p["name"], p["override"]])
+            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
+        for p in self.selpar:
+            clsuffix.append([p["CL"], p["name"], p["override"]])
+            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
+        clsuffix.sort()
+        xclsuffix.sort()
+        self.xclsuffix = xclsuffix
+        self.clsuffix = clsuffix
 
     def prepScript(self):
         rx = open(self.args.script_path, "r").readlines()
@@ -272,73 +348,50 @@ class ScriptRunner:
         if self.args.parampass == "positional":
             for i, p in enumerate(self.infiles):
                 assert (
-                    p['CL'].isdigit() or p['CL'].strip().upper() == "STDIN"
+                    p["CL"].isdigit() or p["CL"].strip().upper() == "STDIN"
                 ), "Positional parameters must be ordinal integers - got %s for %s" % (
-                    p['CL'],
-                    p['label'],
+                    p["CL"],
+                    p["label"],
                 )
             for i, p in enumerate(self.outfiles):
                 assert (
-                    p['CL'].isdigit() or p['CL'].strip().upper() == "STDOUT"
+                    p["CL"].isdigit() or p["CL"].strip().upper() == "STDOUT"
                 ), "Positional parameters must be ordinal integers - got %s for %s" % (
-                    p['CL'],
-                    p['name'],
+                    p["CL"],
+                    p["name"],
                 )
             for i, p in enumerate(self.addpar):
-                assert p['CL'].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (
-                    p['CL'],
-                    p['name'],
+                assert p[
+                    "CL"
+                ].isdigit(), "Positional parameters must be ordinal integers - got %s for %s" % (
+                    p["CL"],
+                    p["name"],
                 )
         for i, p in enumerate(self.infiles):
             infp = copy.copy(p)
-            infp['origCL'] = infp['CL']
-            if (
-                infp['CL'].isdigit()
-                or self.args.parampass == "0"
-                or infp['CL'].strip().upper() == "STDOUT"
-            ):
-                scl = "input%d" % (i + 1)
-                infp['CL'] = scl
+            infp["origCL"] = infp["CL"]
+            if self.args.parampass in ["positional", "0"]:
+                infp["infilename"] = infp["label"].replace(" ", "_")
+            else:
+                infp["infilename"] = infp["CL"]
             self.infiles[i] = infp
         for i, p in enumerate(self.outfiles):
-            p['origCL'] = p['CL']  # keep copy
-            if (p['origCL'].isdigit() and self.args.parampass != "positional") or p['origCL'].strip().upper() == "STDOUT":
-                scl = p['name']
-                p['CL'] = scl
+            p["origCL"] = p["CL"]  # keep copy
             self.outfiles[i] = p
         for i, p in enumerate(self.addpar):
-            p['origCL'] = p['CL']
-            if p['CL'].isdigit():
-                scl = "param%s" % p['CL']
-                p['CL'] = scl
+            p["origCL"] = p["CL"]
             self.addpar[i] = p
-
-    def clsimple(self):
-        """no parameters - uses < and > for i/o"""
-        aCL = self.cl.append
-        aXCL = self.xmlcl.append
-
-        if len(self.infiles) > 0:
-            aCL("<")
-            aCL(self.infiles[0]['name'])
-            aXCL("<")
-            aXCL("$%s" % self.infiles[0]['CL'])
-        if len(self.outfiles) > 0:
-            aCL(">")
-            aCL(self.outfiles[0]['CL'])
-            aXCL(">")
-            aXCL("$%s" % self.outfiles[0]['name'])
 
     def clpositional(self):
         # inputs in order then params
         aCL = self.cl.append
-        for (o_v, k, v, koverride) in self.clsuffix:
+        for (k, v, koverride) in self.clsuffix:
             if " " in v:
                 aCL("%s" % v)
             else:
                 aCL(v)
         aXCL = self.xmlcl.append
-        for (o_v, k, v, koverride) in self.xclsuffix:
+        for (k, v, koverride) in self.xclsuffix:
             aXCL(v)
         if self.lastxclredirect:
             aXCL(self.lastxclredirect[0])
@@ -350,7 +403,7 @@ class ScriptRunner:
         aXCL = self.xmlcl.append
         # inputs then params in argparse named form
 
-        for (o_v, k, v, koverride) in self.xclsuffix:
+        for (k, v, koverride) in self.xclsuffix:
             if koverride > "":
                 k = koverride
             elif len(k.strip()) == 1:
@@ -359,7 +412,7 @@ class ScriptRunner:
                 k = "--%s" % k
             aXCL(k)
             aXCL(v)
-        for (o_v, k, v, koverride) in self.clsuffix:
+        for (k, v, koverride) in self.clsuffix:
             if koverride > "":
                 k = koverride
             elif len(k.strip()) == 1:
@@ -381,11 +434,11 @@ class ScriptRunner:
     def doXMLparam(self):
         """flake8 made me do this..."""
         for p in self.outfiles:
-            newname = p['name']
-            newfmt = p['format']
-            newcl = p['CL']
-            test = p['test']
-            oldcl = p['origCL']
+            newname = p["name"]
+            newfmt = p["format"]
+            newcl = p["CL"]
+            test = p["test"]
+            oldcl = p["origCL"]
             test = test.strip()
             ndash = self.getNdash(newcl)
             aparm = gxtp.OutputData(
@@ -439,35 +492,41 @@ class ScriptRunner:
                     )
                 self.testparam.append(tp)
         for p in self.infiles:
-            newname = p['CL']
-            newfmt = p['format']
+            newname = p["infilename"]
+            newfmt = p["format"]
             ndash = self.getNdash(newname)
-            if not len(p['label']) > 0:
-                alab = p['CL']
+            if not len(p["label"]) > 0:
+                alab = p["CL"]
             else:
-                alab = p['label']
+                alab = p["label"]
             aninput = gxtp.DataParam(
                 newname,
                 optional=False,
                 label=alab,
-                help=p['help'],
+                help=p["help"],
                 format=newfmt,
                 multiple=False,
                 num_dashes=ndash,
             )
             aninput.positional = self.is_positional
+            if self.is_positional:
+                if p["origCL"].upper() == "STDIN":
+                    aparm.positional = 9999998
+                    aparm.command_line_override = "> $%s" % newname
+                else:
+                    aparm.positional = int(p["origCL"])
+                    aparm.command_line_override = "$%s" % newname
             self.tinputs.append(aninput)
             tparm = gxtp.TestParam(name=newname, value="%s_sample" % newname)
             self.testparam.append(tparm)
         for p in self.addpar:
-            newname = p['name']
-            newval = p['value']
-            newlabel = p['label']
-            newhelp = p['help']
-            newtype = p['type']
-            newcl = p['CL']
-            override = p['override']
-            oldcl = p['origCL']
+            newname = p["name"]
+            newval = p["value"]
+            newlabel = p["label"]
+            newhelp = p["help"]
+            newtype = p["type"]
+            newcl = p["CL"]
+            oldcl = p["origCL"]
             if not len(newlabel) > 0:
                 newlabel = newname
             ndash = self.getNdash(newname)
@@ -516,90 +575,89 @@ class ScriptRunner:
             tparm = gxtp.TestParam(newname, value=newval)
             self.testparam.append(tparm)
         for p in self.selpar:
-            newname = p['name']
-            newval = p['value']
-            newlabel = p['label']
-            newhelp = p['help']
-            newtype = p['type']
-            newcl = p['CL']
-            newtext = p['texts']
+            newname = p["name"]
+            newval = p["value"]
+            newlabel = p["label"]
+            newhelp = p["help"]
+            newtype = p["type"]
+            newcl = p["CL"]
             if not len(newlabel) > 0:
                 newlabel = newname
             ndash = self.getNdash(newname)
             if newtype == "selecttext":
-                newtext = p['texts']
+                newtext = p["texts"]
                 aparm = gxtp.SelectParam(
                     newname,
-                    label=newname,
+                    label=newlabel,
                     help=newhelp,
                     num_dashes=ndash,
                 )
                 for i in range(len(newval)):
                     anopt = gxtp.SelectOption(
-                    value=newval[i],text=newtext[i],
+                        value=newval[i],
+                        text=newtext[i],
                     )
                     aparm.append(anopt)
+                aparm.positional = self.is_positional
+                if self.is_positional:
+                    aparm.positional = int(newcl)
+                self.tinputs.append(aparm)
+                tparm = gxtp.TestParam(newname, value=newval)
+                self.testparam.append(tparm)
             else:
                 raise ValueError(
                     'Unrecognised parameter type "%s" for\
                  selecttext parameter %s in makeXML'
                     % (newtype, newname)
                 )
-            aparm.positional = self.is_positional
-            if self.is_positional:
-                aparm.positional = self.is_positional
-            self.tinputs.append(aparm)
-            tparm = gxtp.TestParam(newname, value=newval)
-            self.testparam.append(tparm)
         for p in self.collections:
-            newkind = p['kind']
-            newname = p['name']
-            newlabel = p['label']
-            newdisc = p['discover']
-            collect = gxtp.OutputCollection(newname,label=newlabel,type=newkind)
-            disc = gxtp.DiscoverDatasets(pattern = newdisc, directory=f'{newname}', visible='true')
+            newkind = p["kind"]
+            newname = p["name"]
+            newlabel = p["label"]
+            newdisc = p["discover"]
+            collect = gxtp.OutputCollection(newname, label=newlabel, type=newkind)
+            disc = gxtp.DiscoverDatasets(
+                pattern=newdisc, directory=f"{newname}", visible="false"
+            )
             collect.append(disc)
             self.toutputs.append(collect)
             tparm = gxtp.TestOutput(newname, ftype="pdf")
             self.testparam.append(tparm)
 
-
     def doNoXMLparam(self):
         """filter style package - stdin to stdout"""
         if len(self.infiles) > 0:
-            alab = self.infiles[0]['label']
+            alab = self.infiles[0]["label"]
             if len(alab) == 0:
-                alab = self.infiles[0]['CL']
+                alab = self.infiles[0]["infilename"]
             max1s = (
                 "Maximum one input if parampass is 0 but multiple input files supplied - %s"
                 % str(self.infiles)
             )
             assert len(self.infiles) == 1, max1s
-            newname = self.infiles[0]['CL']
+            newname = self.infiles[0]["infilename"]
             aninput = gxtp.DataParam(
                 newname,
                 optional=False,
                 label=alab,
-                help=self.infiles[0]['help'],
-                format=self.infiles[0]['format'],
+                help=self.infiles[0]["help"],
+                format=self.infiles[0]["format"],
                 multiple=False,
                 num_dashes=0,
             )
             aninput.command_line_override = "< $%s" % newname
-            aninput.positional = self.is_positional
+            aninput.positional = True
             self.tinputs.append(aninput)
             tp = gxtp.TestParam(name=newname, value="%s_sample" % newname)
             self.testparam.append(tp)
         if len(self.outfiles) > 0:
-            newname = self.outfiles[0]['CL']
-            newfmt = self.outfiles[0]['format']
+            newname = self.outfiles[0]["name"]
+            newfmt = self.outfiles[0]["format"]
             anout = gxtp.OutputData(newname, format=newfmt, num_dashes=0)
             anout.command_line_override = "> $%s" % newname
             anout.positional = self.is_positional
             self.toutputs.append(anout)
-            tp = gxtp.TestOutput(
-                name=newname, value="%s_sample" % newname
-            )
+            tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname)
             self.testparam.append(tp)
 
     def makeXML(self):
@@ -609,7 +667,7 @@ class ScriptRunner:
         Hmmm. How to get the command line into correct order...
         """
         if self.command_override:
-            self.newtool.command_override = '\n'.join(self.command_override)  # config file
+            self.newtool.command_override = self.command_override  # config file
         else:
             self.newtool.command_override = self.xmlcl
         cite = gxtp.Citations()
@@ -684,7 +742,7 @@ class ScriptRunner:
         ):  # cannot do this inside galaxyxml as it expects lxml objects for tests
             part1 = exml.split("<tests>")[0]
             part2 = exml.split("</tests>")[1]
-            fixed = "%s\n%s\n%s" % (part1, '\n'.join(self.test_override), part2)
+            fixed = "%s\n%s\n%s" % (part1, "\n".join(self.test_override), part2)
             exml = fixed
         # exml = exml.replace('range="1:"', 'range="1000:"')
         xf = open("%s.xml" % self.tool_name, "w")
@@ -726,11 +784,11 @@ class ScriptRunner:
             retval = subp.returncode
         else:  # work around special case - stdin and write to stdout
             if len(self.infiles) > 0:
-                sti = open(self.infiles[0]['name'], "rb")
+                sti = open(self.infiles[0]["name"], "rb")
             else:
                 sti = sys.stdin
             if len(self.outfiles) > 0:
-                sto = open(self.outfiles[0]['name'], "wb")
+                sto = open(self.outfiles[0]["name"], "wb")
             else:
                 sto = sys.stdout
             subp = subprocess.run(
@@ -860,20 +918,25 @@ class ScriptRunner:
 
     def makeTool(self):
         """write xmls and input samples into place"""
-        self.makeXML()
+        if self.args.parampass == 0:
+            self.doNoXMLparam()
+        else:
+            self.makeXML()
         if self.args.script_path:
-            stname = os.path.join(self.tooloutdir, "%s" % (self.sfile))
+            stname = os.path.join(self.tooloutdir, self.sfile)
             if not os.path.exists(stname):
                 shutil.copyfile(self.sfile, stname)
         xreal = "%s.xml" % self.tool_name
         xout = os.path.join(self.tooloutdir, xreal)
         shutil.copyfile(xreal, xout)
         for p in self.infiles:
-            pth = p['name']
-            dest = os.path.join(self.testdir, "%s_sample" % p['CL'])
+            pth = p["name"]
+            dest = os.path.join(self.testdir, "%s_sample" % p["infilename"])
+            shutil.copyfile(pth, dest)
+            dest = os.path.join(self.repdir, "%s_sample" % p["infilename"])
             shutil.copyfile(pth, dest)
 
-    def makeToolTar(self):
+    def makeToolTar(self, report_fail=False):
         """move outputs into test-data and prepare the tarball"""
         excludeme = "_planemo_test_report.html"
 
@@ -886,19 +949,20 @@ class ScriptRunner:
         else:
             tout = open(self.tlog, "w")
         for p in self.outfiles:
-            oname = p['name']
+            oname = p["name"]
             tdest = os.path.join(self.testdir, "%s_sample" % oname)
+            src = os.path.join(self.testdir, oname)
             if not os.path.isfile(tdest):
-                src = os.path.join(self.testdir, oname)
                 if os.path.isfile(src):
                     shutil.copyfile(src, tdest)
                     dest = os.path.join(self.repdir, "%s.sample" % (oname))
                     shutil.copyfile(src, dest)
                 else:
-                    tout.write(
-                        "###Output file %s not found in testdir %s. This is normal during the first Planemo run that generates test outputs"
-                        % (tdest, self.testdir)
-                    )
+                    if report_fail:
+                        tout.write(
+                            "###Tool may have failed - output file %s not found in testdir after planemo run %s."
+                            % (tdest, self.testdir)
+                        )
         tf = tarfile.open(self.newtarpath, "w:gz")
         tf.add(
             name=self.tooloutdir,
@@ -915,31 +979,38 @@ class ScriptRunner:
                 if not entry.is_file():
                     continue
                 if "." in entry.name:
-                    nayme, ext = os.path.splitext(entry.name)
-                    if ext in [".yml", ".xml", ".json", ".yaml"]:
-                        ext = f"{ext}.txt"
+                    _, ext = os.path.splitext(entry.name)
+                    if ext in [".tgz", ".json"]:
+                        continue
+                    if ext in [".yml", ".xml", ".yaml"]:
+                        newname = f"{entry.name.replace('.','_')}.txt"
+                    else:
+                        newname = entry.name
                 else:
-                    ext = ".txt"
-                ofn = "%s%s" % (entry.name.replace(".", "_"), ext)
-                dest = os.path.join(self.repdir, ofn)
+                    newname = f"{entry.name}.txt"
+                dest = os.path.join(self.repdir, newname)
                 src = os.path.join(self.tooloutdir, entry.name)
                 shutil.copyfile(src, dest)
-        with os.scandir(self.testdir) as outs:
-            for entry in outs:
-                if (
-                    (not entry.is_file())
-                    or entry.name.endswith("_sample")
-                    or entry.name.endswith("_planemo_test_report.html")
-                ):
-                    continue
-                if "." in entry.name:
-                    nayme, ext = os.path.splitext(entry.name)
-                else:
-                    ext = ".txt"
-                newname = f"{entry.name}{ext}"
-                dest = os.path.join(self.repdir, newname)
-                src = os.path.join(self.testdir, entry.name)
-                shutil.copyfile(src, dest)
+        if self.args.include_tests:
+            with os.scandir(self.testdir) as outs:
+                for entry in outs:
+                    if (not entry.is_file()) or entry.name.endswith(
+                        "_planemo_test_report.html"
+                    ):
+                        continue
+                    if "." in entry.name:
+                        _, ext = os.path.splitext(entry.name)
+                        if ext in [".tgz", ".json"]:
+                            continue
+                        if ext in [".yml", ".xml", ".yaml"]:
+                            newname = f"{entry.name.replace('.','_')}.txt"
+                        else:
+                            newname = entry.name
+                    else:
+                        newname = f"{entry.name}.txt"
+                    dest = os.path.join(self.repdir, newname)
+                    src = os.path.join(self.testdir, entry.name)
+                    shutil.copyfile(src, dest)
 
     def planemo_test(self, genoutputs=True):
         """planemo is a requirement so is available for testing but needs a
@@ -1045,6 +1116,7 @@ def main():
     a("--galaxy_root", default="/galaxy-central")
     a("--galaxy_venv", default="/galaxy_venv")
     a("--collection", action="append", default=[])
+    a("--include_tests", default=False, action="store_true")
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy \
@@ -1060,16 +1132,16 @@ or an executable package in --sysexe or --packages"
     r.writeShedyml()
     r.makeTool()
     if args.make_Tool == "generate":
-        retcode = r.run()
+        r.run()
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        retcode = r.planemo_test(genoutputs=True)  # this fails :( - see PR
+        r.planemo_test(genoutputs=True)  # this fails :( - see PR
         r.moveRunOutputs()
-        r.makeToolTar()
-        retcode = r.planemo_test(genoutputs=False)
+        r.makeToolTar(report_fail=False)
+        r.planemo_test(genoutputs=False)
         r.moveRunOutputs()
-        r.makeToolTar()
+        r.makeToolTar(report_fail=True)
         if args.make_Tool == "gentestinstall":
             r.shedLoad()
             r.eph_galaxy_load()

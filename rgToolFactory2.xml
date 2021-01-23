@@ -1,4 +1,4 @@
-<tool id="rgtfd" name="toolfactory" version="2.00" profile="16.04" >
+<tool id="rgtf2" name="toolfactory" version="2.00" profile="16.04" >
   <description>Scripts into tools v2.0</description>
   <macros>
       <xml name="singleText">
@@ -228,7 +228,7 @@ python3 $__tool_directory__/rgToolFactory2.py
      #for $apar in $io_param.ppass.addparam.additional_parameters:
         #if $apar.ap_type.param_type=="selecttext":
 --selecttext_parameters '{"name":"$apar.param_name", "label":"$apar.param_label", "help":"$apar.param_help",
-"type":"$apar.ap_type.param_type","CL":"$apar.param_CL","CLprefixed":"$apar.param_CLprefixed","value": [
+"type":"$apar.ap_type.param_type","CL":"$apar.param_CL","override":"$apar.param_CLprefixed","value": [
          #for $i,$st in enumerate($apar.ap_type.selectTexts):
            "$st.select_value"
            #if ($i < (len($apar.ap_type.selectTexts)-1)):
