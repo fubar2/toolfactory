@@ -53,30 +53,7 @@ def timenow():
     return time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(time.time()))
 
 
-def quote_non_numeric(s):
-    """return a prequoted string for non-numerics
-    useful for perl and Rscript parameter passing?
-    """
-    try:
-        _ = float(s)
-        return s
-    except ValueError:
-        return '"%s"' % s
-
-
-html_escape_table = {
-    "&": "&amp;",
-    ">": "&gt;",
-    "<": "&lt;",
-    "#": "&#35;",
-    "$": "&#36;",
-}
 cheetah_escape_table = {"$": "\\$", "#": "\\#"}
-
-
-def html_escape(text):
-    """Produce entities within text."""
-    return "".join([html_escape_table.get(c, c) for c in text])
 
 
 def cheetah_escape(text):
