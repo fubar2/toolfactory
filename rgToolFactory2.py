@@ -37,7 +37,8 @@ import lxml
 
 import yaml
 
-myversion = "V2.1 July 2020"
+
+myversion = "V2.2 February 2021"
 verbose = True
 debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
@@ -136,10 +137,13 @@ class ScriptRunner:
         self.xmlcl = []
         self.is_positional = self.args.parampass == "positional"
         if self.args.sysexe:
-            self.executeme = self.args.sysexe
+            if ' ' in self.args.sysexe:
+                self.executeme = self.args.sysexe.split(' ')
+            else:
+                self.executeme =[self.args.sysexe,]
         else:
             if self.args.packages:
-                self.executeme = self.args.packages.split(",")[0].split(":")[0].strip()
+                self.executeme =[self.args.packages.split(",")[0].split(":")[0].strip(),]
             else:
                 self.executeme = None
         aCL = self.cl.append
@@ -183,23 +187,17 @@ class ScriptRunner:
             self.test_override = [x.rstrip() for x in stos]
         else:
             self.test_override = None
-        if self.args.cl_prefix:  # DIY CL start
-            clp = self.args.cl_prefix.split(" ")
-            for c in clp:
-                aCL(c)
-                aXCL(c)
+        if self.args.script_path:
+            for ex in self.executeme:
+                aCL(ex)
+                aXCL(ex)
+            aCL(self.sfile)
+            aXCL("$runme")
         else:
-            if self.args.script_path:
-                aCL(self.executeme)
-                aCL(self.sfile)
-                aXCL(self.executeme)
-                aXCL("$runme")
-            else:
-                aCL(self.executeme)
-                aXCL(self.executeme)
+            aCL(self.executeme[0])
+            aXCL(self.executeme[0])
         self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
         self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
-
         if self.args.parampass == "0":
             self.clsimple()
         else:
@@ -209,6 +207,12 @@ class ScriptRunner:
             else:
                 self.prepargp()
                 self.clargparse()
+        if self.args.cl_prefix:  # DIY CL end - misnamed!
+            clp = self.args.cl_prefix.split(" ")
+            for c in clp:
+                aCL(c)
+                aXCL(c)
+
 
     def clsimple(self):
         """no parameters - uses < and > for i/o"""
@@ -308,14 +312,14 @@ class ScriptRunner:
         assert len(rxcheck) > 0, "Supplied script is empty. Cannot run"
         self.script = "\n".join(rx)
         fhandle, self.sfile = tempfile.mkstemp(
-            prefix=self.tool_name, suffix="_%s" % (self.executeme)
+            prefix=self.tool_name, suffix="_%s" % (self.executeme[0])
         )
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
         self.escapedScript = [cheetah_escape(x) for x in rx]
         self.spacedScript = [f"    {x}" for x in rx if x.strip() > ""]
-        art = "%s.%s" % (self.tool_name, self.executeme)
+        art = "%s.%s" % (self.tool_name, self.executeme[0])
         artifact = open(art, "wb")
         artifact.write(bytes("\n".join(self.escapedScript), "utf8"))
         artifact.close()
@@ -995,6 +999,7 @@ class ScriptRunner:
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
+        con = os.path.join(self.args.tooldir,"con")
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1012,7 +1017,9 @@ class ScriptRunner:
                 os.path.abspath(self.testdir),
                 "--test_output",
                 os.path.abspath(tool_test_path),
-                "--skip_venv",
+                "--conda_prefix",
+                con,
+                "--conda_auto_init",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
@@ -1035,7 +1042,9 @@ class ScriptRunner:
                 os.path.abspath(self.testdir),
                 "--test_output",
                 os.path.abspath(tool_test_path),
-                "--skip_venv",
+                "--conda_prefix",
+                con,
+                "--conda_auto_init",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 os.path.abspath(xreal),
