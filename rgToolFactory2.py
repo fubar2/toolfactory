@@ -140,10 +140,10 @@ class ScriptRunner:
             if ' ' in self.args.sysexe:
                 self.executeme = self.args.sysexe.split(' ')
             else:
-                self.executeme =[self.args.sysexe,]
+                self.executeme = [self.args.sysexe, ]
         else:
             if self.args.packages:
-                self.executeme =[self.args.packages.split(",")[0].split(":")[0].strip(),]
+                self.executeme = [self.args.packages.split(",")[0].split(":")[0].strip(), ]
             else:
                 self.executeme = None
         aCL = self.cl.append
@@ -212,7 +212,6 @@ class ScriptRunner:
             for c in clp:
                 aCL(c)
                 aXCL(c)
-
 
     def clsimple(self):
         """no parameters - uses < and > for i/o"""
@@ -999,7 +998,7 @@ class ScriptRunner:
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
-        con = os.path.join(self.args.tool_dir,"con")
+        con = os.path.join(self.args.tool_dir, "con")
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
