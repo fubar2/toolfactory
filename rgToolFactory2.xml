@@ -182,7 +182,7 @@
    <requirement type="package" version="0.4.12">galaxyxml</requirement>
    <requirement type="package" version="0.14.0">bioblend</requirement>
    <requirement type="package" version="0.10.6">ephemeris</requirement>
-   <requirement type="package" version="0.74.1">planemo</requirement>
+   <requirement type="package" version="0.74.2">planemo</requirement>
 </requirements>
 
   <command ><![CDATA[

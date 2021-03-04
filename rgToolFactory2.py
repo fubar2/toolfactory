@@ -86,7 +86,6 @@ class ScriptRunner:
         and prepare elements needed for galaxyxml tool generation
         """
         self.ourcwd = os.getcwd()
-        self.ourenv = copy.deepcopy(os.environ)
         self.collections = []
         if len(args.collection) > 0:
             try:
@@ -757,7 +756,7 @@ class ScriptRunner:
                 )
             sto.flush()
             subp = subprocess.run(
-                self.cl, env=self.ourenv, shell=False, stdout=sto, stderr=ste
+                self.cl, shell=False, stdout=sto, stderr=ste
             )
             sto.close()
             ste.close()
@@ -772,7 +771,7 @@ class ScriptRunner:
             else:
                 sto = sys.stdout
             subp = subprocess.run(
-                self.cl, env=self.ourenv, shell=False, stdout=sto, stdin=sti
+                self.cl, shell=False, stdout=sto, stdin=sti
             )
             sto.write("## Executing Toolfactory generated command line = %s\n" % scl)
             retval = subp.returncode
@@ -868,7 +867,6 @@ class ScriptRunner:
         tout.write("running\n%s\n" % " ".join(cll))
         subp = subprocess.run(
             cll,
-            env=self.ourenv,
             cwd=self.ourcwd,
             shell=False,
             stderr=tout,
@@ -998,7 +996,6 @@ class ScriptRunner:
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
-        con = os.path.join(self.args.tool_dir, "con")
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1012,13 +1009,11 @@ class ScriptRunner:
             cll = [
                 "planemo",
                 "test",
+                "--conda_auto_init",
                 "--test_data",
                 os.path.abspath(self.testdir),
                 "--test_output",
                 os.path.abspath(tool_test_path),
-                "--conda_prefix",
-                con,
-                "--conda_auto_init",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 "--update_test_data",
@@ -1026,7 +1021,6 @@ class ScriptRunner:
             ]
             p = subprocess.run(
                 cll,
-                env=self.ourenv,
                 shell=False,
                 cwd=self.tooloutdir,
                 stderr=dummy,
@@ -1037,13 +1031,11 @@ class ScriptRunner:
             cll = [
                 "planemo",
                 "test",
+                "--conda_auto_init",
                 "--test_data",
                 os.path.abspath(self.testdir),
                 "--test_output",
                 os.path.abspath(tool_test_path),
-                "--conda_prefix",
-                con,
-                "--conda_auto_init",
                 "--galaxy_root",
                 self.args.galaxy_root,
                 os.path.abspath(xreal),
@@ -1051,7 +1043,6 @@ class ScriptRunner:
             p = subprocess.run(
                 cll,
                 shell=False,
-                env=self.ourenv,
                 cwd=self.tooloutdir,
                 stderr=tout,
                 stdout=tout,
