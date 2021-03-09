@@ -182,7 +182,7 @@
    <requirement type="package" version="0.4.12">galaxyxml</requirement>
    <requirement type="package" version="0.14.0">bioblend</requirement>
    <requirement type="package" version="0.10.6">ephemeris</requirement>
-   <requirement type="package" version="0.74.2">planemo</requirement>
+   <requirement type="package" version="0.74.3">planemo</requirement>
 </requirements>
 
   <command ><![CDATA[
@@ -595,7 +595,7 @@ Licensed under the LGPL_
 
 .. _LGPL: http://www.gnu.org/copyleft/lesser.html
 .. _GTF:  https://github.com/fubar2/toolfactory
-.. _Paper: http://bioinformatics.oxfordjournals.org/cgi/reprint/bts573
+.. _Paper: https://academic.oup.com/bioinformatics/article/28/23/3139/192853
 
 
 </help>
