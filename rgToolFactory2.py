@@ -990,7 +990,8 @@ class ScriptRunner:
                     src = os.path.join(self.testdir, entry.name)
                     shutil.copyfile(src, dest)
 
-    def planemo_test(self, genoutputs=True):
+
+    def planemo_test_once(self):
         """planemo is a requirement so is available for testing but needs a
         different call if in the biocontainer - see above
         and for generating test outputs if command or test overrides are
@@ -1004,49 +1005,26 @@ class ScriptRunner:
             tout = open(self.tlog, "a")
         else:
             tout = open(self.tlog, "w")
-        if genoutputs:
-            dummy, tfile = tempfile.mkstemp()
-            cll = [
-                "planemo",
-                "test",
-                "--conda_auto_init",
-                "--test_data",
-                os.path.abspath(self.testdir),
-                "--test_output",
-                os.path.abspath(tool_test_path),
-                "--galaxy_root",
-                self.args.galaxy_root,
-                "--update_test_data",
-                os.path.abspath(xreal),
-            ]
-            p = subprocess.run(
-                cll,
-                shell=False,
-                cwd=self.tooloutdir,
-                stderr=dummy,
-                stdout=dummy,
-            )
-
-        else:
-            cll = [
-                "planemo",
-                "test",
-                "--conda_auto_init",
-                "--test_data",
-                os.path.abspath(self.testdir),
-                "--test_output",
-                os.path.abspath(tool_test_path),
-                "--galaxy_root",
-                self.args.galaxy_root,
-                os.path.abspath(xreal),
-            ]
-            p = subprocess.run(
-                cll,
-                shell=False,
-                cwd=self.tooloutdir,
-                stderr=tout,
-                stdout=tout,
-            )
+        cll = [
+            "planemo",
+            "test",
+            "--conda_auto_init",
+            "--test_data",
+            os.path.abspath(self.testdir),
+            "--test_output",
+            os.path.abspath(tool_test_path),
+            "--galaxy_root",
+            self.args.galaxy_root,
+            "--update_test_data",
+            os.path.abspath(xreal),
+        ]
+        p = subprocess.run(
+            cll,
+            shell=False,
+            cwd=self.tooloutdir,
+            stderr=tout,
+            stdout=tout,
+        )
         tout.close()
         return p.returncode
 
@@ -1112,10 +1090,10 @@ or an executable package in --sysexe or --packages"
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        r.planemo_test(genoutputs=True)  # this fails :( - see PR
-        r.moveRunOutputs()
-        r.makeToolTar(report_fail=False)
-        r.planemo_test(genoutputs=False)
+        # r.planemo_test(genoutputs=True)  # this fails :( - see PR
+        # r.moveRunOutputs()
+        # r.makeToolTar(report_fail=False)
+        r.planemo_test_once()
         r.moveRunOutputs()
         r.makeToolTar(report_fail=True)
         if args.make_Tool == "gentestinstall":
