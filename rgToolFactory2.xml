@@ -445,7 +445,7 @@ $tool_name help goes here
   </inputs>
   <outputs>
 
-    <data format="tgz" name="new_tool" label="${tool_name}_toolshed.tgz" >
+    <data format="toolshed.gz" name="new_tool" label="${tool_name}_toolshed.gz" >
         <filter>makeMode['make_Tool'] != "runonly"</filter>
     </data>
 

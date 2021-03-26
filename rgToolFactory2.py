@@ -161,7 +161,7 @@ class ScriptRunner:
             self.args.tool_desc,
             FAKEEXE,
         )
-        self.newtarpath = "toolfactory_%s.tgz" % self.tool_name
+        self.newtarpath = "%s_toolshed.gz" % self.tool_name
         self.tooloutdir = "./tfout"
         self.repdir = "./TF_run_report_tempdir"
         self.testdir = os.path.join(self.tooloutdir, "test-data")
