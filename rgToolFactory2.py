@@ -27,15 +27,13 @@ import tarfile
 import tempfile
 import time
 
-from bioblend import ConnectionError
-from bioblend import toolshed
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
-
 import lxml
-
 import yaml
+from bioblend import ConnectionError
+from bioblend import toolshed
 
 
 myversion = "V2.2 February 2021"
@@ -490,11 +488,11 @@ class ScriptRunner:
             aninput.positional = self.is_positional
             if self.is_positional:
                 if p["origCL"].upper() == "STDIN":
-                    aparm.positional = 9999998
-                    aparm.command_line_override = "> $%s" % newname
+                    aninput.positional = 9999998
+                    aninput.command_line_override = "> $%s" % newname
                 else:
-                    aparm.positional = int(p["origCL"])
-                    aparm.command_line_override = "$%s" % newname
+                    aninput.positional = int(p["origCL"])
+                    aninput.command_line_override = "$%s" % newname
             self.tinputs.append(aninput)
             tparm = gxtp.TestParam(name=newname, value="%s_sample" % newname)
             self.testparam.append(tparm)
