@@ -105,9 +105,9 @@
               help="Available options are diff:[lines], sim_size:[delta (integer) or delta_frac (float)" value="diff:0"/>
         </repeat>
         <repeat name="collection_outputs" title="zero or more new history collections to appear in the user history after the tool runs"
-             help="A collection contains outputs not needed for downstream tools such as images and intermediate reports" default="0">
+             help="Hides outputs not needed for downstream tools such as images and intermediate reports." default="0">
             <param name="name" type="text" label="Name for new collection with all outputs not individually passed to history outputs"
-              help="No spaces! ">
+              help="No spaces! Script MUST create and fill a directory with the same name and the tool test MUST be overwritten - see the plotter example for hints">
               <sanitizer invalid_char="_">
                 <valid initial="string.ascii_letters,string.digits" >
                    <add value="_" />
