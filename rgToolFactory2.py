@@ -598,7 +598,7 @@ class ScriptRunner:
             )
             collect.append(disc)
             self.toutputs.append(collect)
-            tparm = gxtp.TestOutput(newname, ftype="pdf")
+            tparm = gxtp.TestOutputCollection(newname)
             self.testparam.append(tparm)
 
     def doNoXMLparam(self):
