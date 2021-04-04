@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -191,8 +192,10 @@ class ScriptRunner:
             aCL(self.sfile)
             aXCL("$runme")
         else:
-            aCL(self.executeme[0])
-            aXCL(self.executeme[0])
+            for ex in self.executeme:
+                aCL(ex)
+                aXCL(ex)
+
         self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
         self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
         if self.args.parampass == "0":
@@ -204,8 +207,8 @@ class ScriptRunner:
             else:
                 self.prepargp()
                 self.clargparse()
-        if self.args.cl_prefix:  # DIY CL end - misnamed!
-            clp = self.args.cl_prefix.split(" ")
+        if self.args.cl_suffix:  # DIY CL end
+            clp = shlex.split(self.args.cl_suffix)
             for c in clp:
                 aCL(c)
                 aXCL(c)
@@ -398,6 +401,9 @@ class ScriptRunner:
                 k = "--%s" % k
             aCL(k)
             aCL(v)
+        if self.lastxclredirect:
+            aXCL(self.lastxclredirect[0])
+            aXCL(self.lastxclredirect[1])
 
     def getNdash(self, newname):
         if self.is_positional:
@@ -1036,7 +1042,7 @@ def main():
     a = parser.add_argument
     a("--script_path", default=None)
     a("--history_test", default=None)
-    a("--cl_prefix", default=None)
+    a("--cl_suffix", default=None)
     a("--sysexe", default=None)
     a("--packages", default=None)
     a("--tool_name", default="newtool")
