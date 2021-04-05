@@ -524,7 +524,7 @@ class ScriptRunner:
             elif newtype == "integer":
                 aparm = gxtp.IntegerParam(
                     newname,
-                    label=newname,
+                    label=newlabel,
                     help=newhelp,
                     value=newval,
                     num_dashes=ndash,
@@ -532,7 +532,7 @@ class ScriptRunner:
             elif newtype == "float":
                 aparm = gxtp.FloatParam(
                     newname,
-                    label=newname,
+                    label=newlabel,
                     help=newhelp,
                     value=newval,
                     num_dashes=ndash,
@@ -540,7 +540,7 @@ class ScriptRunner:
             elif newtype == "boolean":
                 aparm = gxtp.BooleanParam(
                     newname,
-                    label=newname,
+                    label=newlabel,
                     help=newhelp,
                     value=newval,
                     num_dashes=ndash,
