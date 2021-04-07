@@ -43,7 +43,6 @@ verbose = True
 debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
 foo = len(lxml.__version__)
-# fug you, flake8. Say my name!
 FAKEEXE = "~~~REMOVE~~~ME~~~"
 # need this until a PR/version bump to fix galaxyxml prepending the exe even
 # with override.
@@ -260,7 +259,7 @@ class ScriptRunner:
             nam = p["name"]
             rep = p["repeat"] == "1"
             if rep:
-                over = f" #for $rep in $R_{nam}: --{nam} $rep.thing #end for "
+                over = f" #for $rep in $R_{nam}:\n--{nam} $rep.{nam}\n#end for"
             else:
                 over = p["override"]
             clsuffix.append([p["CL"], nam, over])
