@@ -173,14 +173,14 @@
               help="Using positional parameters, enter the integer ordinal for this parameter on the command line. Using Argparse style, '--' will be prepended on the CL" value="" />
           <param name="param_CLprefixed" type="text" label="Override the generated default argparse name prefix if not empty - eg ----foo if needed"
               help="Some targets like Planemo expect an unadorned action like 'test' before --galaxy_root." value="" />
-          <param name="param_repeat" type="hidden" checked="False" truevalue="1"  falsevalue="0" label="Allow user to repeat this as many times as needed." />
+          <param name="param_repeat" type="boolean" checked="False" truevalue="1"  falsevalue="0" label="Allow user to repeat this as many times as needed." />
         </repeat>
         </section>
      </xml>
   </macros>
 
 <requirements>
-   <requirement type="package" version="0.4.12">galaxyxml</requirement>
+   <requirement type="package" version="0.4.13">galaxyxml</requirement>
    <requirement type="package" version="0.14.0">bioblend</requirement>
    <requirement type="package" version="0.10.6">ephemeris</requirement>
    <requirement type="package" version="0.74.3">planemo</requirement>

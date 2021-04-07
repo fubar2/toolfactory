@@ -17,6 +17,7 @@
 import argparse
 import copy
 import json
+from importlib.metadata import version
 import logging
 import os
 import re
@@ -215,7 +216,7 @@ class ScriptRunner:
                 aXCL(c)
 
     def clsimple(self):
-        """no parameters - uses < and > for i/o"""
+        """no parameters or repeats - uses < and > for i/o"""
         aCL = self.cl.append
         aXCL = self.xmlcl.append
         if len(self.infiles) > 0:
@@ -257,13 +258,17 @@ class ScriptRunner:
                 clsuffix.append([p["name"], p["name"], ""])
                 xclsuffix.append([p["name"], "$%s" % p["name"], ""])
         for p in self.addpar:
-            clsuffix.append([p["CL"], p["name"], p["override"]])
-            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
+            nam = p["name"]
+            rep = p["repeat"] == "1"
+            if rep:
+                over = f" #for $rep in $R_{nam}:\n--{nam} $rep.{nam}\n#end for"
+            else:
+                over = p["override"]
+            clsuffix.append([p["CL"], nam, over])
+            xclsuffix.append([p["CL"], nam, over])
         for p in self.selpar:
             clsuffix.append([p["CL"], p["name"], p["override"]])
             xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
-        clsuffix.sort()
-        xclsuffix.sort()
         self.xclsuffix = xclsuffix
         self.clsuffix = clsuffix
 
@@ -295,8 +300,13 @@ class ScriptRunner:
                 clsuffix.append([p["CL"], p["name"], ""])
                 xclsuffix.append([p["CL"], "$%s" % p["name"], ""])
         for p in self.addpar:
-            clsuffix.append([p["CL"], p["name"], p["override"]])
-            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
+            nam = p["name"]
+            rep = p["repeat"] == "1" # repeats make NO sense
+            if rep:
+                print(f'### warning. Repeats for {nam} ignored - not permitted in positional parameter command lines!')
+            over = p["override"]
+            clsuffix.append([p["CL"], nam, over])
+            xclsuffix.append([p["CL"], nam, over])
         for p in self.selpar:
             clsuffix.append([p["CL"], p["name"], p["override"]])
             xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
@@ -387,12 +397,14 @@ class ScriptRunner:
         for (k, v, koverride) in self.xclsuffix:
             if koverride > "":
                 k = koverride
-            elif len(k.strip()) == 1:
-                k = "-%s" % k
+                aXCL(k)
             else:
-                k = "--%s" % k
-            aXCL(k)
-            aXCL(v)
+                if len(k.strip()) == 1:
+                    k = "-%s" % k
+                else:
+                    k = "--%s" % k
+                aXCL(k)
+                aXCL(v)
         for (k, v, koverride) in self.clsuffix:
             if koverride > "":
                 k = koverride
@@ -511,6 +523,7 @@ class ScriptRunner:
             newtype = p["type"]
             newcl = p["CL"]
             oldcl = p["origCL"]
+            reps = p["repeat"] == "1"
             if not len(newlabel) > 0:
                 newlabel = newname
             ndash = self.getNdash(newname)
@@ -555,9 +568,18 @@ class ScriptRunner:
             aparm.positional = self.is_positional
             if self.is_positional:
                 aparm.positional = int(oldcl)
-            self.tinputs.append(aparm)
-            tparm = gxtp.TestParam(newname, value=newval)
-            self.testparam.append(tparm)
+            if reps:
+                repe = gxtp.Repeat(name=f"R_{newname}",title=f"Add as many {newlabel} as needed")
+                repe.append(aparm)
+                self.tinputs.append(repe)
+                tparm = gxtp.TestRepeat(name=f"R_{newname}")
+                tparm2 = gxtp.TestParam(newname, value=newval)
+                tparm.append(tparm2)
+                self.testparam.append(tparm)
+            else:
+                self.tinputs.append(aparm)
+                tparm = gxtp.TestParam(newname, value=newval)
+                self.testparam.append(tparm)
         for p in self.selpar:
             newname = p["name"]
             newval = p["value"]
@@ -605,8 +627,11 @@ class ScriptRunner:
             )
             collect.append(disc)
             self.toutputs.append(collect)
-            tparm = gxtp.TestOutputCollection(newname)
-            self.testparam.append(tparm)
+            try:
+                tparm = gxtp.TestOutputCollection(newname) # broken until PR merged.
+                self.testparam.append(tparm)
+            except Error:
+                print("#### WARNING: Galaxyxml version does not have the PR merged yet - tests for collections must be over-ridden until then!")
 
     def doNoXMLparam(self):
         """filter style package - stdin to stdout"""
