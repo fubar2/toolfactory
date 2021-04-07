@@ -44,7 +44,6 @@ verbose = True
 debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
 foo = len(lxml.__version__)
-# fug you, flake8. Say my name!
 FAKEEXE = "~~~REMOVE~~~ME~~~"
 # need this until a PR/version bump to fix galaxyxml prepending the exe even
 # with override.
