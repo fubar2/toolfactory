@@ -17,7 +17,6 @@
 import argparse
 import copy
 import json
-from importlib.metadata import version
 import logging
 import os
 import re
@@ -301,7 +300,7 @@ class ScriptRunner:
                 xclsuffix.append([p["CL"], "$%s" % p["name"], ""])
         for p in self.addpar:
             nam = p["name"]
-            rep = p["repeat"] == "1" # repeats make NO sense
+            rep = p["repeat"] == "1"  # repeats make NO sense
             if rep:
                 print(f'### warning. Repeats for {nam} ignored - not permitted in positional parameter command lines!')
             over = p["override"]
@@ -569,13 +568,16 @@ class ScriptRunner:
             if self.is_positional:
                 aparm.positional = int(oldcl)
             if reps:
-                repe = gxtp.Repeat(name=f"R_{newname}",title=f"Add as many {newlabel} as needed")
+                repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {newlabel} as needed")
                 repe.append(aparm)
                 self.tinputs.append(repe)
-                tparm = gxtp.TestRepeat(name=f"R_{newname}")
-                tparm2 = gxtp.TestParam(newname, value=newval)
-                tparm.append(tparm2)
-                self.testparam.append(tparm)
+                try:  # until conda updated
+                    tparm = gxtp.TestRepeat(name=f"R_{newname}")
+                    tparm2 = gxtp.TestParam(newname, value=newval)
+                    tparm.append(tparm2)
+                    self.testparam.append(tparm)
+                except Exception:
+                    print("#### Failed to add a test for", newname)
             else:
                 self.tinputs.append(aparm)
                 tparm = gxtp.TestParam(newname, value=newval)
@@ -628,9 +630,9 @@ class ScriptRunner:
             collect.append(disc)
             self.toutputs.append(collect)
             try:
-                tparm = gxtp.TestOutputCollection(newname) # broken until PR merged.
+                tparm = gxtp.TestOutputCollection(newname)  # broken until PR merged.
                 self.testparam.append(tparm)
-            except Error:
+            except Exception:
                 print("#### WARNING: Galaxyxml version does not have the PR merged yet - tests for collections must be over-ridden until then!")
 
     def doNoXMLparam(self):
