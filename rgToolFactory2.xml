@@ -81,7 +81,7 @@
             <param name="input_CL" type="text" label="Positional: ordinal integer. Argparse: argument name. STDIN if the executable/script expects it"
               help="If you will pass positional parameters, enter the integer ordinal for this parameter. If Argparse style, '--' will be prepended or '-' if single character" value="">
             </param>
-            <param name="input_repeat" type="hidden" checked="False" truevalue="1"  falsevalue="0" label="Allow user to repeat this input as many times as needed." />
+            <param name="input_repeat" type="boolean" checked="False" truevalue="1"  falsevalue="0" label="Allow user to repeat this input as many times as wanted - script/executable must parse these."/>
         </repeat>
         <repeat name="history_outputs" title="one or more new history items output by the executable to appear in the user history after the tool runs"
              help="The name will become a history item for users of the new tool you are making containing one of it's outputs">
@@ -253,7 +253,7 @@ python3 $__tool_directory__/rgToolFactory2.py
      #end for
    #end if
      #for $intab in $io_param.ppass.io.history_inputs:
---input_files '{"name": "$intab.input_files", "CL": "$intab.input_CL", "format": "$intab.input_formats", "label": "$intab.input_label", "help": "$intab.input_help"}'
+--input_files '{"name": "$intab.input_files", "CL": "$intab.input_CL", "format": "$intab.input_formats", "label": "$intab.input_label", "help": "$intab.input_help", "repeat": "$intab.input_repeat"}'
      #end for
      #for $otab in $io_param.ppass.io.history_outputs:
 --output_files '{"name": "$otab.history_name", "format": "$otab.history_format", "CL": "$otab.history_CL", "test": "$otab.history_test"}'

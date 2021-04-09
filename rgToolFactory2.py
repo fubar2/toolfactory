@@ -490,6 +490,7 @@ class ScriptRunner:
             newname = p["infilename"]
             newfmt = p["format"]
             ndash = self.getNdash(newname)
+            reps = p.get("repeat",0) == 1
             if not len(p["label"]) > 0:
                 alab = p["CL"]
             else:
@@ -511,9 +512,18 @@ class ScriptRunner:
                 else:
                     aninput.positional = int(p["origCL"])
                     aninput.command_line_override = "$%s" % newname
-            self.tinputs.append(aninput)
-            tparm = gxtp.TestParam(name=newname, value="%s_sample" % newname)
-            self.testparam.append(tparm)
+            if reps:
+                repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {newlabel} as needed")
+                repe.append(aninput)
+                self.tinputs.append(repe)
+                tparm = gxtp.TestRepeat(name=f"R_{newname}")
+                tparm2 = gxtp.TestParam(newname, value="%s_sample" % newname)
+                tparm.append(tparm2)
+                self.testparam.append(tparm)
+            else:
+                self.tinputs.append(aninput)
+                tparm = gxtp.TestParam(newname, value="%s_sample" % newname)
+                self.testparam.append(tparm)
         for p in self.addpar:
             newname = p["name"]
             newval = p["value"]
@@ -571,13 +581,10 @@ class ScriptRunner:
                 repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {newlabel} as needed")
                 repe.append(aparm)
                 self.tinputs.append(repe)
-                try:  # until conda updated
-                    tparm = gxtp.TestRepeat(name=f"R_{newname}")
-                    tparm2 = gxtp.TestParam(newname, value=newval)
-                    tparm.append(tparm2)
-                    self.testparam.append(tparm)
-                except Exception:
-                    print("#### Failed to add a test for", newname)
+                tparm = gxtp.TestRepeat(name=f"R_{newname}")
+                tparm2 = gxtp.TestParam(newname, value=newval)
+                tparm.append(tparm2)
+                self.testparam.append(tparm)
             else:
                 self.tinputs.append(aparm)
                 tparm = gxtp.TestParam(newname, value=newval)
