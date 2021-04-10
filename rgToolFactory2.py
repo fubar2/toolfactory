@@ -28,16 +28,12 @@ import tarfile
 import tempfile
 import time
 
-
-from bioblend import ConnectionError
-from bioblend import toolshed
-
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
-
 import lxml
-
 import yaml
+from bioblend import ConnectionError
+from bioblend import toolshed
 
 myversion = "V2.2 February 2021"
 verbose = True
@@ -305,7 +301,7 @@ class ScriptRunner:
                 print(f'### warning. Repeats for {nam} ignored - not permitted in positional parameter command lines!')
             over = p["override"]
             clsuffix.append([p["CL"], nam, over])
-            xclsuffix.append([p["CL"],  '"$%s"' % nam, over])
+            xclsuffix.append([p["CL"], '"$%s"' % nam, over])
         for p in self.selpar:
             clsuffix.append([p["CL"], p["name"], p["override"]])
             xclsuffix.append([p["CL"], '"$%s"' % nam, p["override"]])
@@ -490,7 +486,7 @@ class ScriptRunner:
             newname = p["infilename"]
             newfmt = p["format"]
             ndash = self.getNdash(newname)
-            reps = p.get("repeat",0) == 1
+            reps = p.get("repeat", 0) == 1
             if not len(p["label"]) > 0:
                 alab = p["CL"]
             else:
@@ -513,7 +509,7 @@ class ScriptRunner:
                     aninput.positional = int(p["origCL"])
                     aninput.command_line_override = "$%s" % newname
             if reps:
-                repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {newlabel} as needed")
+                repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {alab} as needed")
                 repe.append(aninput)
                 self.tinputs.append(repe)
                 tparm = gxtp.TestRepeat(name=f"R_{newname}")
