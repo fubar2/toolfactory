@@ -304,7 +304,7 @@ class ScriptRunner:
             xclsuffix.append([p["CL"], '"$%s"' % nam, over])
         for p in self.selpar:
             clsuffix.append([p["CL"], p["name"], p["override"]])
-            xclsuffix.append([p["CL"], '"$%s"' % nam, p["override"]])
+            xclsuffix.append([p["CL"], '"$%s"' % p["name"], p["override"]])
         clsuffix.sort()
         xclsuffix.sort()
         self.xclsuffix = xclsuffix
