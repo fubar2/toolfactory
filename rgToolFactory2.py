@@ -79,7 +79,7 @@ class ScriptRunner:
 
     """
 
-    def __init__(self, args=None):
+    def __init__(self, args=None):  # noqa
         """
         prepare command line cl for running the tool here
         and prepare elements needed for galaxyxml tool generation
@@ -430,7 +430,7 @@ class ScriptRunner:
         return ndash
 
     def doXMLparam(self):
-        """flake8 made me do this..."""
+        """Add all needed elements to tool"""  # noqa
         for p in self.outfiles:
             newname = p["name"]
             newfmt = p["format"]
@@ -681,7 +681,7 @@ class ScriptRunner:
             tp = gxtp.TestOutput(name=newname, value="%s_sample" % newname)
             self.testparam.append(tp)
 
-    def makeXML(self):
+    def makeXML(self):  # noqa
         """
         Create a Galaxy xml tool wrapper for the new script
         Uses galaxyhtml
