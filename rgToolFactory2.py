@@ -232,20 +232,24 @@ class ScriptRunner:
         clsuffix = []
         xclsuffix = []
         for i, p in enumerate(self.infiles):
+            nam = p["infilename"]
             if p["origCL"].strip().upper() == "STDIN":
                 appendme = [
-                    p["infilename"],
-                    p["infilename"],
-                    "< %s" % p["infilename"],
+                    nam,
+                    nam,
+                    "< %s" % nam,
                 ]
                 xappendme = [
-                    p["infilename"],
-                    p["infilename"],
-                    "< $%s" % p["infilename"],
+                    nam,
+                    nam,
+                    "< $%s" % nam,
                 ]
             else:
+                rep = p["repeat"] == "1"
+                if rep:
+                    over = f'#for $rep in $R_{nam}:\n--{nam} "$rep.{nam}"\n#end for'
                 appendme = [p["CL"], p["CL"], ""]
-                xappendme = [p["CL"], "$%s" % p["CL"], ""]
+                xappendme = [p["CL"], "$%s" % p["CL"], over]
             clsuffix.append(appendme)
             xclsuffix.append(xappendme)
         for i, p in enumerate(self.outfiles):
@@ -259,7 +263,7 @@ class ScriptRunner:
             nam = p["name"]
             rep = p["repeat"] == "1"
             if rep:
-                over = f" #for $rep in $R_{nam}:\n--{nam} $rep.{nam}\n#end for"
+                over = f'#for $rep in $R_{nam}:\n--{nam} "$rep.{nam}"\n#end for'
             else:
                 over = p["override"]
             clsuffix.append([p["CL"], nam, over])
@@ -489,7 +493,7 @@ class ScriptRunner:
             newname = p["infilename"]
             newfmt = p["format"]
             ndash = self.getNdash(newname)
-            reps = p.get("repeat", 0) == 1
+            reps = p.get("repeat", "0") == "1"
             if not len(p["label"]) > 0:
                 alab = p["CL"]
             else:
@@ -715,6 +719,10 @@ class ScriptRunner:
             safertext = safertext + "\n".join(scr)
         self.newtool.help = safertext
         self.newtool.version_command = f'echo "{self.args.tool_version}"'
+        std = gxtp.Stdios()
+        std1 = gxtp.Stdio()
+        std.append(std1)
+        self.newtool.stdios = std
         requirements = gxtp.Requirements()
         if self.args.packages:
             for d in self.args.packages.split(","):
@@ -728,7 +736,7 @@ class ScriptRunner:
                 requirements.append(
                     gxtp.Requirement("package", packg.strip(), ver.strip())
                 )
-            self.newtool.requirements = requirements
+        self.newtool.requirements = requirements
         if self.args.parampass == "0":
             self.doNoXMLparam()
         else:
