@@ -1043,6 +1043,10 @@ class ScriptRunner:
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
+        penv = os.environ
+        pconfig = os.path.join(self.args.tool_dir,'.planemo.yml')
+        penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
+        self.set_planemo_galaxy_root(self.args.galaxy_root,config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1067,12 +1071,43 @@ class ScriptRunner:
         p = subprocess.run(
             cll,
             shell=False,
+            env = penv,
             cwd=self.tooloutdir,
             stderr=tout,
             stdout=tout,
         )
         tout.close()
         return p.returncode
+
+    def set_planemo_galaxy_root(self, galaxyroot='/galaxy-central', config_path=".planemo.yml"):
+        # bug in planemo - bogus '--dev-wheels' passed to run_tests.sh as at april 2021 - need a fiddled copy so it is ignored until fixed
+        CONFIG_TEMPLATE = f"""## Planemo Global Configuration File.
+## Everything in this file is completely optional - these values can all be
+## configured via command line options for the corresponding commands.
+
+## Specify a default galaxy_root for test and server commands here.
+galaxy_root: %s
+## Username used with toolshed(s).
+#shed_username: "<TODO>"
+sheds:
+  # For each tool shed you wish to target, uncomment key or both email and
+  # password.
+  toolshed:
+    #key: "<TODO>"
+    #email: "<TODO>"
+    #password: "<TODO>"
+  testtoolshed:
+    #key: "<TODO>"
+    #email: "<TODO>"
+    #password: "<TODO>"
+  local:
+    #key: "<TODO>"
+    #email: "<TODO>"
+    #password: "<TODO>"
+"""
+        if not os.path.exists(config_path):
+            with open(config_path, "w") as f:
+                f.write(CONFIG_TEMPLATE % galaxyroot)
 
 
 def main():
