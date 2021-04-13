@@ -1044,9 +1044,9 @@ class ScriptRunner:
         supplied test outputs are sent to repdir for display
         """
         penv = os.environ
-        pconfig = os.path.join(self.args.tool_dir,'.planemo.yml')
+        pconfig = os.path.join(self.args.tool_dir, '.planemo.yml')
         penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
-        self.set_planemo_galaxy_root(self.args.galaxy_root,config_path=pconfig)
+        self.set_planemo_galaxy_root(self.args.galaxy_root, config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1071,7 +1071,7 @@ class ScriptRunner:
         p = subprocess.run(
             cll,
             shell=False,
-            env = penv,
+            env=penv,
             cwd=self.tooloutdir,
             stderr=tout,
             stdout=tout,
@@ -1081,7 +1081,7 @@ class ScriptRunner:
 
     def set_planemo_galaxy_root(self, galaxyroot='/galaxy-central', config_path=".planemo.yml"):
         # bug in planemo - bogus '--dev-wheels' passed to run_tests.sh as at april 2021 - need a fiddled copy so it is ignored until fixed
-        CONFIG_TEMPLATE = f"""## Planemo Global Configuration File.
+        CONFIG_TEMPLATE = """## Planemo Global Configuration File.
 ## Everything in this file is completely optional - these values can all be
 ## configured via command line options for the corresponding commands.
 
