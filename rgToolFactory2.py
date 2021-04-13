@@ -246,6 +246,7 @@ class ScriptRunner:
                 ]
             else:
                 rep = p["repeat"] == "1"
+                over = ""
                 if rep:
                     over = f'#for $rep in $R_{nam}:\n--{nam} "$rep.{nam}"\n#end for'
                 appendme = [p["CL"], p["CL"], ""]
@@ -1135,9 +1136,6 @@ or an executable package in --sysexe or --packages"
         r.moveRunOutputs()
         r.makeToolTar()
     else:
-        # r.planemo_test(genoutputs=True)  # this fails :( - see PR
-        # r.moveRunOutputs()
-        # r.makeToolTar(report_fail=False)
         r.planemo_test_once()
         r.moveRunOutputs()
         r.makeToolTar(report_fail=True)
