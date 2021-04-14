@@ -180,7 +180,7 @@
   </macros>
 
 <requirements>
-   <!-- <requirement type="package" version="0.4.13">galaxyxml</requirement> -->
+   <requirement type="package" version="0.4.14">galaxyxml</requirement>
    <requirement type="package" version="0.15.0">bioblend</requirement>
    <requirement type="package" version="0.10.6">ephemeris</requirement>
    <requirement type="package" version="0.74.3">planemo</requirement>
