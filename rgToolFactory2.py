@@ -1043,10 +1043,6 @@ class ScriptRunner:
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
-        penv = os.environ
-        pconfig = os.path.join(self.args.tool_dir, '.planemo.yml')
-        penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
-        self.set_planemo_galaxy_root(self.args.galaxy_root, config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1073,7 +1069,6 @@ class ScriptRunner:
         p = subprocess.run(
             cll,
             shell=False,
-            env=penv,
             cwd=self.tooloutdir,
             stderr=tout,
             stdout=tout,
