@@ -179,12 +179,10 @@
      </xml>
   </macros>
 
-<!--<requirements>
-   <container type="docker"> quay.io/biocontainers/quay.io/biocontainers/mulled-v2-0a86ccf22d71945a175383bcea5edd6b51c25ed0:55f1b8132a10ad91f0016ba9f4c692627ca2d25b-0</container>
-</requirements>-->
 <requirements>
    <requirement type="package" version="0.4.14">galaxyxml</requirement>
    <requirement type="package" version="0.74.3">planemo</requirement>
+   <container type="docker">quay.io/biocontainers/mulled-v2-0a86ccf22d71945a175383bcea5edd6b51c25ed0:55f1b8132a10ad91f0016ba9f4c692627ca2d25b-0</container>
 </requirements>
 
 <command detect_errors="exit_code"><![CDATA[
