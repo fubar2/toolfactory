@@ -180,12 +180,10 @@
   </macros>
 
 <!--<requirements>
-   <container type="docker"> quay.io/biocontainers/mulled-v2-a561fe5ac66db40ea5722f302d4555ea221ab3ec:1f00bdd160a9bd56118d529588d255e34b5efae2-0</container>
+   <container type="docker"> quay.io/biocontainers/quay.io/biocontainers/mulled-v2-0a86ccf22d71945a175383bcea5edd6b51c25ed0:55f1b8132a10ad91f0016ba9f4c692627ca2d25b-0</container>
 </requirements>-->
 <requirements>
    <requirement type="package" version="0.4.14">galaxyxml</requirement>
-   <requirement type="package" version="0.15.0">bioblend</requirement>
-   <requirement type="package" version="0.10.6">ephemeris</requirement>
    <requirement type="package" version="0.74.3">planemo</requirement>
 </requirements>
 
