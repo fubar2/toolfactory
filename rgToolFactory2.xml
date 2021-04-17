@@ -179,6 +179,9 @@
      </xml>
   </macros>
 
+<!--<requirements>
+   <container type="docker"> quay.io/biocontainers/mulled-v2-a561fe5ac66db40ea5722f302d4555ea221ab3ec:1f00bdd160a9bd56118d529588d255e34b5efae2-0</container>
+</requirements>-->
 <requirements>
    <requirement type="package" version="0.4.14">galaxyxml</requirement>
    <requirement type="package" version="0.15.0">bioblend</requirement>
@@ -186,7 +189,7 @@
    <requirement type="package" version="0.74.3">planemo</requirement>
 </requirements>
 
-  <command ><![CDATA[
+<command detect_errors="exit_code"><![CDATA[
 #import os
 #set dev_env = os.environ.get('GALAXY_DEVELOPMENT_ENVIRONMENT', '0') == '1'
 #if not $dev_env and ( $__user_email__ not in $__admin_users__ ):

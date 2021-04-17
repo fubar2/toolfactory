@@ -1058,6 +1058,8 @@ class ScriptRunner:
         cll = [
             "planemo",
             "test",
+            "--galaxy_python_version",
+            self.args.python_version,
             "--conda_auto_init",
             "--test_data",
             os.path.abspath(self.testdir),
@@ -1152,6 +1154,7 @@ def main():
     a("--galaxy_venv", default="/galaxy_venv")
     a("--collection", action="append", default=[])
     a("--include_tests", default=False, action="store_true")
+    a("--python_version", default="3.9")
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy \
