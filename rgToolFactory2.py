@@ -1037,12 +1037,17 @@ class ScriptRunner:
                     src = os.path.join(self.testdir, entry.name)
                     shutil.copyfile(src, dest)
 
-    def planemo_test_once(self):
+  def planemo_test_once(self):
         """planemo is a requirement so is available for testing but needs a
         different call if in the biocontainer - see above
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
+        penv = os.environ
+        ourdir = os.getcwd()
+        pconfig = os.path.join(ourdir, '.planemo.yml')
+        penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
+        self.set_planemo_galaxy_root(ourdir, config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1054,6 +1059,8 @@ class ScriptRunner:
         cll = [
             "planemo",
             "test",
+            "--galaxy_python_version",
+            self.args.python_version,
             "--test_data",
             os.path.abspath(self.testdir),
             "--test_output",
@@ -1066,12 +1073,44 @@ class ScriptRunner:
         p = subprocess.run(
             cll,
             shell=False,
+            env=penv,
             cwd=self.tooloutdir,
             stderr=tout,
             stdout=tout,
         )
         tout.close()
         return p.returncode
+
+    def set_planemo_galaxy_root(self, planemoroot=f"{os.getcwd()}", config_path=".planemo.yml"):
+        # planemo tries to write to ~/.planemo - trying to convince it otherwise
+        CONFIG_TEMPLATE = """## Planemo Global Configuration File.
+## Everything in this file is completely optional - these values can all be
+## configured via command line options for the corresponding commands.
+## Specify a default galaxy_root for test and server commands here.
+galaxy_root: %s
+## Username used with toolshed(s).
+#shed_username: "<TODO>"
+sheds:
+  # For each tool shed you wish to target, uncomment key or both email and
+  # password.
+  toolshed:
+    #key: "<TODO>"
+    #email: "<TODO>"
+    #password: "<TODO>"
+  testtoolshed:
+    #key: "<TODO>"
+    #email: "<TODO>"
+    #password: "<TODO>"
+  local:
+    #key: "<TODO>"
+    #email: "<TODO>"
+    #password: "<TODO>"
+"""
+        if not os.path.exists(config_path):
+            with open(config_path, "w") as f:
+                f.write(CONFIG_TEMPLATE % planemoroot)
+
+
 
 def main():
     """
