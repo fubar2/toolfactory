@@ -1056,7 +1056,6 @@ class ScriptRunner:
             "test",
             "--galaxy_python_version",
             self.args.python_version,
-            "--conda_auto_init",
             "--test_data",
             os.path.abspath(self.testdir),
             "--test_output",
@@ -1075,37 +1074,6 @@ class ScriptRunner:
         )
         tout.close()
         return p.returncode
-
-    def set_planemo_galaxy_root(self, galaxyroot='/galaxy-central', config_path=".planemo.yml"):
-        # bug in planemo - bogus '--dev-wheels' passed to run_tests.sh as at april 2021 - need a fiddled copy so it is ignored until fixed
-        CONFIG_TEMPLATE = """## Planemo Global Configuration File.
-## Everything in this file is completely optional - these values can all be
-## configured via command line options for the corresponding commands.
-
-## Specify a default galaxy_root for test and server commands here.
-galaxy_root: %s
-## Username used with toolshed(s).
-#shed_username: "<TODO>"
-sheds:
-  # For each tool shed you wish to target, uncomment key or both email and
-  # password.
-  toolshed:
-    #key: "<TODO>"
-    #email: "<TODO>"
-    #password: "<TODO>"
-  testtoolshed:
-    #key: "<TODO>"
-    #email: "<TODO>"
-    #password: "<TODO>"
-  local:
-    #key: "<TODO>"
-    #email: "<TODO>"
-    #password: "<TODO>"
-"""
-        if not os.path.exists(config_path):
-            with open(config_path, "w") as f:
-                f.write(CONFIG_TEMPLATE % galaxyroot)
-
 
 def main():
     """
