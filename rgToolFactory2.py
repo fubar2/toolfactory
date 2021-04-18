@@ -1054,8 +1054,6 @@ class ScriptRunner:
         cll = [
             "planemo",
             "test",
-            "--galaxy_python_version",
-            self.args.python_version,
             "--test_data",
             os.path.abspath(self.testdir),
             "--test_output",
