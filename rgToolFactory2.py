@@ -1047,6 +1047,7 @@ class ScriptRunner:
         ourdir = os.getcwd()
         pconfig = os.path.join(ourdir, '.planemo.yml')
         penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
+        penv["HOME"] = ourdir
         self.set_planemo_galaxy_root(ourdir, config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
