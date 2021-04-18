@@ -1044,11 +1044,12 @@ class ScriptRunner:
         supplied test outputs are sent to repdir for display
         """
         penv = os.environ
-        ourdir = os.getcwd()
-        pconfig = os.path.join(ourdir, '.planemo.yml')
-        penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
-        penv["HOME"] = ourdir
-        self.set_planemo_galaxy_root(self.args.galaxy_root, config_path=pconfig)
+        # ourdir = os.getcwd()
+        # print('########## ourdir=',ourdir,'gr=',self.args.galaxy_root)
+        # pconfig = os.path.join(ourdir,'planemo', '.planemo.yml')
+        # penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
+        # penv["HOME"] = ourdir
+        # # self.set_planemo_galaxy_root(self.args.galaxy_root, config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1082,7 +1083,7 @@ class ScriptRunner:
         tout.close()
         return p.returncode
 
-    def set_planemo_galaxy_root(self, planemoroot=f"{os.getcwd()}", config_path=".planemo.yml"):
+    def set_planemo_galaxy_root(self, galaxyroot, config_path=".planemo.yml"):
         # planemo tries to write to ~/.planemo - trying to convince it otherwise
         CONFIG_TEMPLATE = """## Planemo Global Configuration File.
 ## Everything in this file is completely optional - these values can all be
@@ -1109,7 +1110,7 @@ sheds:
 """
         if not os.path.exists(config_path):
             with open(config_path, "w") as f:
-                f.write(CONFIG_TEMPLATE % planemoroot)
+                f.write(CONFIG_TEMPLATE % galaxyroot)
 
 
 
