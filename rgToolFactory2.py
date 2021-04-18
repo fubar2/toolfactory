@@ -1037,7 +1037,7 @@ class ScriptRunner:
                     src = os.path.join(self.testdir, entry.name)
                     shutil.copyfile(src, dest)
 
-  def planemo_test_once(self):
+    def planemo_test_once(self):
         """planemo is a requirement so is available for testing but needs a
         different call if in the biocontainer - see above
         and for generating test outputs if command or test overrides are
