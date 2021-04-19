@@ -64,8 +64,8 @@
      </xml>
      <xml name="io">
      <section name="io" title="Input and output files" expanded="true">
-        <repeat name="history_inputs" title="zero or more input data files to pass on the command line to the executable."
-             help="USE SMALL SAMPLES for the new tool's test. Prompts will form a history item selector as input for users of this new tool">
+        <repeat name="history_inputs" title="Inputs" min="0"
+             help="Input data files to pass on the command line to the executable. USE SMALL SAMPLES for the new tool's test. Prompts will form a history item selector as input for users of this new tool">
             <param name="input_files" type="data" format="data" label="Select an input file from your history" multiple="false"
                help=""/>
             <param name="input_formats" type="select" multiple="true" label="Select the datatype(s) that your tool/script accepts as input"
@@ -83,10 +83,10 @@
             </param>
             <param name="input_repeat" type="boolean" checked="False" truevalue="1"  falsevalue="0" label="Allow user to repeat this input as many times as wanted - script/executable must parse these."/>
         </repeat>
-        <repeat name="history_outputs" title="one or more new history items output by the executable to appear in the user history after the tool runs"
-             help="The name will become a history item for users of the new tool you are making containing one of it's outputs">
-            <param name="history_name" type="text" label="Name for this output to appear in new history" optional="false"
-              help="No spaces! Argparse will also use this name as --[name]">
+        <repeat name="history_outputs" min="1" title="Outputs"
+             help="New history items output by the executable to appear in the user history after the tool runs. The name will become a history item for users of the new tool you are making containing one of it's outputs">
+            <param name="history_name" type="text" label="Output Name" optional="false"
+              help="Name used for this output in history. No spaces! Argparse will also use this name as --[name]">
               <sanitizer invalid_char="_">
                 <valid initial="string.ascii_letters,string.digits" >
                    <add value="_" />
@@ -99,15 +99,15 @@
                 <column name="value" index="0"/>
                </options>
             </param>
-            <param name="history_CL" type="text"  label="Positional: ordinal integer. Use STDOUT if '>' required. Otherwise ignored if argparse because name is used"
-              help="If positional parameters, enter the integer ordinal expected for this parameter. If argparse, ignore unless STDOUT needed" value=""/>
-            <param name="history_test" type="text"  label="Test pass decision criterion for this output compared to test generation"
-              help="Available options are diff:[lines], sim_size:[delta (integer) or delta_frac (float)" value="diff:0"/>
+            <param name="history_CL" type="text"  label="Position"
+              help="Positional: ordinal integer or 'STDOUT' if '>' required. Otherwise ignored if argparse because name is used. If positional parameters, enter the integer ordinal expected for this parameter. If argparse, ignore unless STDOUT needed" value=""/>
+            <param name="history_test" type="text"  label="Output test criteria"
+              help="Pass/fail decision criterion for this output compared to test generation. Available options are diff:[lines], sim_size:[delta (integer) or delta_frac (float)" value="diff:0"/>
         </repeat>
-        <repeat name="collection_outputs" title="zero or more new history collections to appear in the user history after the tool runs"
-             help="Hides outputs not needed for downstream tools such as images and intermediate reports." default="0">
-            <param name="name" type="text" label="Name for new collection with all outputs not individually passed to history outputs"
-              help="No spaces! Script MUST create and fill a directory with the same name and the tool test MUST be overwritten - see the plotter example for hints">
+        <repeat name="collection_outputs" title="Output Collections" min="0"
+             help="New history collections to appear in the user history after the tool runs. Hides outputs not needed for downstream tools such as images and intermediate reports." default="0">
+            <param name="name" type="text" label="Name"
+              help="for new collection with all outputs not individually passed to history outputs. No spaces! Script MUST create and fill a directory with the same name and the tool test MUST be overwritten - see the plotter example for hints">
               <sanitizer invalid_char="_">
                 <valid initial="string.ascii_letters,string.digits" >
                    <add value="_" />
@@ -127,14 +127,14 @@
         </section>
      </xml>
      <xml name="additparam">
-     <section name="addparam" title="Executable or script settings passed on the command line other than I/O files" expanded="true">
+     <section name="addparam" title="Arguments" help="Executable or script settings passed on the command line other than I/O files" expanded="true">
         <param name="edit_params" type="select" display="radio" label="Make these settings on the generated tool form user editable?"
              help="If no, users will NOT be able to alter any additional parameters. If yes, these will appear on the tool form as text fields with no validation or sanitizing">
             <option value="yes" selected="true">Yes, allow user to edit all additional parameters on the generated tool form</option>
             <option value="no">No - use the fixed values for all additional parameters - no user editing</option>
         </param>
-        <repeat name="additional_parameters" title="zero or more command line settings for the user to pass to the executable"
-             help="See examples below to see how these can be parsed by scripts in the various languages">
+        <repeat name="additional_parameters" title="Command Line Paramters" min="0"
+             help="Command line settings for the user to pass to the executable. See examples below to see how these can be parsed by scripts in the various languages">
           <param name="param_name" type="text" value="" label="Choose the name for this parameter - MUST not be blank!">
             <sanitizer invalid_char="">
               <valid initial="string.ascii_letters,string.digits"/>
