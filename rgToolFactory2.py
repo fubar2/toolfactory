@@ -1043,6 +1043,23 @@ class ScriptRunner:
         and for generating test outputs if command or test overrides are
         supplied test outputs are sent to repdir for display
         """
+        penv = os.environ
+        phome = penv['HOME']
+        isDocker = os.path.exists('/.dockerenv')
+        if isDocker: # use the volume if it exists
+            phome = '/home/planemo'
+            if os.path.exists(phome): # is mounted
+                home = phome
+            else:
+                home = '/tmp/planemo' # this will be brutal but otherwise /home/galaxy
+                os.mkdir('/tmp/planemo')
+        penv["HOME"] = phome
+        path = penv['PATH']
+        penv['PATH'] = '%s:%s' % (phome,path)
+        print(f"#### set home to {phome} with path={penv['PATH']}")
+        #pconfig = os.path.join(phome,'.planemo.yml')
+        #penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
+        # self.set_planemo_galaxy_root(self.args.galaxy_root, config_path=pconfig)
         xreal = "%s.xml" % self.tool_name
         tool_test_path = os.path.join(
             self.repdir, f"{self.tool_name}_planemo_test_report.html"
@@ -1060,13 +1077,14 @@ class ScriptRunner:
             os.path.abspath(self.testdir),
             "--test_output",
             os.path.abspath(tool_test_path),
-            "--galaxy_root",
-            self.args.galaxy_root,
+            ## "--galaxy_root",
+            ## self.args.galaxy_root,
             "--update_test_data",
             os.path.abspath(xreal),
         ]
         p = subprocess.run(
             cll,
+            env = penv,
             shell=False,
             cwd=self.tooloutdir,
             stderr=tout,
