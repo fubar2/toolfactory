@@ -32,6 +32,20 @@
             help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
             <param name="tool_desc" label="Tool Synopsis" type="text" value=""
              help="Supply a brief tool description for the Galaxy tool menu entry" />
+             <param name="install" label="Attempt to install in the host Galaxy"
+                help="This will fail unless running in a very unusual configuration such as a specialised Docker container"
+                type="boolean" checked="True" truevalue="1"  falsevalue="0" />
+         <conditional name="do_test">
+            <param name="run_test" label="Run planemo test on the new archive to add test outputs making a proper tool - takes time"
+                help="Archives must be run and updated using planemo to populate all the test outputs. Will be very quick if no dependencies (eg a bash script). May take a very long time depending on dependencies"
+                type="boolean" checked="False" truevalue="1"  falsevalue="0" />
+                <when value="0">
+                    <param name="tail" type="hidden" value="not_tested"/>
+                </when>
+                <when value="1">
+                    <param name="tail" type="hidden" value="tested"/>
+                </when>
+            </conditional>
             <param name="help_text" label="Tool form documentation and help text for users" type="text" area="true"
             value="**What it Does**"
              help="Supply user documentation to appear on the new tool form as reStructured text - http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html" >
@@ -75,10 +89,6 @@
                </options>
             </param>
             <param name="input_label" type="text" value="" label="This will become the user prompt for the form so please make it informative" >
-                <sanitizer>
-                    <valid initial="string.printable" />
-                    <mapping initial="none"/>
-                </sanitizer>
             </param>
             <param name="input_help" type="text" value="" label="This will become help text on the form." >
             </param>
@@ -184,9 +194,9 @@
   </macros>
 
 <requirements>
-   <requirement type="package" version="0.4.14">galaxyxml</requirement>
-   <requirement type="package" version="0.74.3">planemo</requirement>
-   <requirement type="package" version="0.10.6">ephemeris</requirement>
+    <requirement type="package" version="2.30.2">git</requirement>
+    <requirement type="package" version="0.4.14">galaxyxml</requirement>
+    <requirement type="package" version="0.74.3">planemo</requirement>
 </requirements>
 
 <command detect_errors="exit_code"><![CDATA[
@@ -197,7 +207,7 @@ python3 $__tool_directory__/rgToolFactory2.py --bad_user $__user_email__
  #else:
 python3 $__tool_directory__/ToolFactory.py
     #if len(str($cl_suffix)) > 0:
---cl_suffix "$cl_suffix"
+--cl_user_suffix "$cl_suffix"
     #end if
     #if $cover.commover == "yes":
        #if len(str($cover.command_override)) > 10:
@@ -207,24 +217,24 @@ python3 $__tool_directory__/ToolFactory.py
 --test_override "$testoverride"
        #end if
     #end if
---packages "$deps.packages"
+    #if $deps.packages > "":
+        --packages "$deps.packages"
+    #end if
    #if $deps.usescript.choosescript == "yes":
 --script_path "$runme"
 --sysexe "$deps.usescript.scriptrunner"
     #end if
 --tool_name "$tool_name"  --user_email "$__user_email__" --citations "$citeme"  --parampass "$io_param.ppass.parampass"
-
-   #if str($make.makeMode.make_Tool)!="runonly":
---make_Tool "$make.makeMode.make_Tool"
---tool_desc "$make.makeMode.tool_desc"
---tool_version "$make.makeMode.tool_version"
+--tool_desc "$tool_desc"
+--tool_version "$tool_version"
 --help_text "$helpme"
 --new_tool "$new_tool"
---toolshed_api_key "$make.makeMode.toolshed_apikey"
---galaxy_api_key "$make.makeMode.galaxy_apikey"
---toolshed_url "$make.makeMode.toolshed_url"
---galaxy_url "$make.makeMode.galaxy_url"
-   #end if
+    #if $install:
+       --install
+    #end if
+    #if $do_test.run_test:
+       --run_test
+    #end if
    #if $io_param.ppass.parampass != '0':
      #if str($io_param.ppass.addparam.edit_params) == "yes":
 --edit_additional_parameters
@@ -266,7 +276,7 @@ python3 $__tool_directory__/ToolFactory.py
      #end for
 --galaxy_root "$__root_dir__"
 --tool_dir "$__tool_directory__"
-#end if
+ #end if
 ]]></command>
  <configfiles>
   <configfile name="runme">
@@ -283,24 +293,20 @@ $cover.test_override
 #end if
  </configfile>
  <configfile name="helpme">
-    #if $make.makeMode.make_Tool != "runonly":
-${make.makeMode.help_text}
-    #else
-$tool_name help goes here
-    #end if
+${help_text}
  </configfile>
  <configfile name="citeme">
-#if $make.makeMode.make_Tool != "runonly":
-    #for $citation in $make.makeMode.citations:
-        #if $citation.citation_type.type == "bibtex":
-            **ENTRY**bibtex
-            ${citation.citation_type.bibtex}
-        #else
-            **ENTRY**doi
-            ${citation.citation_type.doi}
-        #end if
-    #end for
-#end if
+
+#for $citation in $citations:
+    #if $citation.citation_type.type == "bibtex":
+        **ENTRY**bibtex
+        ${citation.citation_type.bibtex}
+    #else
+        **ENTRY**doi
+        ${citation.citation_type.doi}
+    #end if
+#end for
+
  </configfile>
   </configfiles>
   <inputs>
@@ -396,70 +402,13 @@ $tool_name help goes here
             </param>
         </when>
     </conditional>
-     <section name="make" title="Generate, toolshed and local Galaxy installation options" expanded="true">
-    <conditional name="makeMode">
-        <param name="make_Tool" type="select" display="radio" label="Choose the steps you want to run. The TF Docker container is recommended for local installation"
-          help="Installation in this Galaxy is optional" >
-        <option value="generate" >Run to generate tests only. Should fail if dependencies needed.</option>
-        <option value="gentest" selected="true">Test with planemo after generating.</option>
-        <option value="gentestinstall">Install in this Galaxy after generation and testing. Must have local ToolShed as in the TF Docker container</option>
-        </param>
-       <when value="generate">
-           <param name="galaxy_apikey" value="" type="hidden"  ></param>
-           <param name="toolshed_apikey" value="" type="hidden"  ></param>
-           <param name="galaxy_url" value="" type="hidden"  ></param>
-           <param name="toolshed_url" value="" type="hidden"  ></param>
-            <expand macro="tool_metadata" />
-        </when>
-       <when value="gentest">
-           <param name="galaxy_apikey" value="" type="hidden"  ></param>
-           <param name="toolshed_apikey" value="" type="hidden"  ></param>
-           <param name="galaxy_url" value="" type="hidden"  ></param>
-           <param name="toolshed_url" value="" type="hidden"  ></param>
-            <expand macro="tool_metadata" />
-        </when>
-       <when value="gentestinstall">
-            <param name="galaxy_url" type="text" value="http://localhost:8080" label="URL for the Galaxy server where the new tool should be installed"
-             help="Default is localhost">
-              <sanitizer>
-                 <valid initial="string.printable" />
-                 <mapping initial="none"/>
-              </sanitizer>
-            </param>
-          <param name="galaxy_apikey" type="text" value="fakekey" label="API key for the Galaxy to install the new tool"
-             help="Cut and paste from the admin user properties screen">
-              <sanitizer>
-                 <valid initial="string.ascii_letters,string.digits" />
-                 <mapping initial="none"/>
-              </sanitizer>
-            </param>
-           <param name="toolshed_url" type="text" value="http://localhost:9009" label="URL for the Toolshed where the new tool should be installed"
-             help="Default value is localhost:9009">
-              <sanitizer>
-                 <valid initial="string.printable" />
-                 <mapping initial="none"/>
-              </sanitizer>
-            </param>
-           <param name="toolshed_apikey" type="text" value="fakekey" label="API key for the local toolshed to use when installing the tool"
-             help="Cut and paste from the admin user properties screen">
-              <sanitizer>
-                 <valid initial="string.ascii_letters,string.digits" />
-                 <mapping initial="none"/>
-              </sanitizer>
-            </param>
-            <expand macro="tool_metadata" />
-        </when>
-    </conditional>
-    </section>
+    <expand macro="tool_metadata" />
   </inputs>
   <outputs>
-
-    <data format="toolshed.gz" name="new_tool" label="${tool_name}_toolshed.gz" >
-        <filter>makeMode['make_Tool'] != "runonly"</filter>
-    </data>
-
-  <collection name="TF_run_report" type="list" label="${tool_name} outputs">
-      <discover_datasets pattern="__name_and_ext__" directory="TF_run_report_tempdir" />
+    <data format="toolshed.gz" name="new_tool" label="${tool_name}_${do_test.tail}_toolshed.gz" />
+   <collection name="TF_run_report" type="list" label="${tool_name} test run outputs">
+      <filter>do_test['run_test']</filter>
+      <discover_datasets pattern="__name_and_ext__" directory="TF_run_report" />
   </collection>
   </outputs>
 <tests>
@@ -472,7 +421,6 @@ $tool_name help goes here
     <param name="input_help" value="help" />
     <param name="tool_name" value="pyrevpos" />
     <param name="parampass" value="positional" />
-    <param name="make_Tool" value="gentest" />
     <param name="tool_version" value="0.01" />
     <param name="tool_desc" value="positional reverse" />
     <param name="help_text" value="help text goes here" />
@@ -483,6 +431,8 @@ $tool_name help goes here
     <param name="dynScript" value="import sys; inp = sys.argv[1]; outp = sys.argv[2]; inlist = open(inp,'r').readlines(); o = open(outp,'w'); rs = [''.join(list(reversed(x.rstrip()))) for x in inlist]; o.write('\n'.join(rs)); o.close()"/>
     <param name="choosescript" value="yes" />
     <param name="script_path" value="$runme"/>
+    <param name="install" value="0"/>
+    <param name="run_test" value="1"/>
     <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />
 </test>
 </tests>
@@ -509,13 +459,10 @@ Binary packages are managed by the dependency subsystem - conda usually, so anyt
 Any number of parameters can be built into the new tool form for passing in to the script or executable at runtime.
 These can be editable by the downstream user or baked in.
 
-When you run this tool, your executable or script and supplied parameter values will be run to produce a canonical
-set of outputs - these are used to construct a test for the new tool.
+A new tarball compatible with any Galaxy toolshed is created in your history, however, it does not have the test prepared.
+There is a separate tool you can run to update the archive after testing with Planemo
 
-If tool generation is required, a new tarball compatible with any Galaxy toolshed is created.
-It can be unpacked in your galaxy/tools directory and manually added to tool_conf.xml, or
-installed into any toolshed from where it can be installed into your Galaxy.
-
+If the configuration in job_conf.xml allows tools to write to [galaxy_root]/tools, the new tool will be installed so you can view and test it locally.
 
 .. class:: warningmark
 

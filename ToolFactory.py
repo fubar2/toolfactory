@@ -1,4 +1,4 @@
-# replace with shebang for biocontainer
+
 # see https://github.com/fubar2/toolfactory
 #
 # copyright ross lazarus (ross stop lazarus at gmail stop com) May 2012
@@ -8,11 +8,12 @@
 # suggestions for improvement and bug fixes welcome at
 # https://github.com/fubar2/toolfactory
 #
-# July 2020: BCC was fun and I feel like rip van winkle after 5 years.
-# Decided to
-# 1. Fix the toolfactory so it works - done for simplest case
-# 2. Fix planemo so the toolfactory function works
-# 3. Rewrite bits using galaxyxml functions where that makes sense - done
+# April 2021: Refactored into two tools - generate and test/install
+# as part of GTN tutorial development and biocontainer adoption
+# The tester runs planemo on a non-tested archive, creates the test outputs
+# and returns a new proper tool with test.
+# The tester was generated from the ToolFactory_tester.py script
+
 
 import argparse
 import copy
@@ -34,15 +35,14 @@ from bioblend import toolshed
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
 
-import lxml
+import lxml.etree as ET
 
 import yaml
 
-myversion = "V2.2 February 2021"
+myversion = "V2.3 April 2021"
 verbose = True
 debug = True
 toolFactoryURL = "https://github.com/fubar2/toolfactory"
-foo = len(lxml.__version__)
 FAKEEXE = "~~~REMOVE~~~ME~~~"
 # need this until a PR/version bump to fix galaxyxml prepending the exe even
 # with override.
@@ -52,15 +52,11 @@ def timenow():
     """return current time as a string"""
     return time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(time.time()))
 
-
 cheetah_escape_table = {"$": "\\$", "#": "\\#"}
-
-
 
 def cheetah_escape(text):
     """Produce entities within text."""
     return "".join([cheetah_escape_table.get(c, c) for c in text])
-
 
 def parse_citations(citations_text):
     """"""
@@ -73,6 +69,165 @@ def parse_citations(citations_text):
             citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
+class ToolTester():
+    # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
+    # if in a container possibly not so courageous.
+    # Fine on your own laptop but security red flag for most production instances
+    # uncompress passed tar, run planemo and rebuild a new tarball with tests
+
+    def __init__(self, report_dir, in_tool_archive, new_tool_archive, include_tests, galaxy_root):
+        self.new_tool_archive = new_tool_archive
+        self.include_tests = include_tests
+        self.galaxy_root = galaxy_root
+        self.repdir = report_dir
+        assert in_tool_archive and tarfile.is_tarfile(in_tool_archive)
+        # this is not going to go well with arbitrary names. TODO introspect tool xml!
+        tff = tarfile.open(in_tool_archive, "r:*")
+        flist = tff.getnames()
+        ourdir = os.path.commonpath(flist) # eg pyrevpos
+        self.tool_name = ourdir
+        ourxmls = [x for x in flist if x.lower().endswith('.xml') and os.path.split(x)[0] == ourdir]
+        # planemo_test/planemo_test.xml
+        assert len(ourxmls) > 0
+        self.ourxmls = ourxmls # [os.path.join(tool_path,x) for x in ourxmls]
+        res = tff.extractall()
+        tff.close()
+        self.update_tests(ourdir)
+        self.tooloutdir = ourdir
+        self.testdir = os.path.join(self.tooloutdir, "test-data")
+        if not os.path.exists(self.tooloutdir):
+            os.mkdir(self.tooloutdir)
+        if not os.path.exists(self.testdir):
+            os.mkdir(self.testdir)
+        if not os.path.exists(self.repdir):
+            os.mkdir(self.repdir)
+        if not os.path.exists(self.tooloutdir):
+            os.mkdir(self.tooloutdir)
+        if not os.path.exists(self.testdir):
+            os.mkdir(self.testdir)
+        if not os.path.exists(self.repdir):
+            os.mkdir(self.repdir)
+        self.moveRunOutputs()
+        self.makeToolTar()
+
+    def call_planemo(self,xmlpath,ourdir):
+        penv = os.environ
+        #penv['HOME'] = os.path.join(self.galaxy_root,'planemo')
+        #penv["GALAXY_VIRTUAL_ENV"] = os.path.join(penv['HOME'],'.planemo','gx_venv_3.9')
+        #penv["PIP_CACHE_DIR"] = os.path.join(self.galaxy_root,'pipcache')
+        toolfile = os.path.split(xmlpath)[1]
+        tool_name = self.tool_name
+        tool_test_output = os.path.join(self.repdir, f"{tool_name}_planemo_test_report.html")
+        cll = ["planemo",
+            "test",
+            "--biocontainers",
+            "--job_config_file",
+            os.path.join(self.galaxy_root,"config","job_conf.xml"),
+            #"--galaxy_python_version",
+            #"3.9",
+            "--test_output",
+            os.path.abspath(tool_test_output),
+            "--galaxy_root",
+            self.galaxy_root,
+            "--update_test_data",
+            os.path.abspath(xmlpath),
+        ]
+        print("Call planemo cl =", cll)
+        p = subprocess.run(
+            cll,
+            capture_output=True,
+            encoding='utf8',
+            env = penv,
+            shell=False,
+        )
+        return p
+
+    def makeToolTar(self):
+        """move outputs into test-data and prepare the tarball"""
+        excludeme = "_planemo_test_report.html"
+
+        def exclude_function(tarinfo):
+            filename = tarinfo.name
+            return None if filename.endswith(excludeme) else tarinfo
+
+        newtar = 'new_%s_toolshed.gz' % self.tool_name
+        ttf = tarfile.open(newtar, "w:gz")
+        ttf.add(name=self.tooloutdir,
+            arcname=self.tool_name,
+            filter=exclude_function)
+        ttf.close()
+        shutil.copyfile(newtar, self.new_tool_archive)
+
+    def move_One(self,scandir):
+        with os.scandir('.') as outs:
+            for entry in outs:
+                newname = entry.name
+                if not entry.is_file() or entry.name.endswith('_sample'):
+                    continue
+                if not (entry.name.endswith('.html') or entry.name.endswith('.gz') or entry.name.endswith(".tgz")):
+                    fname, ext = os.path.splitext(entry.name)
+                    if len(ext) > 1:
+                        newname = f"{fname}_{ext[1:]}.txt"
+                    else:
+                        newname = f"{fname}.txt"
+                dest = os.path.join(self.repdir, newname)
+                src = entry.name
+                shutil.copyfile(src, dest)
+
+    def moveRunOutputs(self):
+        """need to move planemo or run outputs into toolfactory collection"""
+        self.move_One(self.tooloutdir)
+        self.move_One('.')
+        if self.include_tests:
+            self.move_One(self.testdir)
+
+    def update_tests(self,ourdir):
+        for xmlf in self.ourxmls:
+            capture = self.call_planemo(xmlf,ourdir)
+            logf = open(f"%s_run_report" % (self.tool_name),'w')
+            logf.write("stdout:")
+            logf.write(capture.stdout)
+            logf.write("stderr:")
+            logf.write(capture.stderr)
+
+class ToolConfUpdater():
+    # update config/tool_conf.xml with a new tool unpacked in /tools
+    # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
+    # if in a container possibly not so courageous.
+    # Fine on your own laptop but security red flag for most production instances
+
+    def __init__(self, tool_conf_path, new_tool_archive_path, new_tool_name, tool_dir):
+        self.tool_conf_path = tool_conf_path
+        self.our_name = 'ToolFactory'
+        tff = tarfile.open(new_tool_archive_path, "r:*")
+        flist = tff.getnames()
+        ourdir = os.path.commonpath(flist) # eg pyrevpos
+        ourxml = [x for x in flist if x.lower().endswith('.xml')]
+        res = tff.extractall(tool_dir)
+        tff.close()
+        self.update_toolconf(ourdir,ourxml)
+
+    def update_toolconf(self,ourdir,ourxml): # path is relative to tools
+        updated = False
+        tree = ET.parse(self.tool_conf_path)
+        root = tree.getroot()
+        hasTF = False
+        TFsection = None
+        for e in root.findall('section'):
+            if e.attrib['name'] == self.our_name:
+                hasTF = True
+                TFsection = e
+        if not hasTF:
+            TFsection = ET.Element('section')
+            root.insert(0,TFsection) # at the top!
+        our_tools = TFsection.findall('tool')
+        conf_tools = [x.attrib['file'] for x in our_tools]
+        for xml in ourxml:   # may be > 1
+            if not xml in conf_tools: # new
+                updated = True
+                ET.SubElement(TFsection, 'tool', {'file':xml})
+        ET.indent(tree)
+        tree.write(self.tool_conf_path, pretty_print=True)
 
 class ScriptRunner:
     """Wrapper for an arbitrary script
@@ -163,7 +318,7 @@ class ScriptRunner:
         )
         self.newtarpath = "%s_toolshed.gz" % self.tool_name
         self.tooloutdir = "./tfout"
-        self.repdir = "./TF_run_report_tempdir"
+        self.repdir = "./TF_run_report"
         self.testdir = os.path.join(self.tooloutdir, "test-data")
         if not os.path.exists(self.tooloutdir):
             os.mkdir(self.tooloutdir)
@@ -197,8 +352,6 @@ class ScriptRunner:
                 aCL(ex)
                 aXCL(ex)
 
-        self.elog = os.path.join(self.repdir, "%s_error_log.txt" % self.tool_name)
-        self.tlog = os.path.join(self.repdir, "%s_runner_log.txt" % self.tool_name)
         if self.args.parampass == "0":
             self.clsimple()
         else:
@@ -208,11 +361,6 @@ class ScriptRunner:
             else:
                 self.prepargp()
                 self.clargparse()
-        if self.args.cl_suffix:  # DIY CL end
-            clp = shlex.split(self.args.cl_suffix)
-            for c in clp:
-                aCL(c)
-                aXCL(c)
 
     def clsimple(self):
         """no parameters or repeats - uses < and > for i/o"""
@@ -228,6 +376,11 @@ class ScriptRunner:
             aCL(self.outfiles[0]["name"])
             aXCL(">")
             aXCL("$%s" % self.outfiles[0]["name"])
+        if self.args.cl_user_suffix:  # DIY CL end
+            clp = shlex.split(self.args.cl_user_suffix)
+            for c in clp:
+                aCL(c)
+                aXCL(c)
 
     def prepargp(self):
         clsuffix = []
@@ -331,11 +484,13 @@ class ScriptRunner:
         tscript = open(self.sfile, "w")
         tscript.write(self.script)
         tscript.close()
-        self.escapedScript = [cheetah_escape(x) for x in rx]
         self.spacedScript = [f"    {x}" for x in rx if x.strip() > ""]
+        rx.insert(0,'#raw')
+        rx.append('#end raw')
+        self.escapedScript = rx
         art = "%s.%s" % (self.tool_name, self.executeme[0])
         artifact = open(art, "wb")
-        artifact.write(bytes("\n".join(self.escapedScript), "utf8"))
+        artifact.write(bytes(self.script, "utf8"))
         artifact.close()
 
     def cleanuppar(self):
@@ -391,6 +546,12 @@ class ScriptRunner:
         if self.lastxclredirect:
             aXCL(self.lastxclredirect[0])
             aXCL(self.lastxclredirect[1])
+        if self.args.cl_user_suffix:  # DIY CL end
+            clp = shlex.split(self.args.cl_user_suffix)
+            for c in clp:
+                aCL(c)
+                aXCL(c)
+
 
     def clargparse(self):
         """argparse style"""
@@ -421,6 +582,11 @@ class ScriptRunner:
         if self.lastxclredirect:
             aXCL(self.lastxclredirect[0])
             aXCL(self.lastxclredirect[1])
+        if self.args.cl_user_suffix:  # DIY CL end
+            clp = shlex.split(self.args.cl_user_suffix)
+            for c in clp:
+                aCL(c)
+                aXCL(c)
 
     def getNdash(self, newname):
         if self.is_positional:
@@ -431,8 +597,8 @@ class ScriptRunner:
                 ndash = 1
         return ndash
 
-    def doXMLparam(self):
-        """Add all needed elements to tool"""  # noqa
+    def doXMLparam(self):  # noqa
+        """Add all needed elements to tool"""
         for p in self.outfiles:
             newname = p["name"]
             newfmt = p["format"]
@@ -778,7 +944,7 @@ class ScriptRunner:
         xf.close()
         # ready for the tarball
 
-    def run(self):
+    def run(self):  #noqa
         """
         generate test outputs by running a command line
         won't work if command or test override in play - planemo is the
@@ -787,27 +953,17 @@ class ScriptRunner:
         """
         scl = " ".join(self.cl)
         err = None
+        logname = f"{self.tool_name}_runner_log"
         if self.args.parampass != "0":
-            if os.path.exists(self.elog):
-                ste = open(self.elog, "a")
-            else:
-                ste = open(self.elog, "w")
             if self.lastclredirect:
-                sto = open(self.lastclredirect[1], "wb")  # is name of an output file
+                logf = open(self.lastclredirect[1], "wb")  # is name of an output file
             else:
-                if os.path.exists(self.tlog):
-                    sto = open(self.tlog, "a")
-                else:
-                    sto = open(self.tlog, "w")
-                sto.write(
-                    "## Executing Toolfactory generated command line = %s\n" % scl
-                )
-            sto.flush()
+                logf = open(logname,'w')
+                logf.write("No dependencies so sending CL = '%s' to the fast direct runner instead of planemo to generate tests" % scl)
             subp = subprocess.run(
-                self.cl, shell=False, stdout=sto, stderr=ste
+                self.cl, shell=False, stdout=logf, stderr=logf
             )
-            sto.close()
-            ste.close()
+            logf.close()
             retval = subp.returncode
         else:  # work around special case - stdin and write to stdout
             if len(self.infiles) > 0:
@@ -821,110 +977,46 @@ class ScriptRunner:
             subp = subprocess.run(
                 self.cl, shell=False, stdout=sto, stdin=sti
             )
-            sto.write("## Executing Toolfactory generated command line = %s\n" % scl)
             retval = subp.returncode
             sto.close()
             sti.close()
-        if os.path.isfile(self.tlog) and os.stat(self.tlog).st_size == 0:
-            os.unlink(self.tlog)
-        if os.path.isfile(self.elog) and os.stat(self.elog).st_size == 0:
-            os.unlink(self.elog)
         if retval != 0 and err:  # problem
             sys.stderr.write(err)
-        logging.debug("run done")
+        for p in self.outfiles:
+            oname = p["name"]
+            tdest = os.path.join(self.testdir, "%s_sample" % oname)
+            if not os.path.isfile(tdest):
+                if os.path.isfile(oname):
+                    shutil.copyfile(oname, tdest)
+                    dest = os.path.join(self.repdir, "%s.sample.%s" % (oname,p['format']))
+                    shutil.copyfile(oname, dest)
+                else:
+                    if report_fail:
+                        tout.write(
+                            "###Tool may have failed - output file %s not found in testdir after planemo run %s."
+                            % (oname, self.testdir)
+                        )
+        for p in self.infiles:
+            pth = p["name"]
+            dest = os.path.join(self.testdir, "%s_sample" % p["infilename"])
+            shutil.copyfile(pth, dest)
+            dest = os.path.join(self.repdir, "%s_sample.%s" % (p["infilename"],p["format"]))
+            shutil.copyfile(pth, dest)
+        with os.scandir('.') as outs:
+            for entry in outs:
+                newname = entry.name
+                if not entry.is_file() or entry.name.endswith('_sample'):
+                    continue
+                if not (entry.name.endswith('.html') or entry.name.endswith('.gz') or entry.name.endswith(".tgz")):
+                    fname, ext = os.path.splitext(entry.name)
+                    if len(ext) > 1:
+                        newname = f"{fname}_{ext[1:]}.txt"
+                    else:
+                        newname = f"{fname}.txt"
+                dest = os.path.join(self.repdir, newname)
+                src = entry.name
+                shutil.copyfile(src, dest)
         return retval
-
-    def shedLoad(self):
-        """
-        use bioblend to create new repository
-        or update existing
-
-        """
-        if os.path.exists(self.tlog):
-            sto = open(self.tlog, "a")
-        else:
-            sto = open(self.tlog, "w")
-
-        ts = toolshed.ToolShedInstance(
-            url=self.args.toolshed_url,
-            key=self.args.toolshed_api_key,
-            verify=False,
-        )
-        repos = ts.repositories.get_repositories()
-        rnames = [x.get("name", "?") for x in repos]
-        rids = [x.get("id", "?") for x in repos]
-        tfcat = "ToolFactory generated tools"
-        if self.tool_name not in rnames:
-            tscat = ts.categories.get_categories()
-            cnames = [x.get("name", "?").strip() for x in tscat]
-            cids = [x.get("id", "?") for x in tscat]
-            catID = None
-            if tfcat.strip() in cnames:
-                ci = cnames.index(tfcat)
-                catID = cids[ci]
-            res = ts.repositories.create_repository(
-                name=self.args.tool_name,
-                synopsis="Synopsis:%s" % self.args.tool_desc,
-                description=self.args.tool_desc,
-                type="unrestricted",
-                remote_repository_url=self.args.toolshed_url,
-                homepage_url=None,
-                category_ids=catID,
-            )
-            tid = res.get("id", None)
-            sto.write(f"#create_repository {self.args.tool_name} tid={tid} res={res}\n")
-        else:
-            i = rnames.index(self.tool_name)
-            tid = rids[i]
-        try:
-            res = ts.repositories.update_repository(
-                id=tid, tar_ball_path=self.newtarpath, commit_message=None
-            )
-            sto.write(f"#update res id {id} ={res}\n")
-        except ConnectionError:
-            sto.write(
-                "####### Is the toolshed running and the API key correct? Bioblend shed upload failed\n"
-            )
-        sto.close()
-
-    def eph_galaxy_load(self):
-        """
-        use ephemeris to load the new tool from the local toolshed after planemo uploads it
-        """
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        cll = [
-            "shed-tools",
-            "install",
-            "-g",
-            self.args.galaxy_url,
-            "--latest",
-            "-a",
-            self.args.galaxy_api_key,
-            "--name",
-            self.tool_name,
-            "--owner",
-            "fubar",
-            "--toolshed",
-            self.args.toolshed_url,
-            "--section_label",
-            "ToolFactory",
-        ]
-        tout.write("running\n%s\n" % " ".join(cll))
-        subp = subprocess.run(
-            cll,
-            cwd=self.ourcwd,
-            shell=False,
-            stderr=tout,
-            stdout=tout,
-        )
-        tout.write(
-            "installed %s - got retcode %d\n" % (self.tool_name, subp.returncode)
-        )
-        tout.close()
-        return subp.returncode
 
     def writeShedyml(self):
         """for planemo"""
@@ -959,7 +1051,7 @@ class ScriptRunner:
             pth = p["name"]
             dest = os.path.join(self.testdir, "%s_sample" % p["infilename"])
             shutil.copyfile(pth, dest)
-            dest = os.path.join(self.repdir, "%s_sample" % p["infilename"])
+            dest = os.path.join(self.repdir, "%s_sample.%s" % (p["infilename"],p["format"]))
             shutil.copyfile(pth, dest)
 
     def makeToolTar(self, report_fail=False):
@@ -970,10 +1062,6 @@ class ScriptRunner:
             filename = tarinfo.name
             return None if filename.endswith(excludeme) else tarinfo
 
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
         for p in self.outfiles:
             oname = p["name"]
             tdest = os.path.join(self.testdir, "%s_sample" % oname)
@@ -985,7 +1073,7 @@ class ScriptRunner:
                     shutil.copyfile(src, dest)
                 else:
                     if report_fail:
-                        tout.write(
+                        print(
                             "###Tool may have failed - output file %s not found in testdir after planemo run %s."
                             % (tdest, self.testdir)
                         )
@@ -1004,16 +1092,9 @@ class ScriptRunner:
             for entry in outs:
                 if not entry.is_file():
                     continue
-                if "." in entry.name:
+                if not entry.name.endswith('.html'):
                     _, ext = os.path.splitext(entry.name)
-                    if ext in [".tgz", ".json"]:
-                        continue
-                    if ext in [".yml", ".xml", ".yaml"]:
-                        newname = f"{entry.name.replace('.','_')}.txt"
-                    else:
-                        newname = entry.name
-                else:
-                    newname = f"{entry.name}.txt"
+                    newname = f"{entry.name.replace('.','_')}.txt"
                 dest = os.path.join(self.repdir, newname)
                 src = os.path.join(self.tooloutdir, entry.name)
                 shutil.copyfile(src, dest)
@@ -1038,62 +1119,6 @@ class ScriptRunner:
                     src = os.path.join(self.testdir, entry.name)
                     shutil.copyfile(src, dest)
 
-    def planemo_test_once(self):
-        """planemo is a requirement so is available for testing but needs a
-        different call if in the biocontainer - see above
-        and for generating test outputs if command or test overrides are
-        supplied test outputs are sent to repdir for display
-        """
-        penv = os.environ
-        phome = penv['HOME']
-        # isDocker = os.path.exists('/.dockerenv')
-        # if isDocker: # use the volume if it exists
-            # phome = '/home/planemo'
-            # if os.path.exists(phome): # is mounted
-                # home = phome
-            # else:
-                # home = '/tmp/planemo' # this will be brutal but otherwise /home/galaxy
-                # os.mkdir('/tmp/planemo')
-        # penv["HOME"] = phome
-        # path = penv['PATH']
-        # penv['PATH'] = '%s:%s' % (phome,path)
-        # print(f"#### set home to {phome} with path={penv['PATH']}")
-        #pconfig = os.path.join(phome,'.planemo.yml')
-        #penv["PLANEMO_GLOBAL_CONFIG_PATH"] = pconfig
-        # self.set_planemo_galaxy_root(self.args.galaxy_root, config_path=pconfig)
-        xreal = "%s.xml" % self.tool_name
-        tool_test_path = os.path.join(
-            self.repdir, f"{self.tool_name}_planemo_test_report.html"
-        )
-        if os.path.exists(self.tlog):
-            tout = open(self.tlog, "a")
-        else:
-            tout = open(self.tlog, "w")
-        cll = [
-            "planemo",
-            "test",
-            "--galaxy_python_version",
-            self.args.python_version,
-            "--test_data",
-            os.path.abspath(self.testdir),
-            "--test_output",
-            os.path.abspath(tool_test_path),
-            "--galaxy_root",
-            self.args.galaxy_root,
-            "--update_test_data",
-            os.path.abspath(xreal),
-        ]
-        p = subprocess.run(
-            cll,
-            ## env = penv,
-            shell=False,
-            cwd=self.tooloutdir,
-            stderr=tout,
-            stdout=tout,
-        )
-        tout.close()
-        return p.returncode
-
 
 def main():
     """
@@ -1105,7 +1130,7 @@ def main():
     a = parser.add_argument
     a("--script_path", default=None)
     a("--history_test", default=None)
-    a("--cl_suffix", default=None)
+    a("--cl_user_suffix", default=None)
     a("--sysexe", default=None)
     a("--packages", default=None)
     a("--tool_name", default="newtool")
@@ -1114,7 +1139,6 @@ def main():
     a("--output_files", default=[], action="append")
     a("--user_email", default="Unknown")
     a("--bad_user", default=None)
-    a("--make_Tool", default="runonly")
     a("--help_text", default=None)
     a("--tool_desc", default=None)
     a("--tool_version", default=None)
@@ -1127,17 +1151,14 @@ def main():
     a("--parampass", default="positional")
     a("--tfout", default="./tfout")
     a("--new_tool", default="new_tool")
-    a("--galaxy_url", default="http://localhost:8080")
-    a("--toolshed_url", default="http://localhost:9009")
-    # make sure this is identical to tool_sheds_conf.xml
-    # localhost != 127.0.0.1 so validation fails
-    a("--toolshed_api_key", default="fakekey")
-    a("--galaxy_api_key", default="fakekey")
     a("--galaxy_root", default="/galaxy-central")
     a("--galaxy_venv", default="/galaxy_venv")
     a("--collection", action="append", default=[])
     a("--include_tests", default=False, action="store_true")
-    a("--python_version", default="3.9")
+    a("--install", default=False, action="store_true")
+    a("--run_test", default=False, action="store_true")
+    a("--local_tools", default='tools') # relative to galaxy_root
+    a("--tool_conf_path", default='/galaxy_root/config/tool_conf.xml')
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy \
@@ -1149,21 +1170,26 @@ admin adds %s to "admin_users" in the galaxy.yml Galaxy configuration file'
         args.sysexe or args.packages
     ), "## Tool Factory wrapper expects an interpreter \
 or an executable package in --sysexe or --packages"
+    print('Hello from',os.getcwd())
     r = ScriptRunner(args)
     r.writeShedyml()
     r.makeTool()
-    if args.make_Tool == "generate":
-        r.run()
-        r.moveRunOutputs()
-        r.makeToolTar()
-    else:
-        r.planemo_test_once()
-        r.moveRunOutputs()
-        r.makeToolTar(report_fail=True)
-        if args.make_Tool == "gentestinstall":
-            r.shedLoad()
-            r.eph_galaxy_load()
+    r.makeToolTar()
+    if args.install:
+        #try:
+        tcu = ToolConfUpdater(tool_dir=os.path.join(args.galaxy_root,args.local_tools),
+        new_tool_archive_path=r.newtarpath, tool_conf_path=os.path.join(args.galaxy_root,'config','tool_conf.xml'),
+        new_tool_name=r.tool_name)
+        #except Exception:
+        #   print("### Unable to install the new tool. Are you sure you have all the required special settings?")
+    if args.run_test:
+        if not args.packages or args.packages.strip() == "bash":
+            r.run()
+            r.makeToolTar()
+        else:
+            tt = ToolTester(report_dir=r.repdir, in_tool_archive=r.newtarpath, new_tool_archive=r.args.new_tool, galaxy_root=args.galaxy_root, include_tests=False)
 
 
 if __name__ == "__main__":
     main()
+
