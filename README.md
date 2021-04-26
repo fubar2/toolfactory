@@ -1,8 +1,6 @@
-﻿## Breaking news! Docker container at https://github.com/fubar2/toolfactory-galaxy-docker recommended as at December 2020
+﻿## Breaking news! Completely refactored
 
 ### New demonstration of planemo tool_factory command ![Planemo ToolFactory demonstration](images/lintplanemo-2021-01-08_18.02.45.mkv?raw=false "Demonstration inside Planemo")
-
-## This is the original ToolFactory suitable for non-docker situations. Please use the docker container if you can because it's integrated with a Toolshed...
 
 # WARNING
 
