@@ -30,6 +30,7 @@ import tempfile
 import time
 
 from bioblend import ConnectionError
+from bioblend import galaxy
 from bioblend import toolshed
 
 import galaxyxml.tool as gxt
@@ -112,17 +113,16 @@ class ToolTester():
 
     def call_planemo(self,xmlpath,ourdir):
         penv = os.environ
-        #penv['HOME'] = os.path.join(self.galaxy_root,'planemo')
+        penv['HOME'] = os.path.join(self.galaxy_root,'planemo')
         #penv["GALAXY_VIRTUAL_ENV"] = os.path.join(penv['HOME'],'.planemo','gx_venv_3.9')
-        #penv["PIP_CACHE_DIR"] = os.path.join(self.galaxy_root,'pipcache')
+        penv["PIP_CACHE_DIR"] = os.path.join(self.galaxy_root,'pipcache')
         toolfile = os.path.split(xmlpath)[1]
         tool_name = self.tool_name
         tool_test_output = os.path.join(self.repdir, f"{tool_name}_planemo_test_report.html")
         cll = ["planemo",
             "test",
-            "--biocontainers",
-            "--job_config_file",
-            os.path.join(self.galaxy_root,"config","job_conf.xml"),
+            #"--job_config_file",
+            # os.path.join(self.galaxy_root,"config","job_conf.xml"),
             #"--galaxy_python_version",
             #"3.9",
             "--test_output",
@@ -190,22 +190,30 @@ class ToolTester():
             logf.write("stderr:")
             logf.write(capture.stderr)
 
+
 class ToolConfUpdater():
     # update config/tool_conf.xml with a new tool unpacked in /tools
     # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
     # if in a container possibly not so courageous.
     # Fine on your own laptop but security red flag for most production instances
 
-    def __init__(self, tool_conf_path, new_tool_archive_path, new_tool_name, tool_dir):
+    def __init__(self, args, tool_conf_path, new_tool_archive_path, new_tool_name, tool_dir):
+        self.args = args
         self.tool_conf_path = tool_conf_path
         self.our_name = 'ToolFactory'
         tff = tarfile.open(new_tool_archive_path, "r:*")
         flist = tff.getnames()
         ourdir = os.path.commonpath(flist) # eg pyrevpos
+        self.tool_id = ourdir # they are the same for TF tools
         ourxml = [x for x in flist if x.lower().endswith('.xml')]
         res = tff.extractall(tool_dir)
         tff.close()
         self.update_toolconf(ourdir,ourxml)
+
+    def install_deps(self):
+        gi = galaxy.GalaxyInstance(url=self.args.galaxy_url, key=self.args.galaxy_api_key)
+        x = gi.tools.install_dependencies(self.tool_id)
+        print(f"Called install_dependencies on {self.tool_id} - got {x}")
 
     def update_toolconf(self,ourdir,ourxml): # path is relative to tools
         updated = False
@@ -228,6 +236,8 @@ class ToolConfUpdater():
                 ET.SubElement(TFsection, 'tool', {'file':xml})
         ET.indent(tree)
         tree.write(self.tool_conf_path, pretty_print=True)
+        if False and self.args.packages and self.args.packages > '':
+            self.install_deps()
 
 class ScriptRunner:
     """Wrapper for an arbitrary script
@@ -893,17 +903,21 @@ class ScriptRunner:
         self.newtool.stdios = std
         requirements = gxtp.Requirements()
         if self.args.packages:
-            for d in self.args.packages.split(","):
-                ver = ""
-                d = d.replace("==", ":")
-                d = d.replace("=", ":")
-                if ":" in d:
-                    packg, ver = d.split(":")
-                else:
-                    packg = d
-                requirements.append(
-                    gxtp.Requirement("package", packg.strip(), ver.strip())
-                )
+            try:
+                for d in self.args.packages.split(","):
+                    ver = ""
+                    d = d.replace("==", ":")
+                    d = d.replace("=", ":")
+                    if ":" in d:
+                        packg, ver = d.split(":")
+                    else:
+                        packg = d
+                    requirements.append(
+                        gxtp.Requirement("package", packg.strip(), ver.strip())
+                    )
+            except Exception:
+                print('### malformed packages string supplied - cannot parse =',self.args.packages)
+                sys.exit(2)
         self.newtool.requirements = requirements
         if self.args.parampass == "0":
             self.doNoXMLparam()
@@ -1159,6 +1173,12 @@ def main():
     a("--run_test", default=False, action="store_true")
     a("--local_tools", default='tools') # relative to galaxy_root
     a("--tool_conf_path", default='/galaxy_root/config/tool_conf.xml')
+    a("--galaxy_url", default="http://localhost:8080")
+    a("--toolshed_url", default="http://localhost:9009")
+    # make sure this is identical to tool_sheds_conf.xml
+    # localhost != 127.0.0.1 so validation fails
+    a("--toolshed_api_key", default="fakekey")
+    a("--galaxy_api_key", default="8993d65865e6d6d1773c2c34a1cc207d")
     args = parser.parse_args()
     assert not args.bad_user, (
         'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy \
@@ -1175,20 +1195,19 @@ or an executable package in --sysexe or --packages"
     r.writeShedyml()
     r.makeTool()
     r.makeToolTar()
-    if args.install:
-        #try:
-        tcu = ToolConfUpdater(tool_dir=os.path.join(args.galaxy_root,args.local_tools),
-        new_tool_archive_path=r.newtarpath, tool_conf_path=os.path.join(args.galaxy_root,'config','tool_conf.xml'),
-        new_tool_name=r.tool_name)
-        #except Exception:
-        #   print("### Unable to install the new tool. Are you sure you have all the required special settings?")
     if args.run_test:
         if not args.packages or args.packages.strip() == "bash":
             r.run()
             r.makeToolTar()
         else:
             tt = ToolTester(report_dir=r.repdir, in_tool_archive=r.newtarpath, new_tool_archive=r.args.new_tool, galaxy_root=args.galaxy_root, include_tests=False)
-
+    if args.install:
+        #try:
+        tcu = ToolConfUpdater(args=args, tool_dir=os.path.join(args.galaxy_root,args.local_tools),
+        new_tool_archive_path=r.newtarpath, tool_conf_path=os.path.join(args.galaxy_root,'config','tool_conf.xml'),
+        new_tool_name=r.tool_name)
+        #except Exception:
+        #   print("### Unable to install the new tool. Are you sure you have all the required special settings?")
 
 if __name__ == "__main__":
     main()

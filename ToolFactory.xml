@@ -101,7 +101,7 @@
              help="New history items output by the executable to appear in the user history after the tool runs. The name will become a history item for users of the new tool you are making containing one of it's outputs">
             <param name="history_name" type="text" label="Output Name" optional="false"
               help="Name used for this output in history. No spaces! Argparse will also use this name as --[name]">
-              <sanitizer invalid_char="_">
+              <sanitizer invalid_char=" ">
                 <valid initial="string.ascii_letters,string.digits" >
                    <add value="_" />
                 </valid>
