@@ -70,145 +70,40 @@ def parse_citations(citations_text):
             citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
-class ToolTester():
-    # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
-    # if in a container possibly not so courageous.
-    # Fine on your own laptop but security red flag for most production instances
-    # uncompress passed tar, run planemo and rebuild a new tarball with tests
-
-    def __init__(self, report_dir, in_tool_archive, new_tool_archive, include_tests, galaxy_root):
-        self.new_tool_archive = new_tool_archive
-        self.include_tests = include_tests
-        self.galaxy_root = galaxy_root
-        self.repdir = report_dir
-        assert in_tool_archive and tarfile.is_tarfile(in_tool_archive)
-        # this is not going to go well with arbitrary names. TODO introspect tool xml!
-        tff = tarfile.open(in_tool_archive, "r:*")
-        flist = tff.getnames()
-        ourdir = os.path.commonpath(flist) # eg pyrevpos
-        self.tool_name = ourdir
-        ourxmls = [x for x in flist if x.lower().endswith('.xml') and os.path.split(x)[0] == ourdir]
-        # planemo_test/planemo_test.xml
-        assert len(ourxmls) > 0
-        self.ourxmls = ourxmls # [os.path.join(tool_path,x) for x in ourxmls]
-        res = tff.extractall()
-        tff.close()
-        self.update_tests(ourdir)
-        self.tooloutdir = ourdir
-        self.testdir = os.path.join(self.tooloutdir, "test-data")
-        if not os.path.exists(self.tooloutdir):
-            os.mkdir(self.tooloutdir)
-        if not os.path.exists(self.testdir):
-            os.mkdir(self.testdir)
-        if not os.path.exists(self.repdir):
-            os.mkdir(self.repdir)
-        if not os.path.exists(self.tooloutdir):
-            os.mkdir(self.tooloutdir)
-        if not os.path.exists(self.testdir):
-            os.mkdir(self.testdir)
-        if not os.path.exists(self.repdir):
-            os.mkdir(self.repdir)
-        self.moveRunOutputs()
-        self.makeToolTar()
-
-    def call_planemo(self,xmlpath,ourdir):
-        penv = os.environ
-        penv['HOME'] = os.path.join(self.galaxy_root,'planemo')
-        #penv["GALAXY_VIRTUAL_ENV"] = os.path.join(penv['HOME'],'.planemo','gx_venv_3.9')
-        penv["PIP_CACHE_DIR"] = os.path.join(self.galaxy_root,'pipcache')
-        toolfile = os.path.split(xmlpath)[1]
-        tool_name = self.tool_name
-        tool_test_output = os.path.join(self.repdir, f"{tool_name}_planemo_test_report.html")
-        cll = ["planemo",
-            "test",
-            #"--job_config_file",
-            # os.path.join(self.galaxy_root,"config","job_conf.xml"),
-            #"--galaxy_python_version",
-            #"3.9",
-            "--test_output",
-            os.path.abspath(tool_test_output),
-            "--galaxy_root",
-            self.galaxy_root,
-            "--update_test_data",
-            os.path.abspath(xmlpath),
-        ]
-        print("Call planemo cl =", cll)
-        p = subprocess.run(
-            cll,
-            capture_output=True,
-            encoding='utf8',
-            env = penv,
-            shell=False,
-        )
-        return p
-
-    def makeToolTar(self):
-        """move outputs into test-data and prepare the tarball"""
-        excludeme = "_planemo_test_report.html"
-
-        def exclude_function(tarinfo):
-            filename = tarinfo.name
-            return None if filename.endswith(excludeme) else tarinfo
-
-        newtar = 'new_%s_toolshed.gz' % self.tool_name
-        ttf = tarfile.open(newtar, "w:gz")
-        ttf.add(name=self.tooloutdir,
-            arcname=self.tool_name,
-            filter=exclude_function)
-        ttf.close()
-        shutil.copyfile(newtar, self.new_tool_archive)
-
-    def move_One(self,scandir):
-        with os.scandir('.') as outs:
-            for entry in outs:
-                newname = entry.name
-                if not entry.is_file() or entry.name.endswith('_sample'):
-                    continue
-                if not (entry.name.endswith('.html') or entry.name.endswith('.gz') or entry.name.endswith(".tgz")):
-                    fname, ext = os.path.splitext(entry.name)
-                    if len(ext) > 1:
-                        newname = f"{fname}_{ext[1:]}.txt"
-                    else:
-                        newname = f"{fname}.txt"
-                dest = os.path.join(self.repdir, newname)
-                src = entry.name
-                shutil.copyfile(src, dest)
-
-    def moveRunOutputs(self):
-        """need to move planemo or run outputs into toolfactory collection"""
-        self.move_One(self.tooloutdir)
-        self.move_One('.')
-        if self.include_tests:
-            self.move_One(self.testdir)
-
-    def update_tests(self,ourdir):
-        for xmlf in self.ourxmls:
-            capture = self.call_planemo(xmlf,ourdir)
-            logf = open(f"%s_run_report" % (self.tool_name),'w')
-            logf.write("stdout:")
-            logf.write(capture.stdout)
-            logf.write("stderr:")
-            logf.write(capture.stderr)
-
-
 class ToolConfUpdater():
     # update config/tool_conf.xml with a new tool unpacked in /tools
     # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
     # if in a container possibly not so courageous.
     # Fine on your own laptop but security red flag for most production instances
 
-    def __init__(self, args, tool_conf_path, new_tool_archive_path, new_tool_name, tool_dir):
+  def __init__(self, args, tool_conf_path, new_tool_archive_path, new_tool_name, tool_dir):
         self.args = args
-        self.tool_conf_path = tool_conf_path
+        self.tool_conf_path = os.path.join(args.galaxy_root,tool_conf_path)
+        self.tool_dir = os.path.join(args.galaxy_root, tool_dir)
         self.our_name = 'ToolFactory'
         tff = tarfile.open(new_tool_archive_path, "r:*")
         flist = tff.getnames()
         ourdir = os.path.commonpath(flist) # eg pyrevpos
         self.tool_id = ourdir # they are the same for TF tools
         ourxml = [x for x in flist if x.lower().endswith('.xml')]
-        res = tff.extractall(tool_dir)
+        res = tff.extractall()
         tff.close()
+        self.run_rsync(ourdir, self.tool_dir)
         self.update_toolconf(ourdir,ourxml)
+
+    def run_rsync(self, srcf, dstf):
+        src = os.path.abspath(srcf)
+        dst = os.path.abspath(dstf)
+        if os.path.isdir(src):
+            cll = ['rsync', '-vr', src, dst]
+        else:
+            cll = ['rsync', '-v', src, dst]
+        p = subprocess.run(
+            cll,
+            capture_output=False,
+            encoding='utf8',
+            shell=False,
+        )
 
     def install_deps(self):
         gi = galaxy.GalaxyInstance(url=self.args.galaxy_url, key=self.args.galaxy_api_key)
@@ -217,7 +112,9 @@ class ToolConfUpdater():
 
     def update_toolconf(self,ourdir,ourxml): # path is relative to tools
         updated = False
-        tree = ET.parse(self.tool_conf_path)
+        localconf = './local_tool_conf.xml'
+        self.run_rsync(self.tool_conf_path,localconf)
+        tree = ET.parse(localconf)
         root = tree.getroot()
         hasTF = False
         TFsection = None
@@ -235,7 +132,9 @@ class ToolConfUpdater():
                 updated = True
                 ET.SubElement(TFsection, 'tool', {'file':xml})
         ET.indent(tree)
-        tree.write(self.tool_conf_path, pretty_print=True)
+        newconf = f"{self.tool_id}_conf"
+        tree.write(newconf, pretty_print=True)
+        self.run_rsync(newconf,self.tool_conf_path)
         if False and self.args.packages and self.args.packages > '':
             self.install_deps()
 
@@ -1171,8 +1070,8 @@ def main():
     a("--include_tests", default=False, action="store_true")
     a("--install", default=False, action="store_true")
     a("--run_test", default=False, action="store_true")
-    a("--local_tools", default='tools') # relative to galaxy_root
-    a("--tool_conf_path", default='/galaxy_root/config/tool_conf.xml')
+    a("--local_tools", default='tools') # relative to $__root_dir__
+    a("--tool_conf_path", default='config/tool_conf.xml') # relative to $__root_dir__
     a("--galaxy_url", default="http://localhost:8080")
     a("--toolshed_url", default="http://localhost:9009")
     # make sure this is identical to tool_sheds_conf.xml
@@ -1203,8 +1102,8 @@ or an executable package in --sysexe or --packages"
             tt = ToolTester(report_dir=r.repdir, in_tool_archive=r.newtarpath, new_tool_archive=r.args.new_tool, galaxy_root=args.galaxy_root, include_tests=False)
     if args.install:
         #try:
-        tcu = ToolConfUpdater(args=args, tool_dir=os.path.join(args.galaxy_root,args.local_tools),
-        new_tool_archive_path=r.newtarpath, tool_conf_path=os.path.join(args.galaxy_root,'config','tool_conf.xml'),
+        tcu = ToolConfUpdater(args=args, tool_dir=args.local_tools,
+        new_tool_archive_path=r.newtarpath, tool_conf_path=args.tool_conf_path,
         new_tool_name=r.tool_name)
         #except Exception:
         #   print("### Unable to install the new tool. Are you sure you have all the required special settings?")

@@ -194,9 +194,9 @@
   </macros>
 
 <requirements>
-    <requirement type="package" version="2.30.2">git</requirement>
-    <requirement type="package" version="0.4.14">galaxyxml</requirement>
-    <requirement type="package" version="0.74.3">planemo</requirement>
+     <requirement type="package" version="0.4.14">galaxyxml</requirement>
+     <requirement type="package" version="0.15.0">bioblend</requirement>
+     <requirement type="package" version="3.2.3">rsync</requirement>
 </requirements>
 
 <command detect_errors="exit_code"><![CDATA[
