@@ -34,18 +34,18 @@
              help="Supply a brief tool description for the Galaxy tool menu entry" />
              <param name="install" label="Attempt to install in the host Galaxy"
                 help="This will fail unless running in a very unusual configuration such as a specialised Docker container"
-                type="boolean" checked="True" truevalue="1"  falsevalue="0" />
-         <conditional name="do_test">
+                type="boolean" checked="False" truevalue="1"  falsevalue="0" />
+<!--         <conditional name="do_test">
             <param name="run_test" label="Run planemo test on the new archive to add test outputs making a proper tool - takes time"
                 help="Archives must be run and updated using planemo to populate all the test outputs. Will be very quick if no dependencies (eg a bash script). May take a very long time depending on dependencies"
-                type="boolean" checked="False" truevalue="1"  falsevalue="0" />
+                type="hidden" checked="True" truevalue="1"  falsevalue="0" />
                 <when value="0">
-                    <param name="tail" type="hidden" value="not_tested"/>
+                    <param name="testtail" type="hidden" value="not_tested"/>
                 </when>
                 <when value="1">
-                    <param name="tail" type="hidden" value="tested"/>
+                    <param name="testtail" type="hidden" value="tested"/>
                 </when>
-            </conditional>
+            </conditional> -->
             <param name="help_text" label="Tool form documentation and help text for users" type="text" area="true"
             value="**What it Does**"
              help="Supply user documentation to appear on the new tool form as reStructured text - http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html" >
@@ -232,9 +232,6 @@ python3 $__tool_directory__/ToolFactory.py
     #if $install:
        --install
     #end if
-    #if $do_test.run_test:
-       --run_test
-    #end if
    #if $io_param.ppass.parampass != '0':
      #if str($io_param.ppass.addparam.edit_params) == "yes":
 --edit_additional_parameters
@@ -405,11 +402,7 @@ ${help_text}
     <expand macro="tool_metadata" />
   </inputs>
   <outputs>
-    <data format="toolshed.gz" name="new_tool" label="${tool_name}_${do_test.tail}_toolshed.gz" />
-   <collection name="TF_run_report" type="list" label="${tool_name} test run outputs">
-      <filter>do_test['run_test']</filter>
-      <discover_datasets pattern="__name_and_ext__" directory="TF_run_report" />
-  </collection>
+    <data format="toolshed.gz" name="new_tool" label="${tool_name}_not_tested.toolshed.gz" />
   </outputs>
 <tests>
 <test>
@@ -432,7 +425,6 @@ ${help_text}
     <param name="choosescript" value="yes" />
     <param name="script_path" value="$runme"/>
     <param name="install" value="0"/>
-    <param name="run_test" value="1"/>
     <output name="new_tool" file="toolfactory_pyrevpos_tgz_sample" compare="sim_size" delta="6000" />
 </test>
 </tests>

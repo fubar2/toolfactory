@@ -10,6 +10,7 @@
   </stdio>
   <version_command><![CDATA[echo "1"]]></version_command>
   <command><![CDATA[
+mkdir 'TF_run_report';
 python
 $runme
 --in_tool_archive
@@ -17,9 +18,9 @@ $in_tool_archive
 --new_tested_tool_archive
 $new_tested_tool_archive
 --galaxy_root
-"$galaxyroot"
+"$__root_dir__"
 >
-$tf_archive_tester_log;
+"TF_run_report/${in_tool_archive.name}_test_log.txt"
 ]]></command>
   <configfiles>
     <configfile name="runme"><![CDATA[#raw
@@ -61,9 +62,6 @@ def timenow():
     return time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(time.time()))
 
 class ToolTester():
-    # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
-    # if in a container possibly not so courageous.
-    # Fine on your own laptop but security red flag for most production instances
     # uncompress passed tar, run planemo and rebuild a new tarball with tests
 
     def __init__(self, args=None, in_tool_archive='/galaxy-central/tools/newtool/newtool_toolshed.gz', new_tool_archive=None):
@@ -97,8 +95,10 @@ class ToolTester():
 
     def call_planemo(self,xmlpath,ourdir):
         penv = os.environ
-        #penv['HOME'] = os.path.join(self.args.galaxy_root,'planemo')
-        #penv["GALAXY_VIRTUAL_ENV"] = os.path.join(penv['HOME'],'.planemo','gx_venv_3.9')
+        penv['HOME'] = os.path.join(self.args.galaxy_root,'planemo')
+        newpath = f"{penv['HOME']}:{penv['PATH']}"
+        penv['PATH'] = newpath
+        penv["GALAXY_VIRTUAL_ENV"] = os.path.join(self.args.galaxy_root,'.venv')
         penv["PIP_CACHE_DIR"] = os.path.join(self.args.galaxy_root,'pipcache')
         toolfile = os.path.split(xmlpath)[1]
         tool_name = self.tool_name
@@ -106,9 +106,11 @@ class ToolTester():
         cll = [
             "planemo",
             "test",
-            "--biocontainers",
+            "--no_cleanup",
+            "--test_data",
+            os.path.abspath(ourdir),
             "--test_output",
-            os.path.abspath(tool_test_output),
+            os.path.abspath(self.tool_test_output),
             "--galaxy_root",
             self.args.galaxy_root,
             "--update_test_data",
@@ -119,6 +121,7 @@ class ToolTester():
             cll,
             #capture_output=True,
             encoding='utf8',
+            cwd = os.path.abspath(self.tool_name),
             env = penv,
             shell=False,
         )
@@ -130,12 +133,6 @@ class ToolTester():
             x = os.path.split(xreal)[1]
             xout = os.path.join(self.tooloutdir,x)
             shutil.copyfile(xreal, xout)
-        # for p in self.infiles:
-            # pth = p["name"]
-            # dest = os.path.join(self.testdir, "%s_sample" % p["infilename"])
-            # shutil.copyfile(pth, dest)
-            # dest = os.path.join(self.repdir, "%s_sample" % p["infilename"])
-            # shutil.copyfile(pth, dest)
 
     def makeToolTar(self):
         """move outputs into test-data and prepare the tarball"""
@@ -174,7 +171,7 @@ class ToolTester():
                 shutil.copyfile(src, dest)
         with os.scandir('.') as outs:
             for entry in outs:
-                if not entry.is_file():
+                if not entry.is_file() or entry.name == "conda_activate.log":
                     continue
                 if "." in entry.name:
                     _, ext = os.path.splitext(entry.name)
@@ -212,8 +209,6 @@ class ToolTester():
     def update_tests(self,ourdir):
         for xmlf in self.ourxmls:
             capture = self.call_planemo(xmlf,ourdir)
-            #sys.stderr.write('%s, stdout=%s, stderr=%s' % (xmlf, capture.stdout, capture.stdout))
-            #print('%s, stdout=%s, stderr=%s' % (capture.stdout, capture.stdout,xmlf))
 
 def main():
     """
@@ -239,11 +234,9 @@ if __name__ == "__main__":
   <inputs>
     <param name="new_tool_name" value="" type="hidden"/>
     <param name="in_tool_archive" type="data" optional="false" label="Select a no_test tarfile to test and update for a toolshed" help="" format="toolshed.gz" multiple="false"/>
-    <param name="galaxyroot" type="text" value="/home/ross/gal21" label="Galaxy root for planemo to use - MUST be made available in the Galaxy job runner configuration" help=""/>
   </inputs>
   <outputs>
     <data name="new_tested_tool_archive" format="toolshed.gz" label="${in_tool_archive.name.split('_')[0]}_tested_toolshed.gz"  hidden="false"/>
-    <data name="tf_archive_tester_log" format="txt" label="${in_tool_archive.name}_test_log" hidden="false"/>
     <collection name="TF_run_report" type="list" label="${in_tool_archive.name} test Run reports">
       <discover_datasets pattern="__name_and_ext__" directory="TF_run_report" visible="false"/>
     </collection>
@@ -251,9 +244,7 @@ if __name__ == "__main__":
   <tests>
     <test>
       <output name="new_tested_tool_archive" value="new_tested_tool_archive_sample" compare="sim_size" delta_frac="0.5"/>
-      <output name="tf_archive_tester_log" value="tf_archive_tester_log_sample" compare="sim_size" delta_frac="0.1"/>
       <param name="in_tool_archive" value="in_tool_archive_sample"/>
-      <param name="galaxyroot" value="/home/ross/gal21"/>
       <output_collection name="TF_run_report"/>
     </test>
   </tests>
@@ -265,6 +256,15 @@ if __name__ == "__main__":
 
 Script::
 
+    # see https://github.com/fubar2/toolfactory
+    #
+    # copyright ross lazarus (ross stop lazarus at gmail stop com) May 2012
+    #
+    # all rights reserved
+    # Licensed under the LGPL
+    # suggestions for improvement and bug fixes welcome at
+    # https://github.com/fubar2/toolfactory
+
     import argparse
     import copy
     import os
@@ -275,19 +275,20 @@ Script::
     import tempfile
     import time
     import xml.etree.ElementTree as ET
+
+
     myversion = "V2.2 April 2021"
     verbose = True
     debug = True
     toolFactoryURL = "https://github.com/fubar2/toolfactory"
+
     def timenow():
         """return current time as a string"""
         return time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(time.time()))
 
     class ToolTester():
-        # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
-        # if in a container possibly not so courageous.
-        # Fine on your own laptop but security red flag for most production instances
         # uncompress passed tar, run planemo and rebuild a new tarball with tests
+
         def __init__(self, args=None, in_tool_archive='/galaxy-central/tools/newtool/newtool_toolshed.gz', new_tool_archive=None):
             self.args = args
             self.new_tool_archive = new_tool_archive
@@ -298,7 +299,6 @@ Script::
             ourdir = os.path.commonpath(flist) # eg pyrevpos
             self.tool_name = ourdir
             ourxmls = [x for x in flist if x.lower().endswith('.xml') and os.path.split(x)[0] == ourdir]
-            # planemo_test/planemo_test.xml
             assert len(ourxmls) > 0
             self.ourxmls = ourxmls # [os.path.join(tool_path,x) for x in ourxmls]
             res = tff.extractall()
@@ -319,13 +319,14 @@ Script::
 
         def call_planemo(self,xmlpath,ourdir):
             penv = os.environ
-            penv['HOME'] = '/home/ross/galaxy-release_21.01'
+            penv["PIP_CACHE_DIR"] = os.path.join(self.args.galaxy_root,'pipcache')
             toolfile = os.path.split(xmlpath)[1]
             tool_name = self.tool_name
             tool_test_output = f"{tool_name}_planemo_test_report.html"
             cll = [
                 "planemo",
                 "test",
+                "--biocontainers",
                 "--test_output",
                 os.path.abspath(tool_test_output),
                 "--galaxy_root",
@@ -336,7 +337,7 @@ Script::
             print(cll)
             p = subprocess.run(
                 cll,
-                capture_output=True,
+                #capture_output=True,
                 encoding='utf8',
                 env = penv,
                 shell=False,
@@ -349,22 +350,18 @@ Script::
                 x = os.path.split(xreal)[1]
                 xout = os.path.join(self.tooloutdir,x)
                 shutil.copyfile(xreal, xout)
-            # for p in self.infiles:
-                # pth = p["name"]
-                # dest = os.path.join(self.testdir, "%s_sample" % p["infilename"])
-                # shutil.copyfile(pth, dest)
-                # dest = os.path.join(self.repdir, "%s_sample" % p["infilename"])
-                # shutil.copyfile(pth, dest)
 
         def makeToolTar(self):
             """move outputs into test-data and prepare the tarball"""
             excludeme = "_planemo_test_report.html"
+
             def exclude_function(tarinfo):
                 filename = tarinfo.name
                 return None if filename.endswith(excludeme) else tarinfo
+
             newtar = 'new_%s_toolshed.gz' % self.tool_name
             ttf = tarfile.open(newtar, "w:gz")
-            ttf.add(name=self.tooloutdir,
+            ttf.add(name=self.tool_name,
                 arcname=self.tool_name,
                 filter=exclude_function)
             ttf.close()
@@ -425,16 +422,16 @@ Script::
                         src = os.path.join(self.testdir, entry.name)
                         shutil.copyfile(src, dest)
 
+
         def update_tests(self,ourdir):
             for xmlf in self.ourxmls:
                 capture = self.call_planemo(xmlf,ourdir)
-                #sys.stderr.write('%s, stdout=%s, stderr=%s' % (xmlf, capture.stdout, capture.stdout))
-                print('%s, stdout=%s, stderr=%s' % (capture.stdout, capture.stdout,xmlf))
 
     def main():
         """
         This is a Galaxy wrapper.
         It expects to be called by a special purpose tool.xml
+
         """
         parser = argparse.ArgumentParser()
         a = parser.add_argument
@@ -444,8 +441,10 @@ Script::
         args = parser.parse_args()
         print('Hello from',os.getcwd())
         tt = ToolTester(args=args, in_tool_archive=args.in_tool_archive, new_tool_archive=args.new_tested_tool_archive)
+
     if __name__ == "__main__":
         main()
+
 
 ]]></help>
   <citations>
