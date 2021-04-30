@@ -941,6 +941,7 @@ def main():
     a("--include_tests", default=False, action="store_true")
     a("--admin_only", default=False, action="store_true")
     a("--install", default=False, action="store_true")
+    a("--run_test", default=False, action="store_true")
     a("--local_tools", default='tools') # relative to $__root_dir__
     a("--tool_conf_path", default='config/tool_conf.xml') # relative to $__root_dir__
     a("--galaxy_url", default="http://localhost:8080")

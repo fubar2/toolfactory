@@ -28,24 +28,16 @@
           </repeat>
       </xml>
      <xml name="tool_metadata">
-         <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
+        <param name="tool_version" label="Tool Version - bump this to warn users trying to redo old analyses" type="text" value="0.01"
             help="If you change your script and regenerate the 'same' tool, you should inform Galaxy (and users) by changing (bumping is traditional) this number"/>
-            <param name="tool_desc" label="Tool Synopsis" type="text" value=""
-             help="Supply a brief tool description for the Galaxy tool menu entry" />
-             <param name="install" label="Attempt to install in the host Galaxy"
-                help="This will fail unless running in a very unusual configuration such as a specialised Docker container"
-                type="boolean" checked="False" truevalue="1"  falsevalue="0" />
-<!--         <conditional name="do_test">
-            <param name="run_test" label="Run planemo test on the new archive to add test outputs making a proper tool - takes time"
-                help="Archives must be run and updated using planemo to populate all the test outputs. Will be very quick if no dependencies (eg a bash script). May take a very long time depending on dependencies"
-                type="hidden" checked="True" truevalue="1"  falsevalue="0" />
-                <when value="0">
-                    <param name="testtail" type="hidden" value="not_tested"/>
-                </when>
-                <when value="1">
-                    <param name="testtail" type="hidden" value="tested"/>
-                </when>
-            </conditional> -->
+        <param name="tool_desc" label="Tool Synopsis" type="text" value=""
+            help="Supply a brief tool description for the Galaxy tool menu entry" />
+        <param name="install" label="Attempt to install in the host Galaxy"
+            help="This will fail unless running in a very unusual configuration such as a specialised Docker container"
+            type="boolean" checked="False" truevalue="1"  falsevalue="0" />
+         <param name="run_test" label="Finalise new archive with test outputs. Runs externally. Outputs will appear in history when ready"
+                    help="Archives must be run and updated using planemo to populate all the test outputs. May take a long time depending on dependencies"
+                    type="boolean" checked="True" truevalue="1"  falsevalue="0" />
             <param name="help_text" label="Tool form documentation and help text for users" type="text" area="true"
             value="**What it Does**"
              help="Supply user documentation to appear on the new tool form as reStructured text - http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html" >
@@ -231,6 +223,9 @@ python3 $__tool_directory__/ToolFactory.py
 --new_tool "$new_tool"
     #if $install:
        --install
+    #end if
+    #if $run_test:
+       --run_test
     #end if
    #if $io_param.ppass.parampass != '0':
      #if str($io_param.ppass.addparam.edit_params) == "yes":
