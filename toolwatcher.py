@@ -14,64 +14,72 @@ class ToolHandler(PatternMatchingEventHandler):
 
     def __init__(self, watchme):
         PatternMatchingEventHandler.__init__(self, patterns=['*.xml'],
-                ignore_directories=False, case_sensitive=False)
+               ignore_directories=False, case_sensitive=False)
         self.last_modified = datetime.now()
+        self.mininterval = 5
         self.tool_dir = watchme
         self.work_dir = os.getcwd()
-        self.galaxy_root = os.path.split(watchme)[0]
+        wpath = watchme.split(os.path.sep)
+        wpath = [x for x in wpath if x > '']
+        self.galaxy_root = os.path.sep.join(wpath[:-1])
+        self.galaxy_root = '/%s' % self.galaxy_root
         logging.info(self.galaxy_root)
         self.tar_dir = os.path.join(self.galaxy_root, 'tooltardir')
         if not os.path.exists(self.tar_dir):
                 os.mkdir(self.tar_dir)
+        self.dir_lastmod = {}
 
-    def on_created(self, event):
-        self.on_modified(event)
-
-    def on_modified(self, event):
-        if datetime.now() - self.last_modified < timedelta(seconds=1):
-            return
-        else:
-            if os.path.exists(event.src_path):
-                self.last_modified = datetime.now()
-                logging.info(f"{event.src_path} was {event.event_type}")
-                p = self.planemo_test(event.src_path)
-                if p:
-                    if p.returncode == 0:
-                        newtarpath = self.makeToolTar(event.src_path)
-                        logging.info('### Tested toolshed tarball %s written' % newtarpath)
-                    else:
-                        logging.debug('### planemo stdout:')
-                        logging.debug(p.stdout)
-                        logging.debug('### planemo stderr:')
-                        logging.debug(p.stderr)
-                        logging.info('### Planemo call return code =' % p.returncode)
+    def dispatch(self,event):
+        if os.path.exists(event.src_path):
+            lastmod = self.dir_lastmod.get(event.src_path,None):
+            self.dir_lastmod[event.src_path] = datetime.now()
+            if datetime.now() - lastmod < timedelta(seconds=self.mininterval):
+                logging.info('Event %s on %s ignored as less than %d seconds since last event' % (event.event_type,self.mininterval, event.src_path))
+                return
             else:
-                logging.info('Directory %s deleted' % event.src_path)
+                logging.info(f"{event.src_path} was {event.event_type}")
+                if event.event_type in ['modified','created']:
+                    toolspath, toolname = os.path.split(event.src_path)
+                    dirlist = os.listdir(event.src_path)
+                    logging.info('### test dirlist %s, path %s toolname %s' % (dirlist, toolspath, toolname))
+                    xmls = [x for x in dirlist if os.path.splitext(x)[1] == '.xml']
+                    if not len(xmls) > 0:
+                        logging.warning('Found no xml files after change to %s' % event.src_path)
+                        return None
+                    testflag = os.path.join(event.src_path,'.testme')
+                    run_test = os.path.exists(testflag)
+                    if run_test:
+                        os.remove(testflag):
+                        self.dir_lastmod[event.src_path] = datetime.now()
+                    p = self.planemo_test(event.src_path, toolname)
+                    if p:
+                        if p.returncode == 0:
+                            newtarpath = self.makeToolTar(event.src_path)
+                            logging.info('### Tested toolshed tarball %s written' % newtarpath)
+                        else:
+                            logging.debug('### planemo stdout:')
+                            logging.debug(p.stdout)
+                            logging.debug('### planemo stderr:')
+                            logging.debug(p.stderr)
+                            logging.info('### Planemo call return code = %d' % p.returncode)
+                else:
+                    logging.info('Event %s on %s ignored' % (event.event_type,event.src_path))
 
-    def planemo_test(self, xml_path):
-        toolpath, toolfile = os.path.split(xml_path)
-        dirlist = os.listdir(toolpath)
-        toolname = os.path.basename(toolpath)
-        logging.info('### test dirlist %s, path %s toolname %s' % (dirlist, xml_path, toolname))
-        xmls = [x for x in dirlist if os.path.splitext(x)[1] == '.xml']
-        if not len(xmls) > 0:
-            logging.warning('Found no xml files after change to %s' % xml_path)
-            return None
-        tool_test_output = os.path.join(toolpath, f"{toolname}_planemo_test_report.html")
+
+    def planemo_test(self, esp, toolname):
+        tool_test_output = os.path.join(esp, f"{toolname}_planemo_test_report.html")
         cll = [
             "planemo",
             "test",
             "--test_output",
             tool_test_output,
-            "--galaxy_root",
-            self.galaxy_root,
             "--update_test_data",
-            xml_path,
+            os.path.join(esp,'%s.xml' % toolname)
         ]
         logging.info('### calling %s' % ' '.join(cll))
         p = subprocess.run(
             cll,
-            cwd = toolpath,
+            cwd = esp,
             shell=False,
             capture_output=True,
             encoding='utf8',
@@ -102,7 +110,7 @@ class ToolHandler(PatternMatchingEventHandler):
 
 
 if __name__ == "__main__":
-    watchme = '/home/ross/gal21/tools'
+    watchme = '/export/galaxy/tools/'
     logging.basicConfig(level=logging.INFO,
                     #filename = os.path.join(watchme,"toolwatcher.log")
                     #filemode = "w",
