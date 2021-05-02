@@ -13,10 +13,8 @@ from watchdog.events import PatternMatchingEventHandler
 class ToolHandler(PatternMatchingEventHandler):
 
     def __init__(self, watchme):
-        PatternMatchingEventHandler.__init__(self, patterns=['*.xml'],
-               ignore_directories=False, case_sensitive=False)
-        self.last_modified = datetime.now()
-        self.mininterval = 5
+        PatternMatchingEventHandler.__init__(self, patterns=['.testme'],
+               ignore_directories=True, case_sensitive=False)
         self.tool_dir = watchme
         self.work_dir = os.getcwd()
         wpath = watchme.split(os.path.sep)
@@ -24,69 +22,73 @@ class ToolHandler(PatternMatchingEventHandler):
         self.galaxy_root = os.path.sep.join(wpath[:-1])
         self.galaxy_root = '/%s' % self.galaxy_root
         logging.info(self.galaxy_root)
-        self.tar_dir = os.path.join(self.galaxy_root, 'tooltardir')
+        self.tar_dir = os.path.join(self.galaxy_root, 'tested_TF_tools')
         if not os.path.exists(self.tar_dir):
                 os.mkdir(self.tar_dir)
-        self.dir_lastmod = {}
 
-    def dispatch(self,event):
-        if os.path.exists(event.src_path):
-            lastmod = self.dir_lastmod.get(event.src_path,None):
-            self.dir_lastmod[event.src_path] = datetime.now()
-            if datetime.now() - lastmod < timedelta(seconds=self.mininterval):
-                logging.info('Event %s on %s ignored as less than %d seconds since last event' % (event.event_type,self.mininterval, event.src_path))
+    def on_any_event(self,event):
+        # rsync and watchdog work strangely
+        if event.is_directory:
+             print('ignore directory event', event.event_type, event.event_path)
+             return
+        ee = event.event_type
+        print('### saw', event.event_type, 'on' , event.src_path)
+        targ = os.path.join(os.path.split(event.src_path)[0],'.testme')
+        time.sleep(0.1)
+        if os.path.exists(targ):
+            try:
+               os.remove(targ)
+            except Exception:
+              logging.info('Cannot delete %s' % targ)
+            tooldir = os.path.split(event.src_path)[0]
+            toolname = os.path.split(tooldir)[1]
+            fname = event.src_path
+            logging.info(f"{event.src_path} {toolname} requests testing")
+            dirlist = os.listdir(tooldir)
+            logging.info('### test dirlist %s, path %s' % (dirlist, tooldir))
+            xmls = [x for x in dirlist if os.path.splitext(x)[1] == '.xml']
+            if not "%s.xml" % toolname in xmls:
+                logging.warning('Found no %s.xml file after change to %s' % (toolname, event.src_path))
                 return
-            else:
-                logging.info(f"{event.src_path} was {event.event_type}")
-                if event.event_type in ['modified','created']:
-                    toolspath, toolname = os.path.split(event.src_path)
-                    dirlist = os.listdir(event.src_path)
-                    logging.info('### test dirlist %s, path %s toolname %s' % (dirlist, toolspath, toolname))
-                    xmls = [x for x in dirlist if os.path.splitext(x)[1] == '.xml']
-                    if not len(xmls) > 0:
-                        logging.warning('Found no xml files after change to %s' % event.src_path)
-                        return None
-                    testflag = os.path.join(event.src_path,'.testme')
-                    run_test = os.path.exists(testflag)
-                    if run_test:
-                        os.remove(testflag):
-                        self.dir_lastmod[event.src_path] = datetime.now()
-                    p = self.planemo_test(event.src_path, toolname)
-                    if p:
-                        if p.returncode == 0:
-                            newtarpath = self.makeToolTar(event.src_path)
-                            logging.info('### Tested toolshed tarball %s written' % newtarpath)
-                        else:
-                            logging.debug('### planemo stdout:')
-                            logging.debug(p.stdout)
-                            logging.debug('### planemo stderr:')
-                            logging.debug(p.stderr)
-                            logging.info('### Planemo call return code = %d' % p.returncode)
-                else:
-                    logging.info('Event %s on %s ignored' % (event.event_type,event.src_path))
+            p = self.planemo_test(tooldir, toolname)
+            if p:
+                    if p.returncode == 0:
+                        newtarpath = self.makeToolTar(tooldir, toolname)
+                        logging.info('### Tested toolshed tarball %s written' % newtarpath)
+                    else:
+                        logging.debug('### planemo stdout:')
+                        logging.debug(p.stdout)
+                        logging.debug('### planemo stderr:')
+                        logging.debug(p.stderr)
+                        logging.info('### Planemo call return code = %d' % p.returncode)
+        else:
+                logging.info('Event %s on %s ignored' % (event.event_type,event.src_path))
 
 
-    def planemo_test(self, esp, toolname):
-        tool_test_output = os.path.join(esp, f"{toolname}_planemo_test_report.html")
+    def planemo_test(self, tooldir, toolname):
+        testrepdir = os.path.join(self.tar_dir, toolname)
+        tool_test_output = os.path.join(testrepdir, f"{toolname}_planemo_test_report.html")
+        if not os.path.exists(testrepdir):
+           os.makedirs(testrepdir)
         cll = [
             "planemo",
             "test",
             "--test_output",
             tool_test_output,
             "--update_test_data",
-            os.path.join(esp,'%s.xml' % toolname)
+            os.path.join(tooldir,"%s.xml" % toolname)
         ]
         logging.info('### calling %s' % ' '.join(cll))
         p = subprocess.run(
             cll,
-            cwd = esp,
+            cwd = tooldir,
             shell=False,
             capture_output=True,
             encoding='utf8',
         )
         return p
 
-    def makeToolTar(self, xml_path):
+    def makeToolTar(self, tooldir, toolname):
         """move outputs into test-data and prepare the tarball"""
         excludeme = "_planemo_test_report.html"
 
@@ -94,10 +96,8 @@ class ToolHandler(PatternMatchingEventHandler):
             filename = tarinfo.name
             return None if filename.endswith(excludeme) else tarinfo
 
-        tooldir, xml_file = os.path.split(xml_path)
-        os.chdir(self.tool_dir)
-        toolname = os.path.splitext(xml_file)[0]
-        newtarpath = os.path.join(self.tar_dir, '%s_toolshed.gz' % toolname)
+        os.chdir(os.path.split(tooldir)[0])
+        newtarpath = os.path.join(self.tar_dir, toolname, '%s_toolshed.gz' % toolname)
         tf = tarfile.open(newtarpath, "w:gz")
         tf.add(
             name=toolname,

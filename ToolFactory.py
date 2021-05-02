@@ -71,17 +71,16 @@ def parse_citations(citations_text):
             citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
-
 class Tool_Conf_Updater():
     # update config/tool_conf.xml with a new tool unpacked in /tools
     # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
     # if in a container possibly not so courageous.
     # Fine on your own laptop but security red flag for most production instances
 
-    def __init__(self, args, tool_conf_path, new_tool_archive_path, new_tool_name, tool_dir):
+    def __init__(self, args, tool_conf_path, new_tool_archive_path, new_tool_name, local_tool_dir):
         self.args = args
         self.tool_conf_path = os.path.join(args.galaxy_root,tool_conf_path)
-        self.tool_dir = os.path.join(args.galaxy_root, tool_dir)
+        self.tool_dir = os.path.join(args.galaxy_root, local_tool_dir)
         self.our_name = 'ToolFactory'
         self.run_test = args.run_test
         tff = tarfile.open(new_tool_archive_path, "r:*")
@@ -91,10 +90,14 @@ class Tool_Conf_Updater():
         ourxml = [x for x in flist if x.lower().endswith('.xml')]
         res = tff.extractall()
         tff.close()
-        if self.run_test:
-            with open('.testme', 'w') as f:
-                f.write('foo\n')
+        testflag = os.path.join(self.tool_dir,ourdir,'.testme')
         self.run_rsync(ourdir, self.tool_dir)
+        if self.run_test:
+            wuj = '.wuj'
+            foo = open(wuj,'w')
+            foo.write('Wake up Jeff!!!')
+            foo.close()
+            self.run_rsync(wuj, testflag)
         self.update_toolconf(ourdir,ourxml)
 
     def run_rsync(self, srcf, dstf):
@@ -977,7 +980,7 @@ admin adds %s to "admin_users" in the galaxy.yml Galaxy configuration file'
     r.makeToolTar()
     if args.install or args.run_test:
         #try:
-        tcu = Tool_Conf_Updater(args=args, tool_dir=args.local_tools,
+        tcu = Tool_Conf_Updater(args=args, local_tool_dir=args.local_tools,
         new_tool_archive_path=r.newtarpath, tool_conf_path=args.tool_conf_path,
         new_tool_name=r.tool_name)
         #except Exception:
