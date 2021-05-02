@@ -29,10 +29,10 @@ class ToolHandler(PatternMatchingEventHandler):
     def on_any_event(self,event):
         # rsync and watchdog work strangely
         if event.is_directory:
-             print('ignore directory event', event.event_type, event.event_path)
+             logging.info('ignore directory event %s on %s' % (event.event_type, event.event_path))
              return
         ee = event.event_type
-        print('### saw', event.event_type, 'on' , event.src_path)
+        logging.info('### saw %s on %s' % ( event.event_type, event.src_path))
         targ = os.path.join(os.path.split(event.src_path)[0],'.testme')
         time.sleep(0.1)
         if os.path.exists(targ):
@@ -112,8 +112,8 @@ class ToolHandler(PatternMatchingEventHandler):
 if __name__ == "__main__":
     watchme = '/export/galaxy/tools/'
     logging.basicConfig(level=logging.INFO,
-                    #filename = os.path.join(watchme,"toolwatcher.log")
-                    #filemode = "w",
+                    filename = os.path.join('/var', 'log', "toolwatcher.log"),
+                    filemode = "w",
                     format='%(asctime)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
     event_handler = ToolHandler(watchme=watchme)
