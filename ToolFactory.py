@@ -107,9 +107,9 @@ class Tool_Conf_Updater:
         src = os.path.abspath(srcf)
         dst = os.path.abspath(dstf)
         if os.path.isdir(src):
-            cll = ["rsync", "-vr", src, dst]
+            cll = ["rsync", "-r", src, dst]
         else:
-            cll = ["rsync", "-v", src, dst]
+            cll = ["rsync",  src, dst]
         subprocess.run(
             cll,
             capture_output=False,
@@ -239,9 +239,9 @@ class Tool_Factory:
             self.args.tool_desc,
             FAKEEXE,
         )
-        self.newtarpath = "%s_toolshed.gz" % self.tool_name
+        self.newtarpath = "%s_not_tested.toolshed.gz" % self.tool_name
         self.tooloutdir = "./tfout"
-        self.repdir = "./TF_run_report"
+        self.repdir = "./toolgen"
         self.testdir = os.path.join(self.tooloutdir, "test-data")
         if not os.path.exists(self.tooloutdir):
             os.mkdir(self.tooloutdir)
@@ -904,40 +904,25 @@ class Tool_Factory:
             filter=exclude_function,
         )
         tf.close()
-        shutil.copyfile(self.newtarpath, self.args.new_tool)
+        if not os.path.exists('toolgen'):
+            os.mkdir('toolgen')
+        dest = os.path.join('toolgen', self.newtarpath)
+        shutil.copyfile(self.newtarpath, dest)
 
     def moveRunOutputs(self):
         """need to move planemo or run outputs into toolfactory collection"""
         with os.scandir(self.tooloutdir) as outs:
             for entry in outs:
-                if not entry.is_file():
+                if not entry.is_file() or entry.name == ".shed.yml":
                     continue
-                if not entry.name.endswith(".html"):
-                    _, ext = os.path.splitext(entry.name)
+                fname, ext = os.path.splitext(entry.name)
+                if ext:
+                    newname = f"{entry.name.replace('.','_')}{ext}"
+                else:
                     newname = f"{entry.name.replace('.','_')}.txt"
                 dest = os.path.join(self.repdir, newname)
                 src = os.path.join(self.tooloutdir, entry.name)
                 shutil.copyfile(src, dest)
-        if self.args.include_tests:
-            with os.scandir(self.testdir) as outs:
-                for entry in outs:
-                    if (not entry.is_file()) or entry.name.endswith(
-                        "_planemo_test_report.html"
-                    ):
-                        continue
-                    if "." in entry.name:
-                        _, ext = os.path.splitext(entry.name)
-                        if ext in [".tgz", ".json"]:
-                            continue
-                        if ext in [".yml", ".xml", ".yaml"]:
-                            newname = f"{entry.name.replace('.','_')}.txt"
-                        else:
-                            newname = entry.name
-                    else:
-                        newname = f"{entry.name}.txt"
-                    dest = os.path.join(self.repdir, newname)
-                    src = os.path.join(self.testdir, entry.name)
-                    shutil.copyfile(src, dest)
 
 
 def main():
@@ -970,7 +955,6 @@ def main():
     a("--edit_additional_parameters", action="store_true", default=False)
     a("--parampass", default="positional")
     a("--tfout", default="./tfout")
-    a("--new_tool", default="new_tool")
     a("--galaxy_root", default="/galaxy-central")
     a("--galaxy_venv", default="/galaxy_venv")
     a("--collection", action="append", default=[])
@@ -998,6 +982,7 @@ admin adds %s to "admin_users" in the galaxy.yml Galaxy configuration file'
     r.writeShedyml()
     r.makeTool()
     r.makeToolTar()
+    r.moveRunOutputs()
     if args.install or args.run_test:
         try:
             Tool_Conf_Updater(
