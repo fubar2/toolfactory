@@ -1,4 +1,3 @@
-
 # see https://github.com/fubar2/toolfactory
 #
 # copyright ross lazarus (ross stop lazarus at gmail stop com) May 2012
@@ -18,7 +17,6 @@
 import argparse
 import copy
 import json
-import logging
 import os
 import re
 import shlex
@@ -28,11 +26,8 @@ import sys
 import tarfile
 import tempfile
 import time
-import urllib
 
-from bioblend import ConnectionError
 from bioblend import galaxy
-from bioblend import toolshed
 
 import galaxyxml.tool as gxt
 import galaxyxml.tool.parameters as gxtp
@@ -54,11 +49,14 @@ def timenow():
     """return current time as a string"""
     return time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(time.time()))
 
+
 cheetah_escape_table = {"$": "\\$", "#": "\\#"}
+
 
 def cheetah_escape(text):
     """Produce entities within text."""
     return "".join([cheetah_escape_table.get(c, c) for c in text])
+
 
 def parse_citations(citations_text):
     """"""
@@ -71,81 +69,87 @@ def parse_citations(citations_text):
             citation_tuples.append(("bibtex", citation[len("bibtex") :].strip()))
     return citation_tuples
 
-class Tool_Conf_Updater():
-    # update config/tool_conf.xml with a new tool unpacked in /tools
+
+class Tool_Conf_Updater:
+
+    """# update config/tool_conf.xml with a new tool unpacked in /tools
     # requires highly insecure docker settings - like write to tool_conf.xml and to tools !
     # if in a container possibly not so courageous.
     # Fine on your own laptop but security red flag for most production instances
+    """
 
-    def __init__(self, args, tool_conf_path, new_tool_archive_path, new_tool_name, local_tool_dir):
+    def __init__(
+        self, args, tool_conf_path, new_tool_archive_path, new_tool_name, local_tool_dir
+    ):
         self.args = args
-        self.tool_conf_path = os.path.join(args.galaxy_root,tool_conf_path)
+        self.tool_conf_path = os.path.join(args.galaxy_root, tool_conf_path)
         self.tool_dir = os.path.join(args.galaxy_root, local_tool_dir)
-        self.our_name = 'ToolFactory'
+        self.our_name = "ToolFactory"
         self.run_test = args.run_test
         tff = tarfile.open(new_tool_archive_path, "r:*")
         flist = tff.getnames()
-        ourdir = os.path.commonpath(flist) # eg pyrevpos
-        self.tool_id = ourdir # they are the same for TF tools
-        ourxml = [x for x in flist if x.lower().endswith('.xml')]
-        res = tff.extractall()
+        ourdir = os.path.commonpath(flist)  # eg pyrevpos
+        self.tool_id = ourdir  # they are the same for TF tools
+        ourxml = [x for x in flist if x.lower().endswith(".xml")]
+        tff.extractall()
         tff.close()
-        testflag = os.path.join(self.tool_dir,ourdir,'.testme')
+        testflag = os.path.join(self.tool_dir, ourdir, ".testme")
         self.run_rsync(ourdir, self.tool_dir)
         if self.run_test:
-            wuj = '.wuj'
-            foo = open(wuj,'w')
-            foo.write('Wake up Jeff!!!')
+            wuj = ".wuj"
+            foo = open(wuj, "w")
+            foo.write("Wake up Jeff!!!")
             foo.close()
             self.run_rsync(wuj, testflag)
-        self.update_toolconf(ourdir,ourxml)
+        self.update_toolconf(ourdir, ourxml)
 
     def run_rsync(self, srcf, dstf):
         src = os.path.abspath(srcf)
         dst = os.path.abspath(dstf)
         if os.path.isdir(src):
-            cll = ['rsync', '-vr', src, dst]
+            cll = ["rsync", "-vr", src, dst]
         else:
-            cll = ['rsync', '-v', src, dst]
-        p = subprocess.run(
+            cll = ["rsync", "-v", src, dst]
+        subprocess.run(
             cll,
             capture_output=False,
-            encoding='utf8',
+            encoding="utf8",
             shell=False,
         )
 
     def install_deps(self):
-        gi = galaxy.GalaxyInstance(url=self.args.galaxy_url, key=self.args.galaxy_api_key)
+        gi = galaxy.GalaxyInstance(
+            url=self.args.galaxy_url, key=self.args.galaxy_api_key
+        )
         x = gi.tools.install_dependencies(self.tool_id)
         print(f"Called install_dependencies on {self.tool_id} - got {x}")
 
-    def update_toolconf(self,ourdir,ourxml): # path is relative to tools
-        updated = False
-        localconf = './local_tool_conf.xml'
-        self.run_rsync(self.tool_conf_path,localconf)
+    def update_toolconf(self, ourdir, ourxml):  # path is relative to tools
+        localconf = "./local_tool_conf.xml"
+        self.run_rsync(self.tool_conf_path, localconf)
         tree = ET.parse(localconf)
         root = tree.getroot()
         hasTF = False
         TFsection = None
-        for e in root.findall('section'):
-            if e.attrib['name'] == self.our_name:
+        for e in root.findall("section"):
+            if e.attrib["name"] == self.our_name:
                 hasTF = True
                 TFsection = e
         if not hasTF:
-            TFsection = ET.Element('section')
-            root.insert(0,TFsection) # at the top!
-        our_tools = TFsection.findall('tool')
-        conf_tools = [x.attrib['file'] for x in our_tools]
-        for xml in ourxml:   # may be > 1
-            if not xml in conf_tools: # new
-                updated = True
-                ET.SubElement(TFsection, 'tool', {'file':xml})
+            TFsection = ET.Element("section")
+            root.insert(0, TFsection)  # at the top!
+        our_tools = TFsection.findall("tool")
+        conf_tools = [x.attrib["file"] for x in our_tools]
+        for xml in ourxml:  # may be > 1
+            if xml not in conf_tools:  # new
+                ET.SubElement(TFsection, "tool", {"file": xml})
         ET.indent(tree)
         newconf = f"{self.tool_id}_conf"
         tree.write(newconf, pretty_print=True)
-        self.run_rsync(newconf,self.tool_conf_path)
-        if False and self.args.packages and self.args.packages > '':
+        self.run_rsync(newconf, self.tool_conf_path)
+        if False and self.args.packages and self.args.packages > "":
             self.install_deps()
+
 
 class Tool_Factory:
     """Wrapper for an arbitrary script
@@ -207,13 +211,17 @@ class Tool_Factory:
         self.xmlcl = []
         self.is_positional = self.args.parampass == "positional"
         if self.args.sysexe:
-            if ' ' in self.args.sysexe:
-                self.executeme = self.args.sysexe.split(' ')
+            if " " in self.args.sysexe:
+                self.executeme = self.args.sysexe.split(" ")
             else:
-                self.executeme = [self.args.sysexe, ]
+                self.executeme = [
+                    self.args.sysexe,
+                ]
         else:
             if self.args.packages:
-                self.executeme = [self.args.packages.split(",")[0].split(":")[0].strip(), ]
+                self.executeme = [
+                    self.args.packages.split(",")[0].split(":")[0].strip(),
+                ]
             else:
                 self.executeme = None
         aXCL = self.xmlcl.append
@@ -343,7 +351,9 @@ class Tool_Factory:
             nam = p["name"]
             rep = p["repeat"] == "1"  # repeats make NO sense
             if rep:
-                print(f'### warning. Repeats for {nam} ignored - not permitted in positional parameter command lines!')
+                print(
+                    f"### warning. Repeats for {nam} ignored - not permitted in positional parameter command lines!"
+                )
             over = p["override"]
             xclsuffix.append([p["CL"], '"$%s"' % nam, over])
         for p in self.selpar:
@@ -364,8 +374,8 @@ class Tool_Factory:
         tscript.write(self.script)
         tscript.close()
         self.spacedScript = [f"    {x}" for x in rx if x.strip() > ""]
-        rx.insert(0,'#raw')
-        rx.append('#end raw')
+        rx.insert(0, "#raw")
+        rx.append("#end raw")
         self.escapedScript = rx
         art = "%s.%s" % (self.tool_name, self.executeme[0])
         artifact = open(art, "wb")
@@ -425,7 +435,6 @@ class Tool_Factory:
             clp = shlex.split(self.args.cl_user_suffix)
             for c in clp:
                 aXCL(c)
-
 
     def clargparse(self):
         """argparse style"""
@@ -547,7 +556,9 @@ class Tool_Factory:
                     aninput.positional = int(p["origCL"])
                     aninput.command_line_override = "$%s" % newname
             if reps:
-                repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {alab} as needed")
+                repe = gxtp.Repeat(
+                    name=f"R_{newname}", title=f"Add as many {alab} as needed"
+                )
                 repe.append(aninput)
                 self.tinputs.append(repe)
                 tparm = gxtp.TestRepeat(name=f"R_{newname}")
@@ -612,7 +623,9 @@ class Tool_Factory:
             if self.is_positional:
                 aparm.positional = int(oldcl)
             if reps:
-                repe = gxtp.Repeat(name=f"R_{newname}", title=f"Add as many {newlabel} as needed")
+                repe = gxtp.Repeat(
+                    name=f"R_{newname}", title=f"Add as many {newlabel} as needed"
+                )
                 repe.append(aparm)
                 self.tinputs.append(repe)
                 tparm = gxtp.TestRepeat(name=f"R_{newname}")
@@ -674,7 +687,9 @@ class Tool_Factory:
                 tparm = gxtp.TestOutputCollection(newname)  # broken until PR merged.
                 self.testparam.append(tparm)
             except Exception:
-                print("#### WARNING: Galaxyxml version does not have the PR merged yet - tests for collections must be over-ridden until then!")
+                print(
+                    "#### WARNING: Galaxyxml version does not have the PR merged yet - tests for collections must be over-ridden until then!"
+                )
 
     def doNoXMLparam(self):
         """filter style package - stdin to stdout"""
@@ -776,7 +791,10 @@ class Tool_Factory:
                             gxtp.Requirement("package", packg.strip(), ver)
                         )
             except Exception:
-                print('### malformed packages string supplied - cannot parse =',self.args.packages)
+                print(
+                    "### malformed packages string supplied - cannot parse =",
+                    self.args.packages,
+                )
                 sys.exit(2)
         self.newtool.requirements = requirements
         if self.args.parampass == "0":
@@ -851,7 +869,9 @@ class Tool_Factory:
             pth = p["name"]
             dest = os.path.join(self.testdir, "%s_sample" % p["infilename"])
             shutil.copyfile(pth, dest)
-            dest = os.path.join(self.repdir, "%s_sample.%s" % (p["infilename"],p["format"]))
+            dest = os.path.join(
+                self.repdir, "%s_sample.%s" % (p["infilename"], p["format"])
+            )
             shutil.copyfile(pth, dest)
 
     def makeToolTar(self, report_fail=False):
@@ -892,7 +912,7 @@ class Tool_Factory:
             for entry in outs:
                 if not entry.is_file():
                     continue
-                if not entry.name.endswith('.html'):
+                if not entry.name.endswith(".html"):
                     _, ext = os.path.splitext(entry.name)
                     newname = f"{entry.name.replace('.','_')}.txt"
                 dest = os.path.join(self.repdir, newname)
@@ -958,8 +978,8 @@ def main():
     a("--admin_only", default=False, action="store_true")
     a("--install", default=False, action="store_true")
     a("--run_test", default=False, action="store_true")
-    a("--local_tools", default='tools') # relative to $__root_dir__
-    a("--tool_conf_path", default='config/tool_conf.xml') # relative to $__root_dir__
+    a("--local_tools", default="tools")  # relative to $__root_dir__
+    a("--tool_conf_path", default="config/tool_conf.xml")  # relative to $__root_dir__
     a("--galaxy_url", default="http://localhost:8080")
     a("--toolshed_url", default="http://localhost:9009")
     # make sure this is identical to tool_sheds_conf.xml
@@ -969,23 +989,27 @@ def main():
     args = parser.parse_args()
     if args.admin_only:
         assert not args.bad_user, (
-          'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy \
+            'UNAUTHORISED: %s is NOT authorized to use this tool until Galaxy \
 admin adds %s to "admin_users" in the galaxy.yml Galaxy configuration file'
-           % (args.bad_user, args.bad_user)
-    )
+            % (args.bad_user, args.bad_user)
+        )
     assert args.tool_name, "## Tool Factory expects a tool name - eg --tool_name=DESeq"
     r = Tool_Factory(args)
     r.writeShedyml()
     r.makeTool()
     r.makeToolTar()
     if args.install or args.run_test:
-        #try:
-        tcu = Tool_Conf_Updater(args=args, local_tool_dir=args.local_tools,
-        new_tool_archive_path=r.newtarpath, tool_conf_path=args.tool_conf_path,
-        new_tool_name=r.tool_name)
-        #except Exception:
-        #   print("### Unable to install the new tool. Are you sure you have all the required special settings?")
+        try:
+            Tool_Conf_Updater(
+                args=args,
+                local_tool_dir=args.local_tools,
+                new_tool_archive_path=r.newtarpath,
+                tool_conf_path=args.tool_conf_path,
+                new_tool_name=r.tool_name,
+            )
+        except Exception:
+            print("### Unable to install the new tool. Are you sure you have all the required special settings?")
+
 
 if __name__ == "__main__":
     main()
-
