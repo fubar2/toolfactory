@@ -109,7 +109,7 @@ class Tool_Conf_Updater:
         if os.path.isdir(src):
             cll = ["rsync", "-r", src, dst]
         else:
-            cll = ["rsync",  src, dst]
+            cll = ["rsync", src, dst]
         subprocess.run(
             cll,
             capture_output=False,
