@@ -1,17 +1,20 @@
-﻿## Breaking news! Completely refactored
+﻿# WARNING
 
-### New demonstration of planemo tool_factory command ![Planemo ToolFactory demonstration](images/lintplanemo-2021-01-08_18.02.45.mkv?raw=false "Demonstration inside Planemo")
+Install this tool to a private Galaxy or Docker container ONLY!
 
-# WARNING
-
-Install this tool to a throw-away private Galaxy or Docker container ONLY!
-
-Please NEVER on a public or production instance where a hostile user may
-be able to gain access if they can acquire an administrative account login.
+Not on a public or production instance - unless you don't mind potentially hostile users
+installing any code they want as tools on your server.
 
 It only runs for server administrators - the ToolFactory tool will refuse to execute for an ordinary user since
 it can install new tools to the Galaxy server it executes on! This is not something you should allow other than
 on a throw away instance that is protected from potentially hostile users.
+
+There are introductory videos and an introductory and advanced hands-on tutorials available on the
+[Galaxy Training Network](https://training.galaxyproject.org/training-material/topics/dev/tutorials/tool-generators/tutorial.html).
+Installation as a [docker-galaxy-stable](https://github.com/bgruening/docker-galaxy-stable/compose) flavour is described
+in the introductory tutorial.
+
+The following is still truthy - just older.
 
 ## Short Story
 
@@ -330,27 +333,7 @@ afternoon's demonstration!
 
 ## Installation
 
-The Docker container https://github.com/fubar2/toolfactory-galaxy-docker/blob/main/README.md
-is the best way to use the TF because it is preconfigured
-to automate new tool testing and has a built in local toolshed where each new tool
-is uploaded. If you grab the docker container, it should just work after a restart and you
-can run a workflow to generate all the sample tools. Running the samples and rerunning the ToolFactory
-jobs that generated them allows you to add fields and experiment to see how things work.
-
-It can be installed like any other tool from the Toolshed, but you will need to make some
-configuration changes (TODO write a configuration). You can install it most conveniently using the
-administrative "Search and browse tool sheds" link. Find the Galaxy Main
-toolshed at https://toolshed.g2.bx.psu.edu/ and search for the toolfactory
-repository in the Tool Maker section. Open it and review the code and select the option to install it.
-
-If not already there please add:
-
-```
-<datatype extension="tgz" type="galaxy.datatypes.binary:Binary" mimetype="multipart/x-gzip" subclass="True" />
-```
-
-to your local config/data_types_conf.xml.
-
+See the [GTN introductory tutorial](https://training.galaxyproject.org/training-material/topics/dev/tutorials/tool-generators/tutorial.html).
 
 ## Restricted execution
 
