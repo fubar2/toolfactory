@@ -1,4 +1,13 @@
-﻿# WARNING
+# THIS CODE IS DEPRECATED and no longer supported.
+
+## Please see https://github.com/fubar2/galaxy_tf_overlay for the currently supported code described in https://training.galaxyproject.org/training-material/topics/dev/tutorials/tool-generators/tutorial.html.
+
+## The code here has been refactored and now needs a specific Galaxy environment to operate correctly.
+## The new overlay repository takes a normal checkout of the 23.0 release and adds the necessary configuration overlay to make a ToolFactory appliance in docker or on a desktop.
+
+---
+
+# WARNING! EVERYTHING HERE IS OUT OF DATE AND NO LONGER SUPPORTED
 
 Install this tool to a private Galaxy or Docker container ONLY!
 
